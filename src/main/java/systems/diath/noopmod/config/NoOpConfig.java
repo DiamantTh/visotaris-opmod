@@ -43,6 +43,15 @@ public final class NoOpConfig {
     // Standard: deaktiviert (andere RPC-Mods haben Vorrang)
     public boolean enableDiscordRpc = false;
 
+    // ── Netzwerk: Proxy ───────────────────────────────────────────────────────
+    // Leer/0 = Direktverbindung; z.B. proxyHost="127.0.0.1", proxyPort=8080
+    public String proxyHost = "";
+    public int    proxyPort = 0;
+
+    // ── Netzwerk: API-Key ─────────────────────────────────────────────────────
+    // Wenn non-leer: Header "Authorization: Bearer <apiKey>" wird mitgesendet
+    public String apiKey = "";
+
     // ── Netzwerk: User-Agent ──────────────────────────────────────────────────
     // Leer = dynamisch ("Visotaris-OPMod/<ver> (MC/<ver>; Fabric/<ver>; ...)")
     public String customUserAgent = "";

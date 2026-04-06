@@ -12,9 +12,12 @@ import systems.diath.noopmod.model.ShardRate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,14 +62,24 @@ public final class MerchantApiClient {
     }
 
     public List<ShardRate> fetchRates() throws IOException {
-        HttpURLConnection conn = openConnection(ENDPOINT);
-        int status = conn.getResponseCode();
+        HttpClient client   = NoOpConst.buildHttpClient(configManager.getConfig());
+        HttpRequest request = buildRequest(ENDPOINT);
+
+        HttpResponse<InputStream> response;
+        try {
+            response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Merchant-API Request unterbrochen", e);
+        }
+
+        int status = response.statusCode();
         if (status != 200) {
-            conn.disconnect();
+            response.body().close();
             throw new IOException("Merchant-API Status " + status);
         }
 
-        try (InputStream is = conn.getInputStream();
+        try (InputStream is = response.body();
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
 
             JsonElement root = GSON.fromJson(reader, JsonElement.class);
@@ -93,9 +106,6 @@ public final class MerchantApiClient {
 
             NoOpLogger.debug("Merchant-API: {} Shardkurs-Einträge geladen.", result.size());
             return result;
-
-        } finally {
-            conn.disconnect();
         }
     }
 
@@ -127,14 +137,18 @@ public final class MerchantApiClient {
         return s.toLowerCase().replace(" ", "_");
     }
 
-    private HttpURLConnection openConnection(String url) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
-        conn.setRequestMethod("GET");
-        conn.setConnectTimeout(TIMEOUT_MS);
-        conn.setReadTimeout(TIMEOUT_MS);
-        conn.setRequestProperty("User-Agent", NoOpConst.buildUserAgent(configManager.getConfig().customUserAgent));
-        conn.setRequestProperty("Accept", "application/json");
-        return conn;
+    private HttpRequest buildRequest(String url) {
+        var cfg = configManager.getConfig();
+        HttpRequest.Builder req = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .timeout(Duration.ofMillis(TIMEOUT_MS))
+            .GET()
+            .header("Accept", "application/json")
+            .header("User-Agent", NoOpConst.buildUserAgent(cfg.customUserAgent));
+        if (cfg.apiKey != null && !cfg.apiKey.isBlank()) {
+            req.header("Authorization", "Bearer " + cfg.apiKey.strip());
+        }
+        return req.build();
     }
 
     private static String getStringOrNull(JsonObject obj, String key) {
