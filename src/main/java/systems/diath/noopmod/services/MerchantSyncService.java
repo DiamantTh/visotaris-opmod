@@ -18,7 +18,7 @@ public final class MerchantSyncService {
 
     private final ShardCache        cache;
     private final ConfigManager     config;
-    private final MerchantApiClient client = new MerchantApiClient();
+    private final MerchantApiClient client;
     private final ScheduledExecutorService scheduler =
         Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "noopmod-merchant-sync");
@@ -29,8 +29,9 @@ public final class MerchantSyncService {
     private ScheduledFuture<?> task;
 
     public MerchantSyncService(ShardCache cache, ConfigManager config) {
-        this.cache  = cache;
-        this.config = config;
+        this.cache   = cache;
+        this.config  = config;
+        this.client  = new MerchantApiClient(config);
     }
 
     public void start() {

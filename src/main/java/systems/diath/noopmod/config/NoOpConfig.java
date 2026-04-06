@@ -42,4 +42,8 @@ public final class NoOpConfig {
     // ── Discord Rich Presence ─────────────────────────────────────────────────
     // Standard: deaktiviert (andere RPC-Mods haben Vorrang)
     public boolean enableDiscordRpc = false;
+
+    // ── Netzwerk: User-Agent ──────────────────────────────────────────────────
+    // Leer = dynamisch ("Visotaris-OPMod/<ver> (MC/<ver>; Fabric/<ver>; ...)")
+    public String customUserAgent = "";
 }

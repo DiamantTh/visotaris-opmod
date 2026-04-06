@@ -4,7 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import systems.diath.noopmod.NoOpConst;
 import systems.diath.noopmod.NoOpLogger;
+import systems.diath.noopmod.config.ConfigManager;
 import systems.diath.noopmod.model.ShardRate;
 
 import java.io.IOException;
@@ -49,6 +51,12 @@ public final class MerchantApiClient {
     private static final Gson    GSON        = new Gson();
     /** Extrahiert den Wert von custom_model_data=NNN aus einem komplexen MC-Komponentenstring. */
     private static final Pattern CMD_PATTERN = Pattern.compile("custom_model_data=(\\d+)");
+
+    private final ConfigManager configManager;
+
+    public MerchantApiClient(ConfigManager configManager) {
+        this.configManager = configManager;
+    }
 
     public List<ShardRate> fetchRates() throws IOException {
         HttpURLConnection conn = openConnection(ENDPOINT);
@@ -119,12 +127,12 @@ public final class MerchantApiClient {
         return s.toLowerCase().replace(" ", "_");
     }
 
-    private static HttpURLConnection openConnection(String url) throws IOException {
+    private HttpURLConnection openConnection(String url) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(TIMEOUT_MS);
         conn.setReadTimeout(TIMEOUT_MS);
-        conn.setRequestProperty("User-Agent", "Visotaris-OPMod/1 (Fabric; git.diath.systems/DiamantTh/visotaris-opmod)");
+        conn.setRequestProperty("User-Agent", NoOpConst.buildUserAgent(configManager.getConfig().customUserAgent));
         conn.setRequestProperty("Accept", "application/json");
         return conn;
     }

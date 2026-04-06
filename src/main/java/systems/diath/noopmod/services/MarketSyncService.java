@@ -19,7 +19,7 @@ public final class MarketSyncService {
 
     private final MarketCache       cache;
     private final ConfigManager     config;
-    private final MarketApiClient   client = new MarketApiClient();
+    private final MarketApiClient   client;
     private final ScheduledExecutorService scheduler =
         Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "noopmod-market-sync");
@@ -30,8 +30,9 @@ public final class MarketSyncService {
     private ScheduledFuture<?> task;
 
     public MarketSyncService(MarketCache cache, ConfigManager config) {
-        this.cache  = cache;
-        this.config = config;
+        this.cache   = cache;
+        this.config  = config;
+        this.client  = new MarketApiClient(config);
     }
 
     public void start() {

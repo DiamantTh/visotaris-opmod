@@ -4,7 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import systems.diath.noopmod.NoOpConst;
 import systems.diath.noopmod.NoOpLogger;
+import systems.diath.noopmod.config.ConfigManager;
 import systems.diath.noopmod.model.MarketPrice;
 
 import java.io.IOException;
@@ -43,6 +45,12 @@ public final class MarketApiClient {
     private static final String ENDPOINT   = "https://api.opsucht.net/market/prices";
     private static final int    TIMEOUT_MS = 10_000;
     private static final Gson   GSON       = new Gson();
+
+    private final ConfigManager configManager;
+
+    public MarketApiClient(ConfigManager configManager) {
+        this.configManager = configManager;
+    }
 
     public List<MarketPrice> fetchPrices() throws IOException {
         HttpURLConnection conn = openConnection(ENDPOINT);
@@ -103,12 +111,12 @@ public final class MarketApiClient {
         }
     }
 
-    private static HttpURLConnection openConnection(String url) throws IOException {
+    private HttpURLConnection openConnection(String url) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(TIMEOUT_MS);
         conn.setReadTimeout(TIMEOUT_MS);
-        conn.setRequestProperty("User-Agent", "Visotaris-OPMod/1 (Fabric; git.diath.systems/DiamantTh/visotaris-opmod)");
+        conn.setRequestProperty("User-Agent", NoOpConst.buildUserAgent(configManager.getConfig().customUserAgent));
         conn.setRequestProperty("Accept", "application/json");
         return conn;
     }
