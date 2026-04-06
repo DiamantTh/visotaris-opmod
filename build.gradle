@@ -1,0 +1,47 @@
+// Root build.gradle – gemeinsame Konfiguration für alle Subprojekte.
+// Der eigentliche Gradle-Build läuft jeweils in 1.21.4/ oder 1.21.11/.
+
+subprojects {
+    // group/version/repos brauchen keine Plugins – direkt setzbar.
+    group   = property('mod_group')
+    version = "${property('mod_version')}+mc${project.name}"
+
+    repositories {
+        maven {
+            name = 'Fabric'
+            url  = 'https://maven.fabricmc.net/'
+        }
+        maven {
+            name = 'TerraformersMC'
+            url  = 'https://maven.terraformersmc.com/releases'
+        }
+        mavenCentral()
+    }
+
+    // Alles was Loom/Java-Plugin voraussetzt muss in afterEvaluate,
+    // weil subprojects{} vor dem eigenen build.gradle des Subprojekts läuft.
+    afterEvaluate {
+        // Java-Compiler-Optionen
+        tasks.withType(JavaCompile).configureEach {
+            options.encoding = 'UTF-8'
+            options.release  = 21
+        }
+
+        // Gemeinsamer Quellcode (root src/) in das Subprojekt einhängen
+        sourceSets {
+            main {
+                java      { srcDir rootProject.file('src/main/java') }
+                resources { srcDir rootProject.file('src/main/resources') }
+            }
+        }
+
+        // ${version} in fabric.mod.json ersetzen
+        processResources {
+            inputs.property 'version', project.version
+            filteringCharset 'UTF-8'
+            filesMatching('fabric.mod.json') {
+                expand version: project.version
+            }
+        }
+    }
+}

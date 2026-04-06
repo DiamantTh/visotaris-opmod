@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'no-op-mod'
+
+// Versionsspezifische Subprojekte
+include '1.21.4'
+include '1.21.11'

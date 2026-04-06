@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "systems.diath.noopmod.hooks",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "HandledScreenMixin",
+    "HandledScreenClickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

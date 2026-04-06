@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.class
+
+# Fabric Loom Run-Verzeichnis
+run/
+**/run/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / Logs
+*.log

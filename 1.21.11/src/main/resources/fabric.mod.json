@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "noopmod",
+  "version": "${version}",
+  "name": "No OP.Mod",
+  "description": "OPSUCHT-Client-Komfort-Mod: Marktpreise, Jobtracker, HUD, Schutzlogik.",
+  "authors": [
+    "DiamantTh",
+    "GitHub Copilot"
+  ],
+  "contact": {
+    "sources": "https://github.com/DiamantTh/no-op-mod"
+  },
+  "license": "AGPL-3.0-or-later",
+  "icon": "assets/noopmod/icon.png",
+  "accessWidener": "noopmod.accesswidener",
+
+  "environment": "client",
+
+  "entrypoints": {
+    "client": [
+      "systems.diath.noopmod.NoOpModClient"
+    ],
+    "modmenu": [
+      "systems.diath.noopmod.config.ModMenuApiImpl"
+    ]
+  },
+
+  "mixins": [
+    "noopmod.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.18.5",
+    "fabric-api": "*",
+    "minecraft": "~1.21.11",
+    "java": ">=21"
+  },
+
+  "suggests": {
+    "modmenu": "*"
+  }
+}
