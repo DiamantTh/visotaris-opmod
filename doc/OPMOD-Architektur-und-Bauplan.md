@@ -616,7 +616,7 @@ Dieser Abschnitt beantwortet die praktische Rueckfrage explizit:
 Wichtig:
 
 - die folgende Liste beschreibt den nachgewiesenen Ist-Zustand von OPMOD
-- sie beschreibt nicht primaer eine Wunschliste fuer `No OP.Mod`
+- sie beschreibt nicht primaer eine Wunschliste fuer `Visotaris OPMod`
 - fuer den Nachbau ist sie deshalb besonders wichtig, weil sie zwischen vorhandener Funktion und fehlender Generalisierung trennt
 - gemeint ist hier die analysierte Mod `OPMOD` aus der vorliegenden JAR `opmod-1.1.0-beta+mc1.21.11.jar`
 - inhaltlich bezieht sich die Analyse damit auf das Modrinth-Projekt `https://modrinth.com/mod/opmod`
@@ -883,7 +883,7 @@ Die sauberste fachliche Formulierung lautet deshalb:
 - aber meist als konkrete OPSUCHT-nahe Loesung
 - nicht als universelle, klar abstrahierte Systemarchitektur
 
-Das ist genau der Punkt, an dem `No OP.Mod` besser werden kann:
+Das ist genau der Punkt, an dem `Visotaris OPMod` besser werden kann:
 
 - gleiche oder aehnliche Funktionen
 - aber mit saubereren Service-Grenzen
@@ -1757,7 +1757,7 @@ Wenn man also fragt, wo sich die Mod "noch ueberall reinhaengt", dann lautet die
 
 ## Pedantische Klassenmatrix: Hook -> Zweck -> Status
 
-Die folgende Matrix ist bewusst moeglichst pedantisch gehalten. Sie ist kein Marketing-Feature-Ueberblick, sondern eine Nachbauhilfe fuer eine eigene Mod wie `No OP.Mod`.
+Die folgende Matrix ist bewusst moeglichst pedantisch gehalten. Sie ist kein Marketing-Feature-Ueberblick, sondern eine Nachbauhilfe fuer eine eigene Mod wie `Visotaris OPMod`.
 
 ### Primäre Laufzeitklassen
 
@@ -1915,9 +1915,9 @@ Der folgende Abschnitt ist absichtlich von der Klassenmatrix getrennt. Hier geht
 | Discord IPC | Rich Presence | `PresenceBuilder` | vorhanden, aber nicht gestartet |
 | Mod Menu API | externer Einstieg in `ConfigScreen` | `ModMenuApiImpl` | aktiv |
 
-## Konkrete Priorisierung fuer `No OP.Mod`
+## Konkrete Priorisierung fuer `Visotaris OPMod`
 
-Wenn `No OP.Mod` dieselbe Problemklasse bearbeiten soll, aber sauberer aufgebaut sein soll, dann sind fuer den ersten belastbaren Nachbau diese Einhaengepunkte Pflicht:
+Wenn `Visotaris OPMod` dieselbe Problemklasse bearbeiten soll, aber sauberer aufgebaut sein soll, dann sind fuer den ersten belastbaren Nachbau diese Einhaengepunkte Pflicht:
 
 - `ClientModInitializer.onInitializeClient`
 - `ClientCommandRegistrationCallback.EVENT`
@@ -1943,16 +1943,16 @@ Bewusst vermeidbar aus heutiger Sicht:
 - parallele Config-Key-Namenswelten
 - tote Altpfade ohne klare Migrationsstrategie
 
-## Zielarchitektur fuer `No OP.Mod`
+## Zielarchitektur fuer `Visotaris OPMod`
 
 Der folgende Abschnitt ist kein Rueckblick auf OPMOD, sondern eine konkrete Zielarchitektur, die sich aus der Analyse ableitet. Ziel ist:
 
 - dieselbe Problemklasse loesen
 - die Einhaengepunkte bewusst und sauber organisieren
 - keine historisch gewachsene Doppelstruktur uebernehmen
-- OPSUCHT-/No-OP-spezifische Logik klar von Minecraft-Hooks trennen
+- OPSUCHT-/Visotaris-OPMod-spezifische Logik klar von Minecraft-Hooks trennen
 
-### Leitprinzipien fuer `No OP.Mod`
+### Leitprinzipien fuer `Visotaris OPMod`
 
 - genau ein Settings-System
 - genau ein Runtime-Hook-Orchestrator
@@ -2091,7 +2091,7 @@ Empfohlene Dateien:
 
 Hinweis:
 
-- falls `No OP.Mod` spaeter mehrere Server oder Profile unterstuetzen soll, ist das der richtige Abstraktionspunkt
+- falls `Visotaris OPMod` spaeter mehrere Server oder Profile unterstuetzen soll, ist das der richtige Abstraktionspunkt
 
 ### `dev.noopmod.cache`
 
@@ -2399,7 +2399,7 @@ Verantwortung:
 - `custom_model_data` lesen
 - daraus `normalizedKey` erzeugen
 
-Diese Klasse ist fuer `No OP.Mod` einer der wichtigsten Architekturpunkte.
+Diese Klasse ist fuer `Visotaris OPMod` einer der wichtigsten Architekturpunkte.
 
 ### `InventoryValuationService`
 
@@ -2431,7 +2431,7 @@ Wichtig:
 
 ## Konkrete Hook-Dateien, die du sehr wahrscheinlich wirklich brauchst
 
-Minimal belastbarer Satz fuer Version `0.1` von `No OP.Mod`:
+Minimal belastbarer Satz fuer Version `0.1` von `Visotaris OPMod`:
 
 - `NoOpModClient.java`
 - `config/ConfigManager.java`
@@ -2465,7 +2465,7 @@ Minimal belastbarer Satz fuer Version `0.1` von `No OP.Mod`:
 - `ui/container/ContainerValueOverlay.java`
 - `command/CommandRegistrar.java`
 
-## Empfohlene Implementierungsreihenfolge fuer `No OP.Mod`
+## Empfohlene Implementierungsreihenfolge fuer `Visotaris OPMod`
 
 ### Stufe 1: Fundament
 
@@ -2552,7 +2552,7 @@ Erst spaeter:
 - Idle-Render-Optimierung
 - generisches UI-Komponentenframework
 
-## Was `No OP.Mod` bewusst besser machen sollte als OPMOD
+## Was `Visotaris OPMod` bewusst besser machen sollte als OPMOD
 
 - keinen doppelten Settings-Pfad zulassen
 - keine alten Keys ohne Migration mitziehen

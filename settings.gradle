@@ -8,7 +8,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'no-op-mod'
+rootProject.name = 'visotaris-opmod'
 
 // Versionsspezifische Subprojekte
 include '1.21.4'

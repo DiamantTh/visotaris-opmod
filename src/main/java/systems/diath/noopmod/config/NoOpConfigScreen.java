@@ -9,7 +9,7 @@ import systems.diath.noopmod.NoOpModClient;
 import java.util.function.Consumer;
 
 /**
- * Einstellungs-Screen der No OP.Mod (Phase 3).
+ * Einstellungs-Screen der Visotaris OPMod.
  *
  * Zweispaltig-Layout für boolsche Optionen; Cycling-Buttons für Intervall-Werte.
  * Speichern → configManager.save(); Abbrechen → configManager.load() (Disk-Stand).
@@ -33,7 +33,7 @@ public final class NoOpConfigScreen extends Screen {
     private final NoOpConfig    cfg;
 
     public NoOpConfigScreen(Screen parent) {
-        super(Text.literal("No OP.Mod \u2013 Einstellungen"));
+        super(Text.literal("Visotaris OPMod \u2013 Einstellungen"));
         this.parent        = parent;
         this.configManager = NoOpModClient.getInstance().getConfigManager();
         this.cfg           = configManager.getConfig();

@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "noopmod",
   "version": "${version}",
-  "name": "No OP.Mod",
-  "description": "OPSUCHT-Client-Komfort-Mod: Marktpreise, Jobtracker, HUD, Schutzlogik.",
+  "name": "Visotaris OPMod",
+  "description": "OPSUCHT-Client-Komfort-Mod: Marktpreise, Jobtracker, HUD, Amboss-Normalisierung, OffhandBlocker u.v.m.",
   "authors": [
     "DiamantTh",
     "GitHub Copilot"

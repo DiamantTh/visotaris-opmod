@@ -7,7 +7,7 @@ package systems.diath.noopmod;
 public final class NoOpConst {
 
     public static final String MOD_ID   = "noopmod";
-    public static final String MOD_NAME = "No OP.Mod";
+    public static final String MOD_NAME = "Visotaris OPMod";
 
     private NoOpConst() {}
 }

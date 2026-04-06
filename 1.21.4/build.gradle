@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// No OP.Mod – Minecraft 1.21.4
+// Visotaris OPMod – Minecraft 1.21.4
 // ─────────────────────────────────────────────────────────────────────────────
 plugins {
     id 'fabric-loom'                        version '1.14.6'
@@ -33,7 +33,7 @@ loom {
     runs {
         client {
             client()
-            setConfigName "No OP.Mod (1.21.4)"
+            setConfigName "Visotaris OPMod (1.21.4)"
             ideConfigGenerated true
             runDir "run"
         }

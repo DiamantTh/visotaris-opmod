@@ -11,7 +11,7 @@ import systems.diath.noopmod.model.PendingAction;
 import systems.diath.noopmod.services.PendingConfirmationService;
 
 /**
- * Registriert alle Client-Commands der No OP.Mod.
+ * Registriert alle Client-Commands der Visotaris OPMod.
  *
  * Interne Bestätigungs-Commands:
  *   /.confirmRename  /.cancelRename
@@ -91,7 +91,7 @@ public final class NoOpCommands {
             .then(ClientCommandManager.literal("status")
                 .executes(ctx -> {
                     NoOpModClient mod = NoOpModClient.getInstance();
-                    send(ctx.getSource(), "§b[No OP.Mod] Status");
+                    send(ctx.getSource(), "§b[Visotaris OPMod] Status");
                     send(ctx.getSource(), "  Marktpreise: §f" +
                         (mod.getMarketCache().isEmpty() ? "§cnicht geladen" : "§ageladen"));
                     send(ctx.getSource(), "  Shardkurse:  §f" +
