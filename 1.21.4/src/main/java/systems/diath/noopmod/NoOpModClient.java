@@ -88,7 +88,7 @@ public class NoOpModClient implements ClientModInitializer {
             String label = iv.type() == systems.diath.noopmod.model.PendingAction.Type.RENAME ? "Rename" : "Sign";
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.player != null) mc.player.sendMessage(Text.empty()
-                .append(Text.literal("§e[No OP.Mod] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
+                .append(Text.literal("§e[Visotaris OPMod] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
                 .append(Text.literal("§a§l[✓ Bestätigen]").styled(s ->
                     s.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, iv.confirmCmd()))))
                 .append(Text.literal("  "))

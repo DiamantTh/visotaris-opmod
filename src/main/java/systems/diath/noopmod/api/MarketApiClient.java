@@ -108,7 +108,7 @@ public final class MarketApiClient {
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(TIMEOUT_MS);
         conn.setReadTimeout(TIMEOUT_MS);
-        conn.setRequestProperty("User-Agent", "Visotaris-OPMod/1 (Fabric; github.com/DiamantTh/no-op-mod)");
+        conn.setRequestProperty("User-Agent", "Visotaris-OPMod/1 (Fabric; git.diath.systems/DiamantTh/visotaris-opmod)");
         conn.setRequestProperty("Accept", "application/json");
         return conn;
     }

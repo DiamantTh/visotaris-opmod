@@ -2,7 +2,7 @@
   "noopmod.command.refresh.done": "Market & shard data refresh started...",
   "noopmod.command.tracker.no_job": "No active job.",
   "noopmod.command.tracker.info": "Job: %s | Level: %d (%.1f%%) | XP/h: %s | $/h: %s",
-  "noopmod.command.status.header": "=== No OP.Mod Status ===",
+  "noopmod.command.status.header": "=== Visotaris OPMod Status ===",
   "noopmod.command.status.market": "Market prices: %d entries",
   "noopmod.command.status.shard": "Shard rates: %d entries",
   "noopmod.command.status.job": "Current job: %s",
@@ -32,7 +32,7 @@
   "noopmod.config.enable_anvil_normalization": "Anvil normalization",
   "noopmod.config.market_refresh_interval": "Market refresh interval (s)",
   "noopmod.config.merchant_refresh_interval": "Merchant refresh interval (s)",
-  "key.categories.noopmod": "No OP.Mod",
+  "key.categories.noopmod": "Visotaris OPMod",
   "noopmod.key.open_settings": "Open settings",
   "noopmod.key.toggle_hud": "Toggle HUD",
   "noopmod.key.refresh_market": "Refresh market data"

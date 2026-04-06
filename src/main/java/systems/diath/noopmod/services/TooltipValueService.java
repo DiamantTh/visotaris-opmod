@@ -47,7 +47,7 @@ public final class TooltipValueService {
         // Marktpreis
         Optional<MarketPrice> price = marketCache.get(baseKey);
         price.ifPresent(p -> {
-            lines.add(Text.literal("§8[No OP.Mod]"));
+            lines.add(Text.literal("§8[Visotaris OPMod]"));
             if (p.getBuy()  > 0) lines.add(Text.literal("§eKaufpreis:      §f" + formatMoney(p.getBuy())));
             if (p.getSell() > 0) lines.add(Text.literal("§eVerkaufspreis:  §f" + formatMoney(p.getSell())));
         });

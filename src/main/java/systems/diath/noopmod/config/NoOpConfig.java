@@ -1,7 +1,7 @@
 package systems.diath.noopmod.config;
 
 /**
- * Alle konfigurierbaren Einstellungen der No OP.Mod.
+ * Alle konfigurierbaren Einstellungen der Visotaris OPMod.
  * Dieses POJO wird direkt von Gson serialisiert/deserialisiert.
  *
  * Defaults sind hier als Feldinitialisierungen definiert –
