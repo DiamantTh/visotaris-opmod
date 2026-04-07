@@ -58,8 +58,9 @@ public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
             if (mouseX >= bx && mouseX < bx + HandledScreenButtons.BTN_W
                     && mouseY >= rowY && mouseY < rowY + HandledScreenButtons.BTN_H) {
                 MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc.player != null) {
-                    mc.player.networkHandler.sendChatMessage(HandledScreenButtons.BTN_LABELS[i]);
+                var player = mc.player;
+                if (player != null) {
+                    player.networkHandler.sendChatMessage(HandledScreenButtons.BTN_LABELS[i]);
                 }
                 return true;
             }

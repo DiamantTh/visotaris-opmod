@@ -70,8 +70,9 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
 
     private void renderContainerOverlay(DrawContext ctx, VisotarisModClient mod) {
         // Alle Slot-Stacks sammeln
-        List<ItemStack> stacks = new ArrayList<>(getScreenHandler().slots.size());
-        for (Slot slot : getScreenHandler().slots) stacks.add(slot.getStack());
+        T handler = getScreenHandler();
+        List<ItemStack> stacks = new ArrayList<>(handler.slots.size());
+        for (Slot slot : handler.slots) stacks.add(slot.getStack());
 
         InventoryValuation val = mod.getInventoryValuationService().evaluate(stacks);
         if (val.getSellTotal() <= 0 && val.getBuyTotal() <= 0) return;

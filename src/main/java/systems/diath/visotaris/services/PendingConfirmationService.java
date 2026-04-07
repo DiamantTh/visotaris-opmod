@@ -37,11 +37,12 @@ public final class PendingConfirmationService {
      */
     public boolean queue(PendingAction.Type type, String command, String text) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return false;
+        var player = mc.player;
+        if (player == null) return false;
 
-        ItemStack held = mc.player.getMainHandStack();
+        ItemStack held = player.getMainHandStack();
         String fingerprint = makeFingerprint(held);
-        int slot = mc.player.getInventory().selectedSlot;
+        int slot = player.getInventory().selectedSlot;
 
         PendingAction action = new PendingAction(
             type, command, text, fingerprint, slot, DEFAULT_TIMEOUT_MS
@@ -62,8 +63,9 @@ public final class PendingConfirmationService {
 
         // Befehl an den Server senden
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player != null) {
-            mc.player.networkHandler.sendChatCommand(action.getCommand());
+        var player = mc.player;
+        if (player != null) {
+            player.networkHandler.sendChatCommand(action.getCommand());
         }
         return true;
     }
@@ -131,16 +133,17 @@ public final class PendingConfirmationService {
             return false;
         }
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return false;
+        var player = mc.player;
+        if (player == null) return false;
 
-        int currentSlot = mc.player.getInventory().selectedSlot;
+        int currentSlot = player.getInventory().selectedSlot;
         if (currentSlot != action.getSlot()) {
             VisotarisLogger.debug("PendingAction ungültig: Slot gewechselt ({} → {}).",
                 action.getSlot(), currentSlot);
             return false;
         }
 
-        String currentFingerprint = makeFingerprint(mc.player.getMainHandStack());
+        String currentFingerprint = makeFingerprint(player.getMainHandStack());
         if (!currentFingerprint.equals(action.getItemFingerprint())) {
             VisotarisLogger.debug("PendingAction ungültig: Item gewechselt.");
             return false;

@@ -76,6 +76,7 @@ public final class HudOverlay {
     // ── Inventar-voll-Warnung ───────────────────────────────────────────────
 
     private void renderInventoryWarning(DrawContext ctx, MinecraftClient mc) {
+        if (mc.player == null) return;
         var inv = mc.player.getInventory();
         // Slots 0–35: Haupt-Inventar + Hotbar
         for (int i = 0; i < 36; i++) {

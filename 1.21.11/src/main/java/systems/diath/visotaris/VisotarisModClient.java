@@ -113,8 +113,11 @@ public class VisotarisModClient implements ClientModInitializer {
         );
 
         // 6. HUD registrieren
+        // TODO: Auf HudElementRegistry migrieren, sobald die neue API stabil ist (fabric-rendering-v1 ≥ 16.x).
         hudOverlay = new HudOverlay(jobTrackerService, inventoryValuationService, configManager);
-        HudRenderCallback.EVENT.register(hudOverlay::render);
+        @SuppressWarnings("deprecation")
+        var hudEvent = HudRenderCallback.EVENT;
+        hudEvent.register(hudOverlay::render);
 
         // 7. Client-Commands registrieren
         VisotarisCommands.register(pendingConfirmationService);
