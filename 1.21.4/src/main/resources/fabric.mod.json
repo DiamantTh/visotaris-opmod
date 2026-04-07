@@ -18,10 +18,10 @@
 
   "entrypoints": {
     "client": [
-      "systems.diath.visotaris.VisotarisModClient"
+      "systems.diath.visotaris_opmod.VisotarisModClient"
     ],
     "modmenu": [
-      "systems.diath.visotaris.config.ModMenuApiImpl"
+      "systems.diath.visotaris_opmod.config.ModMenuApiImpl"
     ]
   },
 
