@@ -2,10 +2,11 @@ package systems.diath.visotaris_opmod.config;
 
 /**
  * Alle konfigurierbaren Einstellungen der Visotaris OPMod.
- * Dieses POJO wird direkt von Gson serialisiert/deserialisiert.
- *
  * Defaults sind hier als Feldinitialisierungen definiert –
- * keine doppelte Default-Quelle (kein separates JSON nötig).
+ * keine doppelte Default-Quelle nötig.
+ *
+ * Serialisierung/Deserialisierung erfolgt explizit im {@link ConfigManager}
+ * über night-config TOML – kein Reflection, kein Gson.
  */
 public final class VisotarisConfig {
 

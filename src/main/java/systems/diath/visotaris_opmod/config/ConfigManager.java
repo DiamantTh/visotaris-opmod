@@ -41,15 +41,15 @@ public final class ConfigManager {
             c.enableOffhandBlocker           = toml.getOrElse("enableOffhandBlocker",           c.enableOffhandBlocker);
             c.enableInventoryWarning         = toml.getOrElse("enableInventoryWarning",         c.enableInventoryWarning);
             c.enableCommandShortforms        = toml.getOrElse("enableCommandShortforms",        c.enableCommandShortforms);
-            c.marketRefreshIntervalSeconds   = toml.getOrElse("marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
-            c.merchantRefreshIntervalSeconds = toml.getOrElse("merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
+            c.marketRefreshIntervalSeconds   = getInt(toml, "marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
+            c.merchantRefreshIntervalSeconds = getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
             c.showContainerOverlay           = toml.getOrElse("showContainerOverlay",           c.showContainerOverlay);
             c.showQuickButtons               = toml.getOrElse("showQuickButtons",               c.showQuickButtons);
             c.shulkerRecursion               = toml.getOrElse("shulkerRecursion",               c.shulkerRecursion);
             c.enableAnvilNormalization       = toml.getOrElse("enableAnvilNormalization",       c.enableAnvilNormalization);
             c.enableDiscordRpc               = toml.getOrElse("enableDiscordRpc",               c.enableDiscordRpc);
             c.proxyHost                      = toml.getOrElse("proxyHost",                      c.proxyHost);
-            c.proxyPort                      = toml.getOrElse("proxyPort",                      c.proxyPort);
+            c.proxyPort                      = getInt(toml, "proxyPort",                      c.proxyPort);
             c.apiKey                         = toml.getOrElse("apiKey",                         c.apiKey);
             c.customUserAgent                = toml.getOrElse("customUserAgent",                c.customUserAgent);
             config = c;
@@ -138,5 +138,17 @@ public final class ConfigManager {
 
     public VisotarisConfig getConfig() {
         return config;
+    }
+
+    /**
+     * Liest einen Integer-Wert aus der TOML-Map.
+     * night-config parst TOML-Integers intern als {@code Long} – ein direktes
+     * {@code getOrElse(key, intDefault)} würde eine {@link ClassCastException}
+     * werfen, sobald der Schlüssel vorhanden ist.  Dieser Helper casten daher
+     * sicher über {@link Number#intValue()}.
+     */
+    private static int getInt(CommentedFileConfig toml, String key, int def) {
+        Object val = toml.get(key);
+        return val instanceof Number n ? n.intValue() : def;
     }
 }
