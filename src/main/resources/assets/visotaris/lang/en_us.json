@@ -2,7 +2,7 @@
   "visotaris.command.refresh.done": "Market & shard data refresh started...",
   "visotaris.command.tracker.no_job": "No active job.",
   "visotaris.command.tracker.info": "Job: %s | Level: %d (%.1f%%) | XP/h: %s | $/h: %s",
-  "visotaris.command.status.header": "=== Visotaris OPMod Status ===",
+  "visotaris.command.status.header": "=== Visotaris Status ===",
   "visotaris.command.status.market": "Market prices: %d entries",
   "visotaris.command.status.shard": "Shard rates: %d entries",
   "visotaris.command.status.job": "Current job: %s",
@@ -32,7 +32,7 @@
   "visotaris.config.enable_anvil_normalization": "Anvil normalization",
   "visotaris.config.market_refresh_interval": "Market refresh interval (s)",
   "visotaris.config.merchant_refresh_interval": "Merchant refresh interval (s)",
-  "key.categories.noopmod": "Visotaris OPMod",
+  "key.categories.visotaris": "Visotaris",
   "visotaris.key.open_settings": "Open settings",
   "visotaris.key.toggle_hud": "Toggle HUD",
   "visotaris.key.refresh_market": "Refresh market data"

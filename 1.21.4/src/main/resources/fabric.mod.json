@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "visotaris",
   "version": "${version}",
-  "name": "Visotaris OPMod",
+  "name": "Visotaris",
   "description": "OPSUCHT-Client-Komfort-Mod: Marktpreise, Jobtracker, HUD, Amboss-Normalisierung, OffhandBlocker u.v.m.",
   "authors": [
     "DiamantTh"
@@ -18,10 +18,10 @@
 
   "entrypoints": {
     "client": [
-      "systems.diath.visotaris_opmod.VisotarisModClient"
+      "systems.diath.visotaris.VisotarisModClient"
     ],
     "modmenu": [
-      "systems.diath.visotaris_opmod.config.ModMenuApiImpl"
+      "systems.diath.visotaris.config.ModMenuApiImpl"
     ]
   },
 

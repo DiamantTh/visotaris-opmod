@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Visotaris OPMod – Minecraft 1.21.11
+// Visotaris – Minecraft 1.21.11
 // ─────────────────────────────────────────────────────────────────────────────
 plugins {
     id 'fabric-loom'                        version '1.14.6'
@@ -52,7 +52,7 @@ loom {
     runs {
         client {
             client()
-            setConfigName "Visotaris OPMod (1.21.11)"
+            setConfigName "Visotaris (1.21.11)"
             ideConfigGenerated true
             runDir "run"
         }
@@ -96,9 +96,9 @@ shadowJar {
     configurations    = [project.configurations.shade]
     archiveClassifier = 'dev-shadow'
     // Paket-Relokation: verhindert Konflikte zur Laufzeit mit anderen Mods
-    relocate 'okhttp3',                      'systems.diath.visotaris_opmod.shade.okhttp3'
-    relocate 'okio',                         'systems.diath.visotaris_opmod.shade.okio'
-    relocate 'com.electronwill.nightconfig',  'systems.diath.visotaris_opmod.shade.nightconfig'
+    relocate 'okhttp3',                      'systems.diath.visotaris.shade.okhttp3'
+    relocate 'okio',                         'systems.diath.visotaris.shade.okio'
+    relocate 'com.electronwill.nightconfig',  'systems.diath.visotaris.shade.nightconfig'
 }
 
 remapJar {

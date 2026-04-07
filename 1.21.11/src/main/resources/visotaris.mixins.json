@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "systems.diath.visotaris_opmod.hooks",
+  "package": "systems.diath.visotaris.hooks",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "HandledScreenMixin",
