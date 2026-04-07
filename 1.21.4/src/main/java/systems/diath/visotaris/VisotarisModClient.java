@@ -81,6 +81,11 @@ public class VisotarisModClient implements ClientModInitializer {
             jobTrackerService.processMessage(message.getString())
         );
 
+        // 4a. Command-Kurzformen expandieren (läuft VOR ALLOW_COMMAND)
+        ClientSendMessageEvents.MODIFY_COMMAND.register(cmd ->
+            commandRewriteService.rewrite(cmd)
+        );
+
         // 4b. /rename und /sign vor dem Absenden abfangen (1.21.4: alte ClickEvent-API)
         ClientSendMessageEvents.ALLOW_COMMAND.register(command -> {
             PendingConfirmationService.Intercepted iv = pendingConfirmationService.tryIntercept(command);

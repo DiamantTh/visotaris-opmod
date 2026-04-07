@@ -60,7 +60,9 @@ public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
                 MinecraftClient mc = MinecraftClient.getInstance();
                 var player = mc.player;
                 if (player != null) {
-                    player.networkHandler.sendChatMessage(HandledScreenButtons.BTN_LABELS[i]);
+                    // sendChatCommand ohne führendes '/' – schickt Command-Packet, nicht Chat
+                    String cmd = HandledScreenButtons.BTN_LABELS[i];
+                    player.networkHandler.sendChatCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
                 }
                 return true;
             }

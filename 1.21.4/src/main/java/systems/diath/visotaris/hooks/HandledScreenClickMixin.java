@@ -52,7 +52,9 @@ public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
                     && mouseY >= rowY && mouseY < rowY + HandledScreenButtons.BTN_H) {
                 MinecraftClient mc = MinecraftClient.getInstance();
                 if (mc.player != null) {
-                    mc.player.networkHandler.sendChatMessage(HandledScreenButtons.BTN_LABELS[i]);
+                    // sendChatCommand ohne führendes '/' – schickt Command-Packet, nicht Chat
+                    String cmd = HandledScreenButtons.BTN_LABELS[i];
+                    mc.player.networkHandler.sendChatCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
                 }
                 return true;
             }
