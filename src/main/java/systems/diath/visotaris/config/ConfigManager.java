@@ -18,11 +18,21 @@ import java.nio.file.Path;
  */
 public final class ConfigManager {
 
-    private final Path configPath = FabricLoader.getInstance()
-        .getConfigDir()
-        .resolve("visotaris.toml");
+    private final Path configPath;
 
     private VisotarisConfig config = new VisotarisConfig();
+
+    public ConfigManager() {
+        this.configPath = FabricLoader.getInstance()
+            .getConfigDir()
+            .resolve("visotaris.toml");
+    }
+
+    /** Nur für Unit-Tests – umgeht FabricLoader. */
+    ConfigManager(VisotarisConfig cfg) {
+        this.configPath = null;
+        this.config = cfg;
+    }
 
     public void load() {
         if (!Files.exists(configPath)) {

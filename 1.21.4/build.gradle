@@ -104,3 +104,15 @@ remapJar {
     inputFile.set(shadowJar.archiveFile)
     dependsOn(shadowJar)
 }
+
+// ── Unit-Tests ────────────────────────────────────────────────────────────────
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly    'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    // Mockito-Inline / ByteBuddy benötigt auf JDK 21+ diesen Flag
+    jvmArgs '-XX:+EnableDynamicAgentLoading'
+}

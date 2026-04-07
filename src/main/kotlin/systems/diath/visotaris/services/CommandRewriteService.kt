@@ -43,8 +43,13 @@ class CommandRewriteService(private val config: ConfigManager) {
     // ── Private ───────────────────────────────────────────────────────────────
 
     private fun expandAmount(digits: String, suffix: String): String? {
-        // Deutschen Tausenderpunkt entfernen, dann ggf. Komma zu Punkt
-        val normalized = digits.replace(".", "").replace(",", ".")
+        // Nur dann Punkte als Tausendertrenner entfernen, wenn auch ein Komma vorhanden ist
+        // (deutsches Format: "1.234,56"). Bei "1.5" ist der Punkt ein Dezimalzeichen → beibehalten.
+        val normalized = if (digits.contains(',')) {
+            digits.replace(".", "").replace(",", ".")
+        } else {
+            digits  // "1.5", "1000" → unverändert lassen
+        }
         val number = normalized.toDoubleOrNull() ?: return null
         val multiplier = when (suffix.lowercase()) {
             "k" -> 1_000.0
