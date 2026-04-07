@@ -1,6 +1,50 @@
 // Root build.gradle – gemeinsame Konfiguration für alle Subprojekte.
 // Der eigentliche Gradle-Build läuft jeweils in 1.21.4/ oder 1.21.11/.
 
+// ── Bequeme Build-Tasks vom Root aus ─────────────────────────────────────────
+//
+//   ./gradlew buildAll      → beide Versionen bauen + JARs nach ./out/ kopieren
+//   ./gradlew build1214     → nur 1.21.4 bauen    + JAR nach ./out/ kopieren
+//   ./gradlew build12111    → nur 1.21.11 bauen   + JAR nach ./out/ kopieren
+//
+// Die finalen Mod-JARs landen immer unter:
+//   out/visotaris-<version>+mc1.21.4.jar
+//   out/visotaris-<version>+mc1.21.11.jar
+// ─────────────────────────────────────────────────────────────────────────────
+
+def outDir = rootProject.file('out')
+
+task build1214 {
+    group       = 'visotaris'
+    description = 'Baut nur MC 1.21.4 und kopiert den JAR nach ./out/'
+    dependsOn   ':1.21.4:remapJar'
+    doLast {
+        outDir.mkdirs()
+        def jar = project('1.21.4').tasks.getByName('remapJar').archiveFile.get().asFile
+        copy { from jar; into outDir }
+        logger.lifecycle("  → out/${jar.name}")
+    }
+}
+
+task build12111 {
+    group       = 'visotaris'
+    description = 'Baut nur MC 1.21.11 und kopiert den JAR nach ./out/'
+    dependsOn   ':1.21.11:remapJar'
+    doLast {
+        outDir.mkdirs()
+        def jar = project('1.21.11').tasks.getByName('remapJar').archiveFile.get().asFile
+        copy { from jar; into outDir }
+        logger.lifecycle("  → out/${jar.name}")
+    }
+}
+
+task buildAll {
+    group       = 'visotaris'
+    description = 'Baut alle MC-Versionen und kopiert die JARs nach ./out/'
+    dependsOn build1214, build12111
+}
+
+// Jedes Subprojekt hängt seinen remapJar-Output automatisch nach ./out/
 subprojects {
     // group/version/repos brauchen keine Plugins – direkt setzbar.
     group   = property('mod_group')

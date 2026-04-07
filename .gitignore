@@ -3,6 +3,9 @@
 build/
 **/build/
 
+# Build-Ausgabe (./out/)
+out/
+
 # IDE
 .idea/
 *.iml
