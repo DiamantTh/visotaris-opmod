@@ -77,9 +77,12 @@ public abstract class AnvilScreenMixin {
 
     // ── Private Helpers ───────────────────────────────────────────────────────
 
-    private static String expandAmount(String digits, String suffix) {
-        // Deutschen Tausenderpunkt entfernen, Komma als Dezimalzeichen akzeptieren
-        String normalized = digits.replace(".", "").replace(",", ".");
+    static String expandAmount(String digits, String suffix) {
+        // Punkt ist Tausendertrenner nur wenn auch ein Komma vorhanden (dt. Format).
+        // Kein Komma → Punkt ist Dezimalzeichen (int'l Format, z.B. "1.5k").
+        String normalized = digits.contains(",")
+                ? digits.replace(".", "").replace(",", ".")
+                : digits;
         double number;
         try {
             number = Double.parseDouble(normalized);

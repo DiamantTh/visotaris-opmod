@@ -1,6 +1,7 @@
 package systems.diath.visotaris.config;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
@@ -79,7 +80,9 @@ public final class VisotarisConfigScreen extends Screen {
         toggle(rx, y, "Inventar-Warnung",        cfg.enableInventoryWarning,
                v -> cfg.enableInventoryWarning = v);   y += BTN_H + BTN_GAP;
         toggle(rx, y, "Command-Kurzformen",      cfg.enableCommandShortforms,
-               v -> cfg.enableCommandShortforms = v);  y += BTN_H + BTN_GAP;
+               v -> cfg.enableCommandShortforms = v,
+               Text.literal("§6⚠ Kurzformen aktivieren?"),
+               Text.literal("Beträge werden automatisch umgewandelt (1k→1000).\nFalsche Eingaben können fehlerhafte Befehle auslösen!"));  y += BTN_H + BTN_GAP;
         toggle(rx, y, "Discord Rich Presence",   cfg.enableDiscordRpc,
                v -> cfg.enableDiscordRpc = v);
 
@@ -135,18 +138,36 @@ public final class VisotarisConfigScreen extends Screen {
     //  PRIVATE HELPERS
     // ════════════════════════════════════════════════════════════════════════
 
-    /** Erstellt einen AN/AUS-Toggle-Button und registriert ihn. */
+    /** Erstellt einen AN/AUS-Toggle-Button.
+     * Wenn {@code warnTitle} != null: wird beim Aktivieren ein Bestätigungs-Dialog gezeigt. */
     private void toggle(int x, int y, String label, boolean initial, Consumer<Boolean> setter) {
+        toggle(x, y, label, initial, setter, null, null);
+    }
+
+    private void toggle(int x, int y, String label, boolean initial, Consumer<Boolean> setter,
+                        Text warnTitle, Text warnMsg) {
         boolean[] state = {initial};
-        ButtonWidget btn = ButtonWidget.builder(
+        this.addDrawableChild(ButtonWidget.builder(
             makeToggleText(label, initial),
             b -> {
-                state[0] = !state[0];
-                setter.accept(state[0]);
-                b.setMessage(makeToggleText(label, state[0]));
+                boolean enabling = !state[0];
+                if (enabling && warnTitle != null) {
+                    this.client.setScreen(new ConfirmScreen(
+                        confirmed -> {
+                            if (confirmed) {
+                                setter.accept(true);
+                            }
+                            this.client.setScreen(VisotarisConfigScreen.this);
+                        },
+                        warnTitle, warnMsg
+                    ));
+                } else {
+                    state[0] = enabling;
+                    setter.accept(enabling);
+                    b.setMessage(makeToggleText(label, enabling));
+                }
             }
-        ).dimensions(x, y, BTN_W, BTN_H).build();
-        this.addDrawableChild(btn);
+        ).dimensions(x, y, BTN_W, BTN_H).build());
     }
 
     /** Erstellt einen Cycling-Button für Intervall-Werte (Presets). */

@@ -5,6 +5,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import systems.diath.visotaris.config.VisotarisConfig;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.concurrent.TimeUnit;
@@ -69,6 +70,16 @@ public final class VisotarisConst {
                 new InetSocketAddress(cfg.proxyHost.strip(), cfg.proxyPort)));
         }
         return builder.build();
+    }
+
+    /**
+     * Gibt ein {@link File}-Objekt für ein Unterverzeichnis des Mod-Disk-Caches zurück.
+     * Pfad: {@code .minecraft/cache/visotaris_opmod/<subdir>}.
+     * Das Verzeichnis wird nicht automatisch erstellt.
+     */
+    public static File getCacheDir(String subdir) {
+        return FabricLoader.getInstance().getGameDir()
+            .resolve("cache").resolve("visotaris_opmod").resolve(subdir).toFile();
     }
 
     private VisotarisConst() {}

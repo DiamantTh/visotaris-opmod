@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import okhttp3.Cache;
+import okhttp3.CacheControl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -58,47 +60,71 @@ public final class MerchantApiClient {
 
     public MerchantApiClient(ConfigManager configManager) {
         this.configManager = configManager;
-        this.httpClient    = VisotarisConst.buildOkHttpClient(configManager.getConfig());
+        this.httpClient = VisotarisConst.buildOkHttpClient(configManager.getConfig())
+            .newBuilder()
+            .cache(new Cache(VisotarisConst.getCacheDir("merchant"), 2L * 1024 * 1024))
+            .addNetworkInterceptor(chain -> {
+                Response resp = chain.proceed(chain.request());
+                return resp.newBuilder()
+                    .header("Cache-Control", "public, max-age=86400")
+                    .build();
+            })
+            .build();
     }
 
     public List<ShardRate> fetchRates() throws IOException {
-        Request request = new Request.Builder().url(ENDPOINT).build();
-
-        try (Response response = httpClient.newCall(request).execute()) {
+        Request liveReq = new Request.Builder()
+            .url(ENDPOINT)
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .build();
+        try (Response response = httpClient.newCall(liveReq).execute()) {
             int status = response.code();
             if (status != 200) throw new IOException("Merchant-API Status " + status);
-
             ResponseBody body = response.body();
             if (body == null) throw new IOException("Merchant-API: leerer Response-Body");
-
-            try (InputStream is = body.byteStream();
-                 InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
-
-                JsonElement root = GSON.fromJson(reader, JsonElement.class);
-
-                if (!root.isJsonArray()) {
-                    VisotarisLogger.warn("Merchant-API: unerwartetes Root-Element (kein Array).");
-                    return Collections.emptyList();
-                }
-
-                JsonArray array = root.getAsJsonArray();
-                List<ShardRate> result = new ArrayList<>(array.size());
-
-                for (JsonElement el : array) {
-                    if (!el.isJsonObject()) continue;
-                    JsonObject obj = el.getAsJsonObject();
-
-                    String rawSource = getStringOrNull(obj, "source");
-                    if (rawSource == null || rawSource.isBlank()) continue;
-
-                    double rate = getDouble(obj, "exchangeRate");
-                    String key  = normalizeSource(rawSource);
-                    result.add(new ShardRate(key, rate));
-                }
-
-                VisotarisLogger.debug("Merchant-API: {} Shardkurs-Einträge geladen.", result.size());
-                return result;
+            return parseBodyStream(body);
+        } catch (IOException networkEx) {
+            VisotarisLogger.warn("Merchant-API offline \u2013 verwende Disk-Cache: {}", networkEx.getMessage());
+            Request cacheReq = liveReq.newBuilder()
+                .cacheControl(CacheControl.FORCE_CACHE)
+                .build();
+            try (Response cached = httpClient.newCall(cacheReq).execute()) {
+                if (cached.code() == 504) throw networkEx;
+                VisotarisLogger.info("Merchant-API: Disk-Cache verwendet.");
+                ResponseBody body = cached.body();
+                if (body == null) throw new IOException("Merchant-API: leerer Cache-Body");
+                return parseBodyStream(body);
             }
+        }
+    }
+
+    private List<ShardRate> parseBodyStream(ResponseBody body) throws IOException {
+        try (InputStream is = body.byteStream();
+             InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
+            JsonElement root = GSON.fromJson(reader, JsonElement.class);
+
+            if (!root.isJsonArray()) {
+                VisotarisLogger.warn("Merchant-API: unerwartetes Root-Element (kein Array).");
+                return Collections.emptyList();
+            }
+
+            JsonArray array = root.getAsJsonArray();
+            List<ShardRate> result = new ArrayList<>(array.size());
+
+            for (JsonElement el : array) {
+                if (!el.isJsonObject()) continue;
+                JsonObject obj = el.getAsJsonObject();
+
+                String rawSource = getStringOrNull(obj, "source");
+                if (rawSource == null || rawSource.isBlank()) continue;
+
+                double rate = getDouble(obj, "exchangeRate");
+                String key  = normalizeSource(rawSource);
+                result.add(new ShardRate(key, rate));
+            }
+
+            VisotarisLogger.debug("Merchant-API: {} Shardkurs-Einträge geladen.", result.size());
+            return result;
         }
     }
 
