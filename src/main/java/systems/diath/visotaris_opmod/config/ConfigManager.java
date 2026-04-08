@@ -43,27 +43,31 @@ public final class ConfigManager {
         try (CommentedFileConfig toml = CommentedFileConfig.builder(configPath, TomlFormat.instance()).build()) {
             toml.load();
             VisotarisConfig c = new VisotarisConfig();
-            c.showMarketTooltips             = toml.getOrElse("showMarketTooltips",             c.showMarketTooltips);
-            c.showHud                        = toml.getOrElse("showHud",                        c.showHud);
-            c.enableJobTracker               = toml.getOrElse("enableJobTracker",               c.enableJobTracker);
-            c.enableRenameProtection         = toml.getOrElse("enableRenameProtection",         c.enableRenameProtection);
-            c.enableSignProtection           = toml.getOrElse("enableSignProtection",           c.enableSignProtection);
-            c.enableOffhandBlocker           = toml.getOrElse("enableOffhandBlocker",           c.enableOffhandBlocker);
-            c.enableInventoryWarning         = toml.getOrElse("enableInventoryWarning",         c.enableInventoryWarning);
-            c.enableCommandShortforms        = toml.getOrElse("enableCommandShortforms",        c.enableCommandShortforms);
-            c.marketRefreshIntervalSeconds   = getInt(toml, "marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
-            c.merchantRefreshIntervalSeconds = getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
-            c.showContainerOverlay           = toml.getOrElse("showContainerOverlay",           c.showContainerOverlay);
-            c.showQuickButtons               = toml.getOrElse("showQuickButtons",               c.showQuickButtons);
-            c.shulkerRecursion               = toml.getOrElse("shulkerRecursion",               c.shulkerRecursion);
-            c.enableAnvilNormalization       = toml.getOrElse("enableAnvilNormalization",       c.enableAnvilNormalization);
-            c.enableDiscordRpc               = toml.getOrElse("enableDiscordRpc",               c.enableDiscordRpc);
-            c.enableWebUi                    = toml.getOrElse("enableWebUi",                    c.enableWebUi);
-            c.webUiPort                      = getInt(toml, "webUiPort",                      c.webUiPort);
-            c.proxyHost                      = toml.getOrElse("proxyHost",                      c.proxyHost);
-            c.proxyPort                      = getInt(toml, "proxyPort",                      c.proxyPort);
-            c.apiKey                         = toml.getOrElse("apiKey",                         c.apiKey);
-            c.customUserAgent                = toml.getOrElse("customUserAgent",                c.customUserAgent);
+            // ── Anzeige (neu: anzeige.x; alt: x) ─────────────────────────────────────
+            c.showMarketTooltips   = toml.getOrElse("anzeige.showMarketTooltips",   toml.getOrElse("showMarketTooltips",   c.showMarketTooltips));
+            c.showHud              = toml.getOrElse("anzeige.showHud",              toml.getOrElse("showHud",              c.showHud));
+            c.showContainerOverlay = toml.getOrElse("anzeige.showContainerOverlay", toml.getOrElse("showContainerOverlay", c.showContainerOverlay));
+            c.showQuickButtons     = toml.getOrElse("anzeige.showQuickButtons",     toml.getOrElse("showQuickButtons",     c.showQuickButtons));
+            c.shulkerRecursion     = toml.getOrElse("anzeige.shulkerRecursion",     toml.getOrElse("shulkerRecursion",     c.shulkerRecursion));
+            // ── Schutz ────────────────────────────────────────────────────────────────
+            c.enableRenameProtection = toml.getOrElse("schutz.enableRenameProtection", toml.getOrElse("enableRenameProtection", c.enableRenameProtection));
+            c.enableSignProtection   = toml.getOrElse("schutz.enableSignProtection",   toml.getOrElse("enableSignProtection",   c.enableSignProtection));
+            c.enableOffhandBlocker   = toml.getOrElse("schutz.enableOffhandBlocker",   toml.getOrElse("enableOffhandBlocker",   c.enableOffhandBlocker));
+            c.enableInventoryWarning = toml.getOrElse("schutz.enableInventoryWarning", toml.getOrElse("enableInventoryWarning", c.enableInventoryWarning));
+            // ── Features ──────────────────────────────────────────────────────────────
+            c.enableJobTracker         = toml.getOrElse("features.enableJobTracker",         toml.getOrElse("enableJobTracker",         c.enableJobTracker));
+            c.enableCommandShortforms  = toml.getOrElse("features.enableCommandShortforms",  toml.getOrElse("enableCommandShortforms",  c.enableCommandShortforms));
+            c.enableAnvilNormalization = toml.getOrElse("features.enableAnvilNormalization", toml.getOrElse("enableAnvilNormalization", c.enableAnvilNormalization));
+            c.enableDiscordRpc         = toml.getOrElse("features.enableDiscordRpc",         toml.getOrElse("enableDiscordRpc",         c.enableDiscordRpc));
+            // ── Netzwerk ──────────────────────────────────────────────────────────────
+            c.marketRefreshIntervalSeconds   = getInt(toml, "netzwerk.marketRefreshIntervalSeconds",   getInt(toml, "marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds));
+            c.merchantRefreshIntervalSeconds = getInt(toml, "netzwerk.merchantRefreshIntervalSeconds", getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds));
+            c.enableWebUi    = toml.getOrElse("netzwerk.enableWebUi",    toml.getOrElse("enableWebUi",    c.enableWebUi));
+            c.webUiPort      = getInt(toml, "netzwerk.webUiPort",        getInt(toml, "webUiPort",        c.webUiPort));
+            c.proxyHost      = toml.getOrElse("netzwerk.proxyHost",      toml.getOrElse("proxyHost",      c.proxyHost));
+            c.proxyPort      = getInt(toml, "netzwerk.proxyPort",        getInt(toml, "proxyPort",        c.proxyPort));
+            c.apiKey         = toml.getOrElse("netzwerk.apiKey",         toml.getOrElse("apiKey",         c.apiKey));
+            c.customUserAgent = toml.getOrElse("netzwerk.customUserAgent", toml.getOrElse("customUserAgent", c.customUserAgent));
             config = c;
             VisotarisLogger.info("Konfiguration geladen von: {}", configPath);
         } catch (Exception e) {
@@ -80,61 +84,35 @@ public final class ConfigManager {
         }
         try (CommentedFileConfig toml = CommentedFileConfig.builder(configPath, TomlFormat.instance()).build()) {
             VisotarisConfig c = config;
-            // ── Allgemein / Anzeige ────────────────────────────────────────────────────
-            toml.setComment("showMarketTooltips",
-                " ── Allgemein / Anzeige ──────────────────────────────────────────────────────");
-            toml.set("showMarketTooltips",             c.showMarketTooltips);
-            toml.set("showHud",                        c.showHud);
-            // ── Job-Tracker ─────────────────────────────────────────────────────────────
-            toml.setComment("enableJobTracker",
-                " ── Job-Tracker ─────────────────────────────────────────────────────────────");
-            toml.set("enableJobTracker",               c.enableJobTracker);
-            // ── Schutz ───────────────────────────────────────────────────────────────────
-            toml.setComment("enableRenameProtection",
-                " ── Schutz ───────────────────────────────────────────────────────────────────");
-            toml.set("enableRenameProtection",         c.enableRenameProtection);
-            toml.set("enableSignProtection",           c.enableSignProtection);
-            toml.set("enableOffhandBlocker",           c.enableOffhandBlocker);
-            toml.set("enableInventoryWarning",         c.enableInventoryWarning);
-            // ── Commands ─────────────────────────────────────────────────────────────────
-            toml.setComment("enableCommandShortforms",
-                " ── Commands (Kurzformen: 1k → 1000, 1.5m → 1500000 …) ─────────────────────");
-            toml.set("enableCommandShortforms",        c.enableCommandShortforms);
-            // ── Netzwerk: Refresh-Intervalle ──────────────────────────────────────────────
-            toml.setComment("marketRefreshIntervalSeconds",
-                " ── Netzwerk: Refresh-Intervalle (Sekunden) ─────────────────────────────────");
-            toml.set("marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
-            toml.set("merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
-            // ── UI-Overlays ───────────────────────────────────────────────────────────────
-            toml.setComment("showContainerOverlay",
-                " ── UI-Overlays ──────────────────────────────────────────────────────────────");
-            toml.set("showContainerOverlay",           c.showContainerOverlay);
-            toml.set("showQuickButtons",               c.showQuickButtons);
-            toml.set("shulkerRecursion",               c.shulkerRecursion);
-            // ── Amboss-Normalisierung ─────────────────────────────────────────────────────
-            toml.setComment("enableAnvilNormalization",
-                " ── Amboss-Normalisierung (Kurzformen im Umbenennen-Feld expandieren) ────────");
-            toml.set("enableAnvilNormalization",       c.enableAnvilNormalization);
-            // ── Discord Rich Presence ─────────────────────────────────────────────────────
-            toml.setComment("enableDiscordRpc",
-                " ── Discord Rich Presence (Standard: deaktiviert) ────────────────────────────");
-            toml.set("enableDiscordRpc",               c.enableDiscordRpc);
-            // ── Web-UI ───────────────────────────────────────────────────────────────
-            toml.setComment("enableWebUi",
-                " ── Web-UI (localhost:webUiPort, Standard: deaktiviert) ────────────────────────");
-            toml.set("enableWebUi",                    c.enableWebUi);
-            toml.set("webUiPort",                      c.webUiPort);
-            // ── Netzwerk: Proxy/API/UA ────────────────────────────────────────────────────
-            toml.setComment("proxyHost",
-                " ── Netzwerk: Proxy (leer / 0 = Direktverbindung) ───────────────────────────");
-            toml.set("proxyHost",                      c.proxyHost);
-            toml.set("proxyPort",                      c.proxyPort);
-            toml.setComment("apiKey",
-                " ── Netzwerk: API-Key (non-leer → Header \"Authorization: Bearer <key>\") ──────");
-            toml.set("apiKey",                         c.apiKey);
-            toml.setComment("customUserAgent",
-                " ── Netzwerk: User-Agent (leer = auto \"Visotaris-OPMod/<ver> (MC/<ver>)\") ────");
-            toml.set("customUserAgent",                c.customUserAgent);
+            // ── [anzeige] ─────────────────────────────────────────────────────────────
+            toml.setComment("anzeige", " HUD, Tooltips und UI-Overlays");
+            toml.set("anzeige.showMarketTooltips",   c.showMarketTooltips);
+            toml.set("anzeige.showHud",              c.showHud);
+            toml.set("anzeige.showContainerOverlay", c.showContainerOverlay);
+            toml.set("anzeige.showQuickButtons",     c.showQuickButtons);
+            toml.set("anzeige.shulkerRecursion",     c.shulkerRecursion);
+            // ── [schutz] ──────────────────────────────────────────────────────────────
+            toml.setComment("schutz", " Schutzmechanismen (Rename, Sign, Offhand, Inventar)");
+            toml.set("schutz.enableRenameProtection", c.enableRenameProtection);
+            toml.set("schutz.enableSignProtection",   c.enableSignProtection);
+            toml.set("schutz.enableOffhandBlocker",   c.enableOffhandBlocker);
+            toml.set("schutz.enableInventoryWarning", c.enableInventoryWarning);
+            // ── [features] ────────────────────────────────────────────────────────────
+            toml.setComment("features", " Spielmechanik-Features");
+            toml.set("features.enableJobTracker",         c.enableJobTracker);
+            toml.set("features.enableCommandShortforms",  c.enableCommandShortforms);
+            toml.set("features.enableAnvilNormalization", c.enableAnvilNormalization);
+            toml.set("features.enableDiscordRpc",         c.enableDiscordRpc);
+            // ── [netzwerk] ────────────────────────────────────────────────────────────
+            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-UI & Proxy");
+            toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
+            toml.set("netzwerk.merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
+            toml.set("netzwerk.enableWebUi",    c.enableWebUi);
+            toml.set("netzwerk.webUiPort",      c.webUiPort);
+            toml.set("netzwerk.proxyHost",      c.proxyHost);
+            toml.set("netzwerk.proxyPort",      c.proxyPort);
+            toml.set("netzwerk.apiKey",         c.apiKey);
+            toml.set("netzwerk.customUserAgent", c.customUserAgent);
             toml.save();
         } catch (Exception e) {
             VisotarisLogger.error("Konfiguration konnte nicht gespeichert werden: {}", e.getMessage());
