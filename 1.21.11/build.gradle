@@ -31,8 +31,8 @@ dependencies {
     //noinspection LoomDependencyNotation
     modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.3+1.21.11"
 
-    // Mod Menu
-    modImplementation "com.terraformersmc:modmenu:14.0.0"
+    // Mod Menu (1.21.11 → Reihe 17.x)
+    modImplementation "com.terraformersmc:modmenu:17.0.0"
 
     // Kotlin Runtime (fabric-language-kotlin stellt Stdlib + Coroutinen bereit)
     modImplementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}"
