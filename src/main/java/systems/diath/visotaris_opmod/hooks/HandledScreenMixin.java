@@ -47,7 +47,12 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
 
     /**
      * Wenn ein Container-Screen geöffnet wird und Overlay oder Tooltips aktiv sind,
-     * sofort einen frischen Daten-Fetch anstoßen (nicht nur Anzeigen – auch Abrufen).
+     * einen Daten-Fetch anstoßen – aber nur wenn die Cache-Daten tatsächlich veraltet sind.
+     * Verhindert API-Hammering beim schnellen Öffnen mehrerer Container nacheinander:
+     * {@code refresh()} hat ohnehin einen 60-s-Cooldown; diese Prüfung spart zusätzlich
+     * den Executor-Dispatch wenn die Daten offensichtlich noch frisch sind.
+     *
+     * <p>Schwelle: 5 Minuten – entspricht dem typischen OPSUCHT-Preisupdate-Intervall.
      */
     @Inject(method = "init", at = @At("TAIL"))
     private void onInit(CallbackInfo ci) {
@@ -62,8 +67,9 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
 
         var cfg = mod.getConfigManager().getConfig();
         if (cfg.showContainerOverlay || cfg.showMarketTooltips) {
-            mod.getMarketSyncService().refresh();
-            mod.getMerchantSyncService().refresh();
+            // Cache-Alter prüfen: nur refreshen wenn Daten >5 Minuten alt oder nie geladen
+            if (mod.getMarketCache().isStale(300))    mod.getMarketSyncService().refresh();
+            if (mod.getShardCache().isStale(300))     mod.getMerchantSyncService().refresh();
         }
     }
 

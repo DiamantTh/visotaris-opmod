@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Periodischer Hintergrundfetcher für Merchant-/Shardkurse.
@@ -34,6 +35,9 @@ public final class MerchantSyncService {
     private ScheduledFuture<?> task;
     private File diskFile;
 
+    private static final long   MIN_MANUAL_INTERVAL_MS = 60_000L;
+    private final AtomicLong    lastManualRefreshMs    = new AtomicLong(0L);
+
     public MerchantSyncService(ShardCache cache, ConfigManager config) {
         this.cache   = cache;
         this.config  = config;
@@ -45,7 +49,7 @@ public final class MerchantSyncService {
         cache.loadFromDisk(diskFile);
 
         int intervalSec = config.getConfig().merchantRefreshIntervalSeconds;
-        task = scheduler.scheduleAtFixedRate(this::fetch, 0, intervalSec, TimeUnit.SECONDS);
+        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
         VisotarisLogger.info("MerchantSyncService gestartet (Intervall: {}s).", intervalSec);
     }
 
@@ -55,7 +59,20 @@ public final class MerchantSyncService {
     }
 
     public void refresh() {
+        long now  = System.currentTimeMillis();
+        long last = lastManualRefreshMs.get();
+        if (now - last < MIN_MANUAL_INTERVAL_MS) {
+            VisotarisLogger.debug("MerchantSyncService: refresh() übersprungen (Cooldown {}s).",
+                    (MIN_MANUAL_INTERVAL_MS - (now - last)) / 1000);
+            return;
+        }
+        lastManualRefreshMs.set(now);
         scheduler.execute(this::fetch);
+    }
+
+    private void scheduledFetch() {
+        lastManualRefreshMs.set(System.currentTimeMillis());
+        fetch();
     }
 
     private void fetch() {

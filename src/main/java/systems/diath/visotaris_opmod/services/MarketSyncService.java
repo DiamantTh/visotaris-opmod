@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Periodischer Hintergrundfetcher für Marktpreise.
@@ -36,6 +37,14 @@ public final class MarketSyncService {
     private ScheduledFuture<?> task;
     private File diskFile;
 
+    /**
+     * Minimaler Abstand zwischen manuell ausgelösten Fetches (ms).
+     * Schützt die OPSUCHT-API vor Hammering durch schnelles Container-Öffnen
+     * oder mehrfaches Button-Drücken. Der periodische Timer ist davon unberührt.
+     */
+    private static final long   MIN_MANUAL_INTERVAL_MS = 60_000L;  // 60 s
+    private final AtomicLong    lastManualRefreshMs    = new AtomicLong(0L);
+
     public MarketSyncService(MarketCache cache, ConfigManager config) {
         this.cache   = cache;
         this.config  = config;
@@ -47,7 +56,7 @@ public final class MarketSyncService {
         cache.loadFromDisk(diskFile);
 
         int intervalSec = config.getConfig().marketRefreshIntervalSeconds;
-        task = scheduler.scheduleAtFixedRate(this::fetch, 0, intervalSec, TimeUnit.SECONDS);
+        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
         VisotarisLogger.info("MarketSyncService gestartet (Intervall: {}s).", intervalSec);
     }
 
@@ -56,9 +65,24 @@ public final class MarketSyncService {
         scheduler.shutdown();
     }
 
-    /** Direkt-Fetch (z.B. per Client-Command auslösbar). */
+    /** Direkt-Fetch (z.B. per Client-Command oder Button auslösbar).
+     *  Rate-limitiert: maximal alle {@value #MIN_MANUAL_INTERVAL_MS} ms. */
     public void refresh() {
+        long now  = System.currentTimeMillis();
+        long last = lastManualRefreshMs.get();
+        if (now - last < MIN_MANUAL_INTERVAL_MS) {
+            VisotarisLogger.debug("MarketSyncService: refresh() übersprungen (Cooldown {}s).",
+                    (MIN_MANUAL_INTERVAL_MS - (now - last)) / 1000);
+            return;
+        }
+        lastManualRefreshMs.set(now);
         scheduler.execute(this::fetch);
+    }
+
+    /** Erzwingt einen sofortigen Fetch ohne Cooldown-Prüfung (interner Timer-Aufruf). */
+    private void scheduledFetch() {
+        lastManualRefreshMs.set(System.currentTimeMillis()); // Timer-Fetch zählt als Cooldown-Reset
+        fetch();
     }
 
     private void fetch() {
