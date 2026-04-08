@@ -1,4 +1,4 @@
-package systems.diath.visotaris.hooks;
+package systems.diath.visotaris_opmod.hooks;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import systems.diath.visotaris.VisotarisModClient;
-import systems.diath.visotaris.util.HandledScreenButtons;
+import systems.diath.visotaris_opmod.VisotarisModClient;
+import systems.diath.visotaris_opmod.util.HandledScreenButtons;
 
 /**
  * Version-spezifisches Mixin für MC 1.21.11:

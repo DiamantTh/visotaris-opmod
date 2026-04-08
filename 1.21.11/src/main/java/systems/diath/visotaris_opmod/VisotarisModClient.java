@@ -1,4 +1,4 @@
-package systems.diath.visotaris;
+package systems.diath.visotaris_opmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
@@ -12,21 +12,21 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
-import systems.diath.visotaris.VisotarisConst;
-import systems.diath.visotaris.cache.MarketCache;
-import systems.diath.visotaris.cache.ShardCache;
-import systems.diath.visotaris.commands.VisotarisCommands;
-import systems.diath.visotaris.config.ConfigManager;
-import systems.diath.visotaris.services.InventoryValuationService;
-import systems.diath.visotaris.services.JobTrackerService;
-import systems.diath.visotaris.services.MarketSyncService;
-import systems.diath.visotaris.services.MerchantSyncService;
-import systems.diath.visotaris.services.CommandRewriteService;
-import systems.diath.visotaris.services.DiscordPresenceService;
-import systems.diath.visotaris.services.KeybindService;
-import systems.diath.visotaris.services.PendingConfirmationService;
-import systems.diath.visotaris.services.TooltipValueService;
-import systems.diath.visotaris.ui.HudOverlay;
+import systems.diath.visotaris_opmod.VisotarisConst;
+import systems.diath.visotaris_opmod.cache.MarketCache;
+import systems.diath.visotaris_opmod.cache.ShardCache;
+import systems.diath.visotaris_opmod.commands.VisotarisCommands;
+import systems.diath.visotaris_opmod.config.ConfigManager;
+import systems.diath.visotaris_opmod.services.InventoryValuationService;
+import systems.diath.visotaris_opmod.services.JobTrackerService;
+import systems.diath.visotaris_opmod.services.MarketSyncService;
+import systems.diath.visotaris_opmod.services.MerchantSyncService;
+import systems.diath.visotaris_opmod.services.CommandRewriteService;
+import systems.diath.visotaris_opmod.services.DiscordPresenceService;
+import systems.diath.visotaris_opmod.services.KeybindService;
+import systems.diath.visotaris_opmod.services.PendingConfirmationService;
+import systems.diath.visotaris_opmod.services.TooltipValueService;
+import systems.diath.visotaris_opmod.ui.HudOverlay;
 
 @Environment(EnvType.CLIENT)
 public class VisotarisModClient implements ClientModInitializer {
@@ -91,7 +91,7 @@ public class VisotarisModClient implements ClientModInitializer {
         ClientSendMessageEvents.ALLOW_COMMAND.register(command -> {
             PendingConfirmationService.Intercepted iv = pendingConfirmationService.tryIntercept(command);
             if (iv == null) return true;
-            String label = iv.type() == systems.diath.visotaris.model.PendingAction.Type.RENAME ? "Rename" : "Sign";
+            String label = iv.type() == systems.diath.visotaris_opmod.model.PendingAction.Type.RENAME ? "Rename" : "Sign";
             MinecraftClient mc = MinecraftClient.getInstance();
             if (mc.player != null) mc.player.sendMessage(Text.empty()
                 .append(Text.literal("§e[Visotaris] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
