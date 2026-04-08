@@ -3,6 +3,7 @@ package systems.diath.visotaris_opmod;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
@@ -11,7 +12,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
 import systems.diath.visotaris_opmod.VisotarisConst;
+import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.cache.MarketCache;
+import systems.diath.visotaris_opmod.cache.PriceHistoryCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.commands.VisotarisCommands;
 import systems.diath.visotaris_opmod.config.ConfigManager;
@@ -25,6 +28,7 @@ import systems.diath.visotaris_opmod.services.KeybindService;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 import systems.diath.visotaris_opmod.services.TooltipValueService;
 import systems.diath.visotaris_opmod.ui.HudOverlay;
+import systems.diath.visotaris_opmod.web.WebServer;
 
 @Environment(EnvType.CLIENT)
 public class VisotarisModClient implements ClientModInitializer {
@@ -52,6 +56,10 @@ public class VisotarisModClient implements ClientModInitializer {
 
     // UI
     private HudOverlay hudOverlay;
+
+    // Web-UI
+    private WebServer         webServer;
+    private PriceHistoryCache priceHistoryCache;
 
     @Override
     public void onInitializeClient() {
@@ -134,6 +142,18 @@ public class VisotarisModClient implements ClientModInitializer {
 
         VisotarisLogger.info("{} v{} initialisiert (MC 1.21.4).", MOD_NAME,
             VisotarisModClient.class.getPackage().getImplementationVersion());
+
+        // 11. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
+        MarketHistoryApiClient historyApiClient = new MarketHistoryApiClient(configManager);
+        priceHistoryCache = new PriceHistoryCache(historyApiClient);
+        webServer = new WebServer(
+            configManager.getConfig().webUiPort,
+            marketCache, shardCache, priceHistoryCache
+        );
+        if (configManager.getConfig().enableWebUi) {
+            webServer.start();
+        }
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> webServer.stop());
     }
 
     // --- Globaler Zugriffspunkt ---

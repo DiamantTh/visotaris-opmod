@@ -43,7 +43,10 @@ public final class VisotarisConfig {
     // ── Discord Rich Presence ─────────────────────────────────────────────────
     // Standard: deaktiviert (andere RPC-Mods haben Vorrang)
     public boolean enableDiscordRpc = false;
-
+    // ── Web-UI ─────────────────────────────────────────────────────────────────
+    // Lokaler HTTP-Server (localhost:webUiPort) für Marktpreis-Ansicht im Browser
+    public boolean enableWebUi = false;
+    public int     webUiPort   = 7865;
     // ── Netzwerk: Proxy ───────────────────────────────────────────────────────
     // Leer/0 = Direktverbindung; z.B. proxyHost="127.0.0.1", proxyPort=8080
     public String proxyHost = "";

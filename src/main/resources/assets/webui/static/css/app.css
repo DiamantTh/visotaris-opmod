@@ -1,0 +1,131 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Visotaris OPMod – Web-UI Styles
+   Dark-Theme, OPSUCHT-inspiriert
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+    --vi-bg:         #0f172a;
+    --vi-bg-card:    #1e293b;
+    --vi-bg-input:   #1a2540;
+    --vi-border:     #334155;
+    --vi-text:       #e2e8f0;
+    --vi-text-muted: #94a3b8;
+    --vi-accent:     #38bdf8;
+    --vi-buy:        #4ade80;
+    --vi-sell:       #f87171;
+    --vi-hover:      #273549;
+}
+
+html, body {
+    background-color: var(--vi-bg);
+    color: var(--vi-text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.9rem;
+}
+
+/* ── Navbar ────────────────────────────────────────────────────────────────── */
+.navbar {
+    background-color: var(--vi-bg-card) !important;
+    border-bottom: 1px solid var(--vi-border);
+}
+.navbar-brand {
+    color: var(--vi-accent) !important;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+.nav-link { color: var(--vi-text-muted) !important; }
+.nav-link:hover, .nav-link.active { color: var(--vi-text) !important; }
+
+/* ── Cards / Panels ─────────────────────────────────────────────────────────── */
+.card {
+    background-color: var(--vi-bg-card);
+    border: 1px solid var(--vi-border);
+    border-radius: 0.5rem;
+}
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--vi-border);
+    font-weight: 600;
+}
+
+/* ── Tabelle ─────────────────────────────────────────────────────────────────── */
+.table { color: var(--vi-text); }
+.table th {
+    background-color: var(--vi-bg);
+    color: var(--vi-text-muted);
+    font-weight: 500;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-color: var(--vi-border);
+    cursor: pointer;
+    user-select: none;
+}
+.table th:hover { color: var(--vi-accent); }
+.table td { border-color: var(--vi-border); vertical-align: middle; }
+.table-hover tbody tr:hover { background-color: var(--vi-hover) !important; }
+
+/* ── Such-Input ──────────────────────────────────────────────────────────────── */
+.search-input {
+    background-color: var(--vi-bg-input);
+    border: 1px solid var(--vi-border);
+    color: var(--vi-text);
+    border-radius: 0.375rem;
+}
+.search-input:focus {
+    background-color: var(--vi-bg-input);
+    border-color: var(--vi-accent);
+    color: var(--vi-text);
+    box-shadow: 0 0 0 0.2rem rgba(56,189,248,.25);
+    outline: none;
+}
+.search-input::placeholder { color: var(--vi-text-muted); }
+
+/* ── Preis-Werte ─────────────────────────────────────────────────────────────── */
+.price-buy  { color: var(--vi-buy);  font-variant-numeric: tabular-nums; }
+.price-sell { color: var(--vi-sell); font-variant-numeric: tabular-nums; }
+.price-na   { color: var(--vi-text-muted); font-style: italic; }
+
+/* ── ECharts-Container ───────────────────────────────────────────────────────── */
+.chart-container {
+    width: 100%;
+    height: 420px;
+    background-color: var(--vi-bg-card);
+    border-radius: 0.5rem;
+}
+
+/* ── Status-Badge ────────────────────────────────────────────────────────────── */
+.badge-stale  { background-color: #92400e; color: #fde68a; }
+.badge-fresh  { background-color: #14532d; color: #86efac; }
+.badge-empty  { background-color: #1e293b; color: #94a3b8; }
+
+/* ── Sortier-Pfeil ───────────────────────────────────────────────────────────── */
+.sort-asc::after  { content: " ↑"; color: var(--vi-accent); }
+.sort-desc::after { content: " ↓"; color: var(--vi-accent); }
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--vi-bg); }
+::-webkit-scrollbar-thumb { background: var(--vi-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--vi-accent); }
+
+/* ── Loading overlay ─────────────────────────────────────────────────────────── */
+.loading-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--vi-text-muted);
+}
+
+/* ── Select dark ─────────────────────────────────────────────────────────────── */
+select.form-select {
+    background-color: var(--vi-bg-input);
+    border-color: var(--vi-border);
+    color: var(--vi-text);
+}
+select.form-select:focus {
+    border-color: var(--vi-accent);
+    box-shadow: 0 0 0 0.2rem rgba(56,189,248,.25);
+}
+select.form-select option { background-color: var(--vi-bg-card); }

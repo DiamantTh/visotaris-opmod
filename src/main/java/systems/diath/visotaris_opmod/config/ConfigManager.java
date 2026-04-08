@@ -58,6 +58,8 @@ public final class ConfigManager {
             c.shulkerRecursion               = toml.getOrElse("shulkerRecursion",               c.shulkerRecursion);
             c.enableAnvilNormalization       = toml.getOrElse("enableAnvilNormalization",       c.enableAnvilNormalization);
             c.enableDiscordRpc               = toml.getOrElse("enableDiscordRpc",               c.enableDiscordRpc);
+            c.enableWebUi                    = toml.getOrElse("enableWebUi",                    c.enableWebUi);
+            c.webUiPort                      = getInt(toml, "webUiPort",                      c.webUiPort);
             c.proxyHost                      = toml.getOrElse("proxyHost",                      c.proxyHost);
             c.proxyPort                      = getInt(toml, "proxyPort",                      c.proxyPort);
             c.apiKey                         = toml.getOrElse("apiKey",                         c.apiKey);
@@ -117,6 +119,11 @@ public final class ConfigManager {
             toml.setComment("enableDiscordRpc",
                 " ── Discord Rich Presence (Standard: deaktiviert) ────────────────────────────");
             toml.set("enableDiscordRpc",               c.enableDiscordRpc);
+            // ── Web-UI ───────────────────────────────────────────────────────────────
+            toml.setComment("enableWebUi",
+                " ── Web-UI (localhost:webUiPort, Standard: deaktiviert) ────────────────────────");
+            toml.set("enableWebUi",                    c.enableWebUi);
+            toml.set("webUiPort",                      c.webUiPort);
             // ── Netzwerk: Proxy/API/UA ────────────────────────────────────────────────────
             toml.setComment("proxyHost",
                 " ── Netzwerk: Proxy (leer / 0 = Direktverbindung) ───────────────────────────");

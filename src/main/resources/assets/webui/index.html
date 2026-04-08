@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Visotaris – Marktpreise</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/"><i class="bi bi-shop me-2"></i>Visotaris OPMod</a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link active" href="/"><i class="bi bi-table me-1"></i>Markt</a>
+            <a class="nav-link" href="/shard"><i class="bi bi-gem me-1"></i>Shards</a>
+            <a class="nav-link" href="/history"><i class="bi bi-graph-up me-1"></i>Verlauf</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Inhalt -->
+<div class="container-fluid py-3" x-data="marketApp()">
+
+    <!-- Kopfzeile -->
+    <div class="d-flex align-items-center gap-3 mb-3">
+        <h5 class="mb-0"><i class="bi bi-table me-2 text-info"></i>Marktpreise</h5>
+        <span class="badge rounded-pill" :class="statusBadgeClass" x-text="statusText"></span>
+        <div class="ms-auto d-flex gap-2">
+            <input type="text"
+                   class="form-control form-control-sm search-input"
+                   placeholder="&#xF52A; Suchen…"
+                   x-model="search"
+                   style="width:220px">
+            <button class="btn btn-sm btn-outline-secondary" @click="loadData()" title="Aktualisieren">
+                <i class="bi bi-arrow-clockwise" :class="{'spin': loading}"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" x-show="loading && items.length === 0">
+        <div class="text-center">
+            <div class="spinner-border text-info mb-2" role="status"></div>
+            <div>Lade Marktpreise…</div>
+        </div>
+    </div>
+
+    <!-- Fehler -->
+    <div class="alert alert-danger" x-show="error && !loading" x-text="error"></div>
+
+    <!-- Tabelle -->
+    <div class="card" x-show="!loading || items.length > 0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th @click="setSort('item')" :class="sortClass('item')">Item</th>
+                        <th @click="setSort('buy')"  :class="sortClass('buy')"  class="text-end">Kaufpreis</th>
+                        <th @click="setSort('sell')" :class="sortClass('sell')" class="text-end">Verkaufspreis</th>
+                        <th class="text-end">Spanne</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="item in filteredItems" :key="item.itemKey">
+                        <tr>
+                            <td>
+                                <span class="fw-medium" x-text="item.itemKey"></span>
+                            </td>
+                            <td class="text-end">
+                                <span x-show="item.buy > 0" class="price-buy" x-text="fmt(item.buy)"></span>
+                                <span x-show="item.buy <= 0" class="price-na">–</span>
+                            </td>
+                            <td class="text-end">
+                                <span x-show="item.sell > 0" class="price-sell" x-text="fmt(item.sell)"></span>
+                                <span x-show="item.sell <= 0" class="price-na">–</span>
+                            </td>
+                            <td class="text-end">
+                                <span x-show="item.buy > 0 && item.sell > 0"
+                                      class="text-muted small"
+                                      x-text="fmt(item.buy - item.sell)"></span>
+                                <span x-show="!(item.buy > 0 && item.sell > 0)" class="price-na">–</span>
+                            </td>
+                            <td class="text-end">
+                                <a :href="'/history?m=' + item.itemKey"
+                                   class="btn btn-xs btn-outline-secondary py-0 px-1"
+                                   title="Verlauf">
+                                    <i class="bi bi-graph-up"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small d-flex justify-content-between">
+            <span><span x-text="filteredItems.length"></span> / <span x-text="items.length"></span> Einträge</span>
+            <span x-show="lastFetch" x-text="'Stand: ' + lastFetch"></span>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/alpine.min.js" defer></script>
+<script>
+function marketApp() {
+    return {
+        items:   [],
+        loading: false,
+        error:   null,
+        search:  '',
+        sortKey: 'item',
+        sortDir: 'asc',
+        lastFetch: null,
+
+        get statusBadgeClass() {
+            if (this.loading) return 'bg-secondary';
+            if (this.error)   return 'badge-stale';
+            if (this.items.length === 0) return 'badge-empty';
+            return 'badge-fresh';
+        },
+        get statusText() {
+            if (this.loading) return 'Laden…';
+            if (this.error)   return 'Fehler';
+            if (this.items.length === 0) return 'Leer';
+            return this.items.length + ' Items';
+        },
+
+        get filteredItems() {
+            let list = this.items;
+            const q = this.search.toLowerCase().trim();
+            if (q) list = list.filter(i => i.itemKey.toLowerCase().includes(q));
+            const dir = this.sortDir === 'asc' ? 1 : -1;
+            return [...list].sort((a, b) => {
+                if (this.sortKey === 'item')
+                    return dir * a.itemKey.localeCompare(b.itemKey);
+                if (this.sortKey === 'buy')
+                    return dir * (a.buy - b.buy);
+                if (this.sortKey === 'sell')
+                    return dir * (a.sell - b.sell);
+                return 0;
+            });
+        },
+
+        setSort(key) {
+            if (this.sortKey === key) {
+                this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortKey = key;
+                this.sortDir = 'asc';
+            }
+        },
+        sortClass(key) {
+            if (this.sortKey !== key) return '';
+            return this.sortDir === 'asc' ? 'sort-asc' : 'sort-desc';
+        },
+
+        fmt(v) {
+            if (!v || v <= 0) return '–';
+            return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+        },
+
+        async loadData() {
+            this.loading = true;
+            this.error   = null;
+            try {
+                const res = await fetch('/api/market');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.items = await res.json();
+                this.lastFetch = new Date().toLocaleTimeString('de-DE');
+            } catch (e) {
+                this.error = 'Fehler beim Laden: ' + e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        init() { this.loadData(); }
+    };
+}
+</script>
+<style>.spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-xs { font-size: 0.72rem; }</style>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Visotaris – Preisverlauf</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/"><i class="bi bi-shop me-2"></i>Visotaris OPMod</a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link" href="/"><i class="bi bi-table me-1"></i>Markt</a>
+            <a class="nav-link" href="/shard"><i class="bi bi-gem me-1"></i>Shards</a>
+            <a class="nav-link active" href="/history"><i class="bi bi-graph-up me-1"></i>Verlauf</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid py-3" x-data="historyApp()">
+
+    <!-- Kopfzeile -->
+    <div class="d-flex align-items-center gap-3 mb-3">
+        <h5 class="mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Preisverlauf</h5>
+        <div class="ms-auto d-flex gap-2 align-items-center">
+            <input type="text"
+                   class="form-control form-control-sm search-input"
+                   placeholder="Material (z.B. diamond)"
+                   x-model="materialInput"
+                   @keydown.enter="loadHistory()"
+                   style="width:220px">
+            <button class="btn btn-sm btn-info" @click="loadHistory()" :disabled="loading">
+                <i class="bi bi-search me-1"></i>Laden
+            </button>
+        </div>
+    </div>
+
+    <!-- Schnellauswahl (letzte 5 gesuchte) -->
+    <div class="d-flex gap-2 mb-3 flex-wrap" x-show="recent.length > 0">
+        <span class="text-muted small align-self-center">Zuletzt:</span>
+        <template x-for="m in recent" :key="m">
+            <button class="btn btn-xs btn-outline-secondary"
+                    @click="materialInput = m; loadHistory()"
+                    x-text="m"></button>
+        </template>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" x-show="loading">
+        <div class="text-center">
+            <div class="spinner-border text-info mb-2" role="status"></div>
+            <div>Lade Verlauf für <strong x-text="currentMaterial"></strong>…</div>
+        </div>
+    </div>
+
+    <!-- Fehler -->
+    <div class="alert alert-danger" x-show="error && !loading" x-text="error"></div>
+
+    <!-- Leerer Zustand -->
+    <div class="loading-overlay text-muted" x-show="!loading && !error && points.length === 0 && !currentMaterial">
+        <div class="text-center">
+            <i class="bi bi-graph-up-arrow fs-1 mb-2 d-block opacity-25"></i>
+            <div>Material eingeben und <strong>Laden</strong> klicken</div>
+        </div>
+    </div>
+
+    <!-- Keine Daten -->
+    <div class="alert alert-secondary" x-show="!loading && !error && points.length === 0 && currentMaterial">
+        Keine Verlaufsdaten für <strong x-text="currentMaterial"></strong> verfügbar.
+    </div>
+
+    <!-- Chart -->
+    <div class="card" x-show="!loading && points.length > 0">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-bar-chart-line me-2"></i>
+                Preisverlauf: <strong x-text="currentMaterial"></strong>
+            </span>
+            <div class="d-flex gap-3 small">
+                <span class="price-buy"><i class="bi bi-circle-fill me-1" style="font-size:.6rem"></i>Kauf</span>
+                <span class="price-sell"><i class="bi bi-circle-fill me-1" style="font-size:.6rem"></i>Verkauf</span>
+            </div>
+        </div>
+        <div class="card-body p-2">
+            <div id="chart" class="chart-container"></div>
+        </div>
+        <div class="card-footer text-muted small d-flex justify-content-between">
+            <span><span x-text="points.length"></span> Datenpunkte</span>
+            <span x-show="points.length > 0">
+                Zeitraum: <span x-text="dateRange"></span>
+            </span>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/echarts.min.js"></script>
+<script src="/static/js/alpine.min.js" defer></script>
+<script>
+let chart = null;
+
+function historyApp() {
+    return {
+        materialInput:   '',
+        currentMaterial: '',
+        points:          [],
+        loading:         false,
+        error:           null,
+        recent:          [],
+
+        get dateRange() {
+            if (this.points.length < 2) return '–';
+            const fmt = ts => new Date(ts).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit'});
+            return fmt(this.points[0].timestamp) + ' – ' + fmt(this.points[this.points.length-1].timestamp);
+        },
+
+        async loadHistory() {
+            const mat = this.materialInput.trim().toLowerCase();
+            if (!mat) return;
+            this.loading         = true;
+            this.error           = null;
+            this.currentMaterial = mat;
+            this.points          = [];
+            destroyChart();
+            try {
+                const res = await fetch('/api/history/' + encodeURIComponent(mat));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.points = await res.json();
+                if (!this.recent.includes(mat)) {
+                    this.recent = [mat, ...this.recent].slice(0, 5);
+                }
+                this.$nextTick(() => { if (this.points.length > 0) renderChart(this.points); });
+            } catch (e) {
+                this.error = 'Fehler beim Laden: ' + e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            const m = params.get('m');
+            if (m) { this.materialInput = m; this.loadHistory(); }
+        }
+    };
+}
+
+function destroyChart() {
+    if (chart) { chart.dispose(); chart = null; }
+}
+
+function renderChart(points) {
+    const el = document.getElementById('chart');
+    if (!el) return;
+    destroyChart();
+    chart = echarts.init(el, 'dark', { backgroundColor: 'transparent' });
+
+    const fmt = ts => new Date(ts).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit'});
+    const labels   = points.map(p => fmt(p.timestamp));
+    const buyData  = points.map(p => p.buyPrice  > 0 ? +p.buyPrice.toFixed(2)  : null);
+    const sellData = points.map(p => p.sellPrice > 0 ? +p.sellPrice.toFixed(2) : null);
+
+    chart.setOption({
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: '#1e293b',
+            borderColor: '#334155',
+            textStyle: { color: '#e2e8f0' },
+            formatter(params) {
+                let s = `<b>${params[0].axisValueLabel}</b><br>`;
+                params.forEach(p => {
+                    s += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>${
+                        p.value != null ? new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(p.value) : '–'
+                    }</b><br>`;
+                });
+                return s;
+            }
+        },
+        legend: { show: false },
+        grid: { left: 60, right: 20, top: 20, bottom: 40 },
+        xAxis: {
+            type: 'category',
+            data: labels,
+            axisLabel: { color: '#94a3b8', fontSize: 11 },
+            axisLine: { lineStyle: { color: '#334155' } },
+            splitLine: { show: false }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: {
+                color: '#94a3b8',
+                fontSize: 11,
+                formatter: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+            },
+            splitLine: { lineStyle: { color: '#1e293b' } }
+        },
+        series: [
+            {
+                name: 'Kauf',
+                type: 'line',
+                data: buyData,
+                smooth: true,
+                symbol: 'none',
+                lineStyle: { color: '#4ade80', width: 2 },
+                areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1,
+                    colorStops: [{offset:0,color:'rgba(74,222,128,.18)'},{offset:1,color:'rgba(74,222,128,0)'}]}}
+            },
+            {
+                name: 'Verkauf',
+                type: 'line',
+                data: sellData,
+                smooth: true,
+                symbol: 'none',
+                lineStyle: { color: '#f87171', width: 2 },
+                areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1,
+                    colorStops: [{offset:0,color:'rgba(248,113,113,.18)'},{offset:1,color:'rgba(248,113,113,0)'}]}}
+            }
+        ]
+    });
+
+    window.addEventListener('resize', () => chart && chart.resize());
+}
+</script>
+<style>.btn-xs { font-size: 0.72rem; }</style>
+</body>
+</html>

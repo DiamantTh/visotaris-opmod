@@ -45,6 +45,22 @@ dependencies {
 
     // night-config (TOML-Parser) – im Mod-JAR eingebettet
     shade 'com.electronwill.night-config:toml:3.8.1'
+
+    // Caffeine – hochperformanter In-Memory-Cache mit Größenlimit
+    shade "com.github.ben-manes.caffeine:caffeine:${caffeine_version}"
+
+    // Ktor CIO – eingebetteter HTTP-Server für das Web-UI
+    // Kotlin, kotlinx und slf4j werden von FLK / Minecraft bereitgestellt → exclude
+    shade("io.ktor:ktor-server-core:${ktor_version}") {
+        exclude group: 'org.jetbrains.kotlin'
+        exclude group: 'org.jetbrains.kotlinx'
+        exclude group: 'org.slf4j'
+    }
+    shade("io.ktor:ktor-server-cio:${ktor_version}") {
+        exclude group: 'org.jetbrains.kotlin'
+        exclude group: 'org.jetbrains.kotlinx'
+        exclude group: 'org.slf4j'
+    }
 }
 
 loom {
@@ -99,6 +115,8 @@ shadowJar {
     relocate 'okhttp3',                      'systems.diath.visotaris_opmod.shade.okhttp3'
     relocate 'okio',                         'systems.diath.visotaris_opmod.shade.okio'
     relocate 'com.electronwill.nightconfig',  'systems.diath.visotaris_opmod.shade.nightconfig'
+    relocate 'com.github.benmanes.caffeine',   'systems.diath.visotaris_opmod.shade.caffeine'
+    relocate 'io.ktor',                          'systems.diath.visotaris_opmod.shade.ktor'
 }
 
 remapJar {
