@@ -12,6 +12,7 @@ import okhttp3.ResponseBody;
 import systems.diath.visotaris_opmod.VisotarisConst;
 import systems.diath.visotaris_opmod.VisotarisLogger;
 import systems.diath.visotaris_opmod.config.ConfigManager;
+import systems.diath.visotaris_opmod.model.PriceHistory;
 import systems.diath.visotaris_opmod.model.PriceHistoryPoint;
 
 import java.io.IOException;
@@ -26,7 +27,9 @@ import java.util.List;
  * HTTP-Client für die OPSUCHT-Preisverlauf-API.
  *
  * Endpunkt: {@code GET https://api.opsucht.net/market/history/{material}}
- * Antwort: JSON-Array mit {@code timestamp}, {@code buyPrice}, {@code sellPrice}.
+ * Antwort: JSON-Objekt mit vier Granularitäten:
+ * {@code {"HOURLY":[...],"DAILY":[...],"WEEKLY":[...],"MONTHLY":[...]}}
+ * Jeder Datenpunkt: {@code {avgPrice, minPrice, maxPrice, items, transactions, timestamp}}.
  */
 public final class MarketHistoryApiClient {
 
@@ -45,10 +48,10 @@ public final class MarketHistoryApiClient {
      * Lädt den Preisverlauf für ein Material von der API.
      *
      * @param materialKey Item-Key in lowercase (z.B. {@code "diamond"})
-     * @return Liste der Preisverlauf-Datenpunkte, leer bei Fehler
+     * @return {@link PriceHistory} mit allen Granularitäten, leer bei Fehler
      * @throws IOException bei Netzwerkfehler ohne Cache-Fallback
      */
-    public List<PriceHistoryPoint> fetchHistory(String materialKey) throws IOException {
+    public PriceHistory fetchHistory(String materialKey) throws IOException {
         Request liveReq = new Request.Builder()
             .url(BASE_URL + materialKey)
             .cacheControl(CacheControl.FORCE_NETWORK)
@@ -73,36 +76,61 @@ public final class MarketHistoryApiClient {
         }
     }
 
-    private List<PriceHistoryPoint> parseBodyStream(ResponseBody body, String materialKey) throws IOException {
+    private PriceHistory parseBodyStream(ResponseBody body, String materialKey) throws IOException {
         try (InputStream is = body.byteStream();
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
             JsonElement root = GSON.fromJson(reader, JsonElement.class);
-            if (!root.isJsonArray()) {
+            if (!root.isJsonObject()) {
                 VisotarisLogger.warn("History-API: unerwartetes Format für '{}'.", materialKey);
-                return Collections.emptyList();
+                return PriceHistory.empty();
             }
-            JsonArray array = root.getAsJsonArray();
-            List<PriceHistoryPoint> result = new ArrayList<>(array.size());
-            for (JsonElement el : array) {
-                if (!el.isJsonObject()) continue;
-                JsonObject obj = el.getAsJsonObject();
-                long ts         = getLong(obj,   "timestamp");
-                double buyPrice  = getDouble(obj, "buyPrice");
-                double sellPrice = getDouble(obj, "sellPrice");
-                result.add(new PriceHistoryPoint(ts, buyPrice, sellPrice));
-            }
-            VisotarisLogger.debug("History-API: {} Punkte für '{}' geladen.", result.size(), materialKey);
+            JsonObject obj = root.getAsJsonObject();
+            PriceHistory result = new PriceHistory(
+                parseArray(obj, "HOURLY",  materialKey),
+                parseArray(obj, "DAILY",   materialKey),
+                parseArray(obj, "WEEKLY",  materialKey),
+                parseArray(obj, "MONTHLY", materialKey)
+            );
+            VisotarisLogger.debug("History-API: {}/{}/{}/{} Punkte für '{}' geladen.",
+                result.HOURLY.size(), result.DAILY.size(),
+                result.WEEKLY.size(), result.MONTHLY.size(), materialKey);
             return result;
         }
     }
 
-    private static long getLong(JsonObject obj, String key) {
+    private List<PriceHistoryPoint> parseArray(JsonObject root, String key, String materialKey) {
+        JsonElement el = root.get(key);
+        if (el == null || !el.isJsonArray()) return Collections.emptyList();
+        JsonArray array = el.getAsJsonArray();
+        List<PriceHistoryPoint> result = new ArrayList<>(array.size());
+        for (JsonElement item : array) {
+            if (!item.isJsonObject()) continue;
+            JsonObject p = item.getAsJsonObject();
+            result.add(new PriceHistoryPoint(
+                getString(p, "timestamp"),
+                getDouble(p, "avgPrice"),
+                getDouble(p, "minPrice"),
+                getDouble(p, "maxPrice"),
+                getInt(p, "items"),
+                getInt(p, "transactions")
+            ));
+        }
+        return result;
+    }
+
+    private static String getString(JsonObject obj, String key) {
         JsonElement el = obj.get(key);
-        return (el != null && el.isJsonPrimitive()) ? el.getAsLong() : 0L;
+        return (el != null && el.isJsonPrimitive()) ? el.getAsString() : "";
     }
 
     private static double getDouble(JsonObject obj, String key) {
         JsonElement el = obj.get(key);
         return (el != null && el.isJsonPrimitive()) ? el.getAsDouble() : 0.0;
     }
+
+    private static int getInt(JsonObject obj, String key) {
+        JsonElement el = obj.get(key);
+        return (el != null && el.isJsonPrimitive()) ? el.getAsInt() : 0;
+    }
 }
+

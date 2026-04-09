@@ -4,11 +4,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import systems.diath.visotaris_opmod.VisotarisLogger;
 import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
-import systems.diath.visotaris_opmod.model.PriceHistoryPoint;
+import systems.diath.visotaris_opmod.model.PriceHistory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * In-Memory-Cache für Preisverlauf-Daten pro Material.
@@ -19,7 +17,7 @@ import java.util.List;
  */
 public final class PriceHistoryCache {
 
-    private final Cache<String, List<PriceHistoryPoint>> cache;
+    private final Cache<String, PriceHistory> cache;
     private final MarketHistoryApiClient apiClient;
 
     public PriceHistoryCache(MarketHistoryApiClient apiClient) {
@@ -34,21 +32,19 @@ public final class PriceHistoryCache {
      * Ist kein Eintrag im Cache, wird die API synchron angefragt.
      *
      * @param materialKey Item-Key in lowercase (z.B. {@code "diamond"})
-     * @return Liste der Preisverlauf-Datenpunkte, leer bei Fehler
+     * @return {@link PriceHistory} mit allen Granularitäten, leer bei Fehler
      */
-    public List<PriceHistoryPoint> get(String materialKey) {
-        List<PriceHistoryPoint> cached = cache.getIfPresent(materialKey);
+    public PriceHistory get(String materialKey) {
+        PriceHistory cached = cache.getIfPresent(materialKey);
         if (cached != null) return cached;
 
         try {
-            List<PriceHistoryPoint> fetched = apiClient.fetchHistory(materialKey);
-            if (!fetched.isEmpty()) {
-                cache.put(materialKey, fetched);
-            }
-            return fetched;
+            PriceHistory fetched = apiClient.fetchHistory(materialKey);
+            if (fetched != null) cache.put(materialKey, fetched);
+            return fetched != null ? fetched : PriceHistory.empty();
         } catch (IOException e) {
             VisotarisLogger.warn("PriceHistoryCache: Fetch fehlgeschlagen für '{}': {}", materialKey, e.getMessage());
-            return Collections.emptyList();
+            return PriceHistory.empty();
         }
     }
 

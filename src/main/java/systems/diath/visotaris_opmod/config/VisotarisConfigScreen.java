@@ -50,7 +50,7 @@ public final class VisotarisConfigScreen extends Screen {
     private static final int C_GREEN_R = 57, C_GREEN_B = 20;
 
     // Refresh-Presets (Sekunden) für Cycling-Buttons
-    private static final int[] REFRESH_PRESETS = {15, 30, 60, 120, 300};
+    private static final int[] REFRESH_PRESETS = {300, 600, 1500}; // 5 / 10 / 25 min
 
     // ── Zustand ─────────────────────────────────────────────────────────────
     private final Screen          parent;
@@ -328,15 +328,17 @@ public final class VisotarisConfigScreen extends Screen {
         }
         int[] idx = {initIdx};
         ButtonWidget btn = ButtonWidget.builder(
-                Text.literal(label + ": " + REFRESH_PRESETS[initIdx] + "s"),
+                Text.literal(label + ": " + fmtMin(REFRESH_PRESETS[initIdx])),
                 b -> {
                     idx[0] = (idx[0] + 1) % REFRESH_PRESETS.length;
                     setter.accept(REFRESH_PRESETS[idx[0]]);
-                    b.setMessage(Text.literal(label + ": " + REFRESH_PRESETS[idx[0]] + "s"));
+                    b.setMessage(Text.literal(label + ": " + fmtMin(REFRESH_PRESETS[idx[0]])));
                 }
         ).dimensions(x, 0, BTN_W, BTN_H).build();
         addContent(btn, baseY);
     }
+
+    private static String fmtMin(int seconds) { return (seconds / 60) + "min"; }
 
     private static Text makeToggleText(String label, boolean value) {
         return Text.literal(label + ": " + (value ? "\u00a7aAN" : "\u00a7cAUS"));

@@ -109,6 +109,20 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--vi-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--vi-accent); }
 
+/* ── Item-Icons (mc-api.io) ──────────────────────────────────────────────────── */
+.item-icon {
+    width: 20px;
+    height: 20px;
+    image-rendering: pixelated;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+.item-icon-lg {
+    width: 40px;
+    height: 40px;
+    image-rendering: pixelated;
+}
+
 /* ── Loading overlay ─────────────────────────────────────────────────────────── */
 .loading-overlay {
     display: flex;

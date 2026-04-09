@@ -27,6 +27,12 @@
     <!-- Kopfzeile -->
     <div class="d-flex align-items-center gap-3 mb-3">
         <h5 class="mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Preisverlauf</h5>
+        <div class="d-flex align-items-center gap-2" x-show="currentMaterial">
+            <img :src="'/api/icon/' + currentMaterial"
+                 class="item-icon-lg" alt=""
+                 @error="$el.style.display='none'">
+            <span class="fw-semibold fs-6" x-text="fmtItem(currentMaterial)"></span>
+        </div>
         <div class="ms-auto d-flex gap-2 align-items-center">
             <input type="text"
                    class="form-control form-control-sm search-input"
@@ -46,7 +52,7 @@
         <template x-for="m in recent" :key="m">
             <button class="btn btn-xs btn-outline-secondary"
                     @click="materialInput = m; loadHistory()"
-                    x-text="m"></button>
+                    x-text="fmtItem(m)"></button>
         </template>
     </div>
 
@@ -62,7 +68,7 @@
     <div class="alert alert-danger" x-show="error && !loading" x-text="error"></div>
 
     <!-- Leerer Zustand -->
-    <div class="loading-overlay text-muted" x-show="!loading && !error && points.length === 0 && !currentMaterial">
+    <div class="loading-overlay text-muted" x-show="!loading && !error && !history && !currentMaterial">
         <div class="text-center">
             <i class="bi bi-graph-up-arrow fs-1 mb-2 d-block opacity-25"></i>
             <div>Material eingeben und <strong>Laden</strong> klicken</div>
@@ -70,29 +76,55 @@
     </div>
 
     <!-- Keine Daten -->
-    <div class="alert alert-secondary" x-show="!loading && !error && points.length === 0 && currentMaterial">
-        Keine Verlaufsdaten für <strong x-text="currentMaterial"></strong> verfügbar.
+    <div class="alert alert-secondary" x-show="!loading && !error && history && currentPoints.length === 0 && currentMaterial">
+        Keine Verlaufsdaten für <strong x-text="currentMaterial"></strong> in dieser Granularität verfügbar.
     </div>
 
-    <!-- Chart -->
-    <div class="card" x-show="!loading && points.length > 0">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-bar-chart-line me-2"></i>
-                Preisverlauf: <strong x-text="currentMaterial"></strong>
-            </span>
-            <div class="d-flex gap-3 small">
-                <span class="price-buy"><i class="bi bi-circle-fill me-1" style="font-size:.6rem"></i>Kauf</span>
-                <span class="price-sell"><i class="bi bi-circle-fill me-1" style="font-size:.6rem"></i>Verkauf</span>
+    <!-- 3 Chart-Karten -->
+    <div x-show="!loading && history && currentPoints.length > 0">
+
+        <!-- Preisentwicklung -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span><i class="bi bi-graph-up me-2 text-info"></i>Preisentwicklung
+                    <small class="text-muted ms-2" x-text="currentMaterial"></small>
+                </span>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn" :class="granularity==='HOURLY'  ? 'btn-info' : 'btn-outline-secondary'" @click="granularity='HOURLY'">Stündlich</button>
+                    <button type="button" class="btn" :class="granularity==='DAILY'   ? 'btn-info' : 'btn-outline-secondary'" @click="granularity='DAILY'">Täglich</button>
+                    <button type="button" class="btn" :class="granularity==='WEEKLY'  ? 'btn-info' : 'btn-outline-secondary'" @click="granularity='WEEKLY'">Wöchentlich</button>
+                    <button type="button" class="btn" :class="granularity==='MONTHLY' ? 'btn-info' : 'btn-outline-secondary'" @click="granularity='MONTHLY'">Monatlich</button>
+                </div>
+            </div>
+            <div class="card-body p-2">
+                <div id="chart-price" class="chart-container"></div>
             </div>
         </div>
-        <div class="card-body p-2">
-            <div id="chart" class="chart-container"></div>
+
+        <!-- Transaktionen -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-arrow-left-right me-2 text-info"></i>Transaktionen
+            </div>
+            <div class="card-body p-2">
+                <div id="chart-tx" class="chart-container"></div>
+            </div>
         </div>
-        <div class="card-footer text-muted small d-flex justify-content-between">
-            <span><span x-text="points.length"></span> Datenpunkte</span>
-            <span x-show="points.length > 0">
-                Zeitraum: <span x-text="dateRange"></span>
-            </span>
+
+        <!-- Gehandelte Items -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-boxes me-2 text-warning"></i>Gehandelte Items
+            </div>
+            <div class="card-body p-2">
+                <div id="chart-items" class="chart-container"></div>
+            </div>
+            <div class="card-footer text-muted small d-flex justify-content-between">
+                <span><span x-text="currentPoints.length"></span> Datenpunkte</span>
+                <span x-show="currentPoints.length > 0">
+                    Zeitraum: <span x-text="dateRange"></span>
+                </span>
+            </div>
         </div>
     </div>
 </div>
@@ -101,21 +133,38 @@
 <script src="/static/js/echarts.min.js"></script>
 <script src="/static/js/alpine.min.js" defer></script>
 <script>
-let chart = null;
+const LS_RECENT = 'visotaris_history_recent';
+let charts = {};
+
+function fmtItem(k) {
+    if (!k) return '';
+    return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function destroyCharts() {
+    Object.values(charts).forEach(c => { try { c && c.dispose(); } catch(e){} });
+    charts = {};
+}
 
 function historyApp() {
     return {
         materialInput:   '',
         currentMaterial: '',
-        points:          [],
+        history:         null,
+        granularity:     'DAILY',
         loading:         false,
         error:           null,
         recent:          [],
 
+        get currentPoints() {
+            return this.history ? (this.history[this.granularity] ?? []) : [];
+        },
+
         get dateRange() {
-            if (this.points.length < 2) return '–';
-            const fmt = ts => new Date(ts).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit'});
-            return fmt(this.points[0].timestamp) + ' – ' + fmt(this.points[this.points.length-1].timestamp);
+            const pts = this.currentPoints;
+            if (pts.length < 2) return '–';
+            const fmtD = ts => new Date(ts).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit'});
+            return fmtD(pts[0].timestamp) + ' – ' + fmtD(pts[pts.length-1].timestamp);
         },
 
         async loadHistory() {
@@ -124,16 +173,20 @@ function historyApp() {
             this.loading         = true;
             this.error           = null;
             this.currentMaterial = mat;
-            this.points          = [];
-            destroyChart();
+            this.history         = null;
+            destroyCharts();
             try {
                 const res = await fetch('/api/history/' + encodeURIComponent(mat));
                 if (!res.ok) throw new Error('HTTP ' + res.status);
-                this.points = await res.json();
+                this.history = await res.json();
                 if (!this.recent.includes(mat)) {
-                    this.recent = [mat, ...this.recent].slice(0, 5);
+                    this.recent = [mat, ...this.recent].slice(0, 8);
+                    try { localStorage.setItem(LS_RECENT, JSON.stringify(this.recent)); } catch(e) {}
                 }
-                this.$nextTick(() => { if (this.points.length > 0) renderChart(this.points); });
+                this.$nextTick(() => {
+                    if (this.currentPoints.length > 0)
+                        requestAnimationFrame(() => renderCharts(this.currentPoints, this.granularity));
+                });
             } catch (e) {
                 this.error = 'Fehler beim Laden: ' + e.message;
             } finally {
@@ -142,6 +195,11 @@ function historyApp() {
         },
 
         init() {
+            try { this.recent = JSON.parse(localStorage.getItem(LS_RECENT) || '[]'); } catch(e) {}
+            this.$watch('granularity', () => {
+                if (this.currentPoints.length > 0) requestAnimationFrame(() => renderCharts(this.currentPoints, this.granularity));
+                else destroyCharts();
+            });
             const params = new URLSearchParams(window.location.search);
             const m = params.get('m');
             if (m) { this.materialInput = m; this.loadHistory(); }
@@ -149,80 +207,102 @@ function historyApp() {
     };
 }
 
-function destroyChart() {
-    if (chart) { chart.dispose(); chart = null; }
-}
+function renderCharts(points, granularity) {
+    destroyCharts();
+    const isHourly = granularity === 'HOURLY';
+    const fmtTs = ts => {
+        const d = new Date(ts);
+        return isHourly
+            ? d.toLocaleString('de-DE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+            : d.toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit'});
+    };
+    const fmtNum = v => new Intl.NumberFormat('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
+    const fmtInt = v => new Intl.NumberFormat('de-DE').format(v);
+    const axFmt  = v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v;
+    const labels = points.map(p => fmtTs(p.timestamp));
+    const GRID   = {left:64, right:20, top:30, bottom:40};
+    const xAxis  = {type:'category', data:labels, axisLabel:{color:'#94a3b8',fontSize:10}, axisLine:{lineStyle:{color:'#334155'}}, splitLine:{show:false}};
+    const yLbl   = {color:'#94a3b8', fontSize:10, formatter:axFmt};
 
-function renderChart(points) {
-    const el = document.getElementById('chart');
-    if (!el) return;
-    destroyChart();
-    chart = echarts.init(el, 'dark', { backgroundColor: 'transparent' });
-
-    const fmt = ts => new Date(ts).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit'});
-    const labels   = points.map(p => fmt(p.timestamp));
-    const buyData  = points.map(p => p.buyPrice  > 0 ? +p.buyPrice.toFixed(2)  : null);
-    const sellData = points.map(p => p.sellPrice > 0 ? +p.sellPrice.toFixed(2) : null);
-
-    chart.setOption({
+    // --- Chart 1: Preisentwicklung ---
+    charts.price = echarts.init(document.getElementById('chart-price'), 'dark', {backgroundColor:'transparent'});
+    charts.price.setOption({
         tooltip: {
-            trigger: 'axis',
-            backgroundColor: '#1e293b',
-            borderColor: '#334155',
-            textStyle: { color: '#e2e8f0' },
+            trigger:'axis', backgroundColor:'#1e293b', borderColor:'#334155', textStyle:{color:'#e2e8f0'},
             formatter(params) {
-                let s = `<b>${params[0].axisValueLabel}</b><br>`;
-                params.forEach(p => {
-                    s += `<span style="color:${p.color}">●</span> ${p.seriesName}: <b>${
-                        p.value != null ? new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(p.value) : '–'
-                    }</b><br>`;
-                });
-                return s;
+                const p = points[params[0].dataIndex];
+                return `<b>${params[0].axisValueLabel}</b><br>`
+                    + `Ø Preis: <b>${fmtNum(p.avgPrice)}</b><br>`
+                    + `↓&nbsp;Min: <b>${fmtNum(p.minPrice)}</b>&nbsp;&nbsp;↑&nbsp;Max: <b>${fmtNum(p.maxPrice)}</b>`;
             }
         },
-        legend: { show: false },
-        grid: { left: 60, right: 20, top: 20, bottom: 40 },
-        xAxis: {
-            type: 'category',
-            data: labels,
-            axisLabel: { color: '#94a3b8', fontSize: 11 },
-            axisLine: { lineStyle: { color: '#334155' } },
-            splitLine: { show: false }
-        },
-        yAxis: {
-            type: 'value',
-            axisLabel: {
-                color: '#94a3b8',
-                fontSize: 11,
-                formatter: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
-            },
-            splitLine: { lineStyle: { color: '#1e293b' } }
-        },
+        grid: GRID, xAxis,
+        yAxis: {type:'value', axisLabel:yLbl, splitLine:{lineStyle:{color:'#1e293b'}}},
         series: [
             {
-                name: 'Kauf',
-                type: 'line',
-                data: buyData,
-                smooth: true,
-                symbol: 'none',
-                lineStyle: { color: '#4ade80', width: 2 },
-                areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1,
-                    colorStops: [{offset:0,color:'rgba(74,222,128,.18)'},{offset:1,color:'rgba(74,222,128,0)'}]}}
+                name:'Max', type:'line',
+                data: points.map(p => p.maxPrice > 0 ? +p.maxPrice.toFixed(2) : null),
+                smooth:true, symbol:'none', lineStyle:{width:0},
+                areaStyle:{color:'rgba(78,158,247,0.06)'}
             },
             {
-                name: 'Verkauf',
-                type: 'line',
-                data: sellData,
-                smooth: true,
-                symbol: 'none',
-                lineStyle: { color: '#f87171', width: 2 },
-                areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1,
-                    colorStops: [{offset:0,color:'rgba(248,113,113,.18)'},{offset:1,color:'rgba(248,113,113,0)'}]}}
+                name:'Ø Preis', type:'line',
+                data: points.map(p => p.avgPrice > 0 ? +p.avgPrice.toFixed(2) : null),
+                smooth:true, symbol:'none',
+                lineStyle:{color:'#4e9ef7',width:2},
+                areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+                    colorStops:[{offset:0,color:'rgba(78,158,247,0.28)'},{offset:1,color:'rgba(78,158,247,0)'}]}}
+            },
+            {
+                name:'Min', type:'line',
+                data: points.map(p => p.minPrice > 0 ? +p.minPrice.toFixed(2) : null),
+                smooth:true, symbol:'none',
+                lineStyle:{color:'rgba(148,163,184,0.35)',width:1,type:'dashed'}
             }
         ]
     });
 
-    window.addEventListener('resize', () => chart && chart.resize());
+    // --- Chart 2: Transaktionen ---
+    charts.tx = echarts.init(document.getElementById('chart-tx'), 'dark', {backgroundColor:'transparent'});
+    charts.tx.setOption({
+        tooltip: {
+            trigger:'axis', backgroundColor:'#1e293b', borderColor:'#334155', textStyle:{color:'#e2e8f0'},
+            formatter: p => `<b>${p[0].axisValueLabel}</b><br>Transaktionen: <b>${fmtInt(p[0].value ?? 0)}</b>`
+        },
+        grid: GRID, xAxis,
+        yAxis: {type:'value', axisLabel:yLbl, splitLine:{lineStyle:{color:'#1e293b'}}},
+        series: [{
+            name:'Transaktionen', type:'line',
+            data: points.map(p => p.transactions),
+            smooth:true, symbol:'none',
+            lineStyle:{color:'#4e9ef7',width:2},
+            areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+                colorStops:[{offset:0,color:'rgba(78,158,247,0.22)'},{offset:1,color:'rgba(78,158,247,0)'}]}}
+        }]
+    });
+
+    // --- Chart 3: Gehandelte Items (Balken, gold) ---
+    charts.items = echarts.init(document.getElementById('chart-items'), 'dark', {backgroundColor:'transparent'});
+    charts.items.setOption({
+        tooltip: {
+            trigger:'axis', backgroundColor:'#1e293b', borderColor:'#334155', textStyle:{color:'#e2e8f0'},
+            formatter: p => `<b>${p[0].axisValueLabel}</b><br>Items: <b>${fmtInt(p[0].value ?? 0)}</b>`
+        },
+        grid: GRID, xAxis,
+        yAxis: {type:'value', axisLabel:yLbl, splitLine:{lineStyle:{color:'#1e293b'}}},
+        series: [{
+            name:'Items', type:'bar',
+            data: points.map(p => p.items),
+            itemStyle:{color:'#e8b030'},
+            barMaxWidth: 24,
+            emphasis:{itemStyle:{color:'#f5c842'}}
+        }]
+    });
+
+    if (!window._vResizeBound) {
+        window._vResizeBound = true;
+        window.addEventListener('resize', () => Object.values(charts).forEach(c => c && c.resize()));
+    }
 }
 </script>
 <style>.btn-xs { font-size: 0.72rem; }</style>

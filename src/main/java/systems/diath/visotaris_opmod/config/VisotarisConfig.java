@@ -30,8 +30,8 @@ public final class VisotarisConfig {
     public boolean enableDiscordRpc        = false;  // Standard: deaktiviert
 
     // ── Netzwerk ──────────────────────────────────────────────────────────────
-    public int     marketRefreshIntervalSeconds   = 60;
-    public int     merchantRefreshIntervalSeconds = 60;
+    public int     marketRefreshIntervalSeconds   = 300;
+    public int     merchantRefreshIntervalSeconds = 300;
     public boolean enableWebUi    = false;          // lokaler HTTP-Server (localhost:webUiPort)
     public int     webUiPort      = 7780;
     public String  proxyHost      = "";             // leer = Direktverbindung

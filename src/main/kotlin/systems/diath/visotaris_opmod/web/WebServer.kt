@@ -8,6 +8,8 @@ import io.ktor.server.engine.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import net.minecraft.client.MinecraftClient
+import net.minecraft.util.Identifier
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
@@ -113,6 +115,28 @@ class WebServer(
             }
             get("/api/shard") {
                 call.respondText(gson.toJson(shardCache.snapshot()), ContentType.Application.Json)
+            }
+
+            // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
+            get("/api/icon/{material}") {
+                val key = call.parameters["material"]
+                    ?.lowercase()
+                    ?.filter { it.isLetterOrDigit() || it == '_' }
+                    .takeIf { !it.isNullOrBlank() }
+                    ?: run { call.respond(HttpStatusCode.BadRequest); return@get }
+
+                val rm = MinecraftClient.getInstance()?.resourceManager
+                    ?: run { call.respond(HttpStatusCode.ServiceUnavailable); return@get }
+
+                for (prefix in listOf("item", "block")) {
+                    try {
+                        val bytes = rm.open(Identifier.of("minecraft", "textures/$prefix/$key.png"))
+                            .use { it.readBytes() }
+                        call.respondBytes(bytes, ContentType.Image.PNG)
+                        return@get
+                    } catch (_: Exception) {}
+                }
+                call.respond(HttpStatusCode.NotFound)
             }
         }
     }

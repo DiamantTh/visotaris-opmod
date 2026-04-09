@@ -5,21 +5,33 @@ package systems.diath.visotaris_opmod.model;
  *
  * Beispiel-API-Antwort {@code GET /market/history/{material}}:
  * <pre>
- * [
- *   {"timestamp": 1750000000000, "buyPrice": 49.5, "sellPrice": 3.8},
- *   ...
- * ]
+ * {
+ *   "HOURLY": [
+ *     {"avgPrice":21.2,"minPrice":21.2,"maxPrice":21.2,"items":500,"transactions":3,"timestamp":"2026-03-25T23:00:00"},
+ *     ...
+ *   ],
+ *   "DAILY":   [...],
+ *   "WEEKLY":  [...],
+ *   "MONTHLY": [...]
+ * }
  * </pre>
  */
 public final class PriceHistoryPoint {
 
-    public final long   timestamp;
-    public final double buyPrice;
-    public final double sellPrice;
+    public final String timestamp;     // ISO-8601: "2026-03-25T23:00:00"
+    public final double avgPrice;
+    public final double minPrice;
+    public final double maxPrice;
+    public final int    items;
+    public final int    transactions;
 
-    public PriceHistoryPoint(long timestamp, double buyPrice, double sellPrice) {
-        this.timestamp = timestamp;
-        this.buyPrice  = buyPrice;
-        this.sellPrice = sellPrice;
+    public PriceHistoryPoint(String timestamp, double avgPrice, double minPrice,
+                             double maxPrice, int items, int transactions) {
+        this.timestamp    = timestamp;
+        this.avgPrice     = avgPrice;
+        this.minPrice     = minPrice;
+        this.maxPrice     = maxPrice;
+        this.items        = items;
+        this.transactions = transactions;
     }
 }

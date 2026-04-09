@@ -64,9 +64,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <template x-for="item in filteredItems" :key="item.materialKey">
+                    <template x-for="item in filteredItems" :key="item.source">
                         <tr>
-                            <td class="fw-medium" x-text="item.materialKey"></td>
+                            <td class="fw-medium" x-text="fmtItem(item.source)"></td>
                             <td class="text-end">
                                 <span class="price-buy" x-text="fmtRate(item.exchangeRate)"></span>
                                 <span class="text-muted ms-1 small">OPS</span>
@@ -112,11 +112,11 @@ function shardApp() {
         get filteredItems() {
             let list = this.items;
             const q = this.search.toLowerCase().trim();
-            if (q) list = list.filter(i => i.materialKey.toLowerCase().includes(q));
+            if (q) list = list.filter(i => i.source.toLowerCase().includes(q));
             const dir = this.sortDir === 'asc' ? 1 : -1;
             return [...list].sort((a, b) => {
                 if (this.sortKey === 'item')
-                    return dir * a.materialKey.localeCompare(b.materialKey);
+                    return dir * a.source.localeCompare(b.source);
                 if (this.sortKey === 'rate')
                     return dir * (a.exchangeRate - b.exchangeRate);
                 return 0;
@@ -136,6 +136,11 @@ function shardApp() {
             return this.sortDir === 'asc' ? 'sort-asc' : 'sort-desc';
         },
 
+        fmtItem(k) {
+            if (!k) return '';
+            return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        },
+
         fmtRate(v) {
             if (!v) return '–';
             return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -147,7 +152,9 @@ function shardApp() {
             try {
                 const res = await fetch('/api/shard');
                 if (!res.ok) throw new Error('HTTP ' + res.status);
-                this.items = await res.json();
+                const data = await res.json();
+                // snapshot() liefert Map<String,ShardRate> → JSON-Objekt, kein Array
+                this.items = Array.isArray(data) ? data : Object.values(data);
                 this.lastFetch = new Date().toLocaleTimeString('de-DE');
             } catch (e) {
                 this.error = 'Fehler beim Laden: ' + e.message;

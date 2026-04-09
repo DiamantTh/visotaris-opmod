@@ -62,14 +62,20 @@
                         <th @click="setSort('buy')"  :class="sortClass('buy')"  class="text-end">Kaufpreis</th>
                         <th @click="setSort('sell')" :class="sortClass('sell')" class="text-end">Verkaufspreis</th>
                         <th class="text-end">Spanne</th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <template x-for="item in filteredItems" :key="item.itemKey">
                         <tr>
                             <td>
-                                <span class="fw-medium" x-text="item.itemKey"></span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img :src="'/api/icon/' + item.itemKey"
+                                         class="item-icon" alt=""
+                                         @error="$el.style.display='none'">
+                                    <a :href="'/history?m=' + item.itemKey"
+                                       class="fw-medium text-decoration-none"
+                                       x-text="fmtItem(item.itemKey)"></a>
+                                </div>
                             </td>
                             <td class="text-end">
                                 <span x-show="item.buy > 0" class="price-buy" x-text="fmt(item.buy)"></span>
@@ -85,13 +91,7 @@
                                       x-text="fmt(item.buy - item.sell)"></span>
                                 <span x-show="!(item.buy > 0 && item.sell > 0)" class="price-na">–</span>
                             </td>
-                            <td class="text-end">
-                                <a :href="'/history?m=' + item.itemKey"
-                                   class="btn btn-xs btn-outline-secondary py-0 px-1"
-                                   title="Verlauf">
-                                    <i class="bi bi-graph-up"></i>
-                                </a>
-                            </td>
+
                         </tr>
                     </template>
                 </tbody>
@@ -159,6 +159,11 @@ function marketApp() {
             return this.sortDir === 'asc' ? 'sort-asc' : 'sort-desc';
         },
 
+        fmtItem(k) {
+            if (!k) return '';
+            return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        },
+
         fmt(v) {
             if (!v || v <= 0) return '–';
             return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -170,7 +175,9 @@ function marketApp() {
             try {
                 const res = await fetch('/api/market');
                 if (!res.ok) throw new Error('HTTP ' + res.status);
-                this.items = await res.json();
+                const data = await res.json();
+                // snapshot() liefert Map<String,MarketPrice> → JSON-Objekt, kein Array
+                this.items = Array.isArray(data) ? data : Object.values(data);
                 this.lastFetch = new Date().toLocaleTimeString('de-DE');
             } catch (e) {
                 this.error = 'Fehler beim Laden: ' + e.message;
