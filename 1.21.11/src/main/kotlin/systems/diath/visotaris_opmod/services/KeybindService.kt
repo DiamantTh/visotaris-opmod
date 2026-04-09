@@ -19,19 +19,19 @@ class KeybindService(
 ) {
     companion object {
         private val CATEGORY: KeyBinding.Category =
-            KeyBinding.Category.create(Identifier.of("visotaris", "keybindings"))
+            KeyBinding.Category.create(Identifier.of("visotaris_opmod", "keybindings"))
     }
 
     val keyOpenSettings: KeyBinding = KeyBindingHelper.registerKeyBinding(
-        KeyBinding("visotaris.key.open_settings",
+        KeyBinding("visotaris_opmod.key.open_settings",
             InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
     )
     val keyToggleHud: KeyBinding = KeyBindingHelper.registerKeyBinding(
-        KeyBinding("visotaris.key.toggle_hud",
+        KeyBinding("visotaris_opmod.key.toggle_hud",
             InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
     )
     val keyRefreshMarket: KeyBinding = KeyBindingHelper.registerKeyBinding(
-        KeyBinding("visotaris.key.refresh_market",
+        KeyBinding("visotaris_opmod.key.refresh_market",
             InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
     )
 

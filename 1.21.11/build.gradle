@@ -64,7 +64,7 @@ dependencies {
 }
 
 loom {
-    accessWidenerPath = rootProject.file("src/main/resources/visotaris.accesswidener")
+    accessWidenerPath = rootProject.file("src/main/resources/visotaris_opmod.accesswidener")
     runs {
         client {
             client()

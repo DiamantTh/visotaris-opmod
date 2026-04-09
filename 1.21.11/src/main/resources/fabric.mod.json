@@ -11,8 +11,8 @@
     "sources": "https://git.diath.systems/DiamantTh/visotaris-opmod"
   },
   "license": "AGPL-3.0-or-later",
-  "icon": "assets/visotaris/icon.png",
-  "accessWidener": "visotaris.accesswidener",
+  "icon": "assets/visotaris_opmod/icon.png",
+  "accessWidener": "visotaris_opmod.accesswidener",
 
   "environment": "client",
 
@@ -26,7 +26,7 @@
   },
 
   "mixins": [
-    "visotaris.mixins.json"
+    "visotaris_opmod.mixins.json"
   ],
 
   "depends": {
