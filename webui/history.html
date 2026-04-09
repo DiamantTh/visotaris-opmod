@@ -4,13 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Visotaris – Preisverlauf</title>
-  <script type="module" crossorigin src="/static/app/history.js"></script>
-  <link rel="modulepreload" crossorigin href="/static/app/utils.js">
-  <link rel="stylesheet" crossorigin href="/static/app/utils.css">
 </head>
 <body>
   <div id="app"></div>
   <!-- ECharts bleibt als lokale Datei – kein CDN, extern zu Rollup -->
   <script src="/static/js/echarts.min.js"></script>
+  <script type="module" src="/src/main-history.js"></script>
 </body>
 </html>

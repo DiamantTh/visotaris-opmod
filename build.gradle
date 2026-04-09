@@ -75,6 +75,23 @@ tasks.register('runClient') {
     dependsOn   runClient12111Task
 }
 
+// ── Svelte Web-UI Build ───────────────────────────────────────────────────────
+// Kompiliert das webui/-Svelte-Projekt und schreibt das Ergebnis nach
+// src/main/resources/assets/webui/ (wird von allen Subprojekten als Ressource eingebunden).
+tasks.register('npmBuildWebui', Exec) {
+    group       = 'visotaris'
+    description = 'Baut das Svelte Web-UI (webui/ → src/main/resources/assets/webui/)'
+    workingDir  = rootProject.file('webui')
+    commandLine = ['npm', 'run', 'build']
+
+    // Inkrementell: nur neu bauen wenn Quelldateien sich geändert haben
+    inputs.dir  rootProject.file('webui/src')
+    inputs.files rootProject.file('webui/vite.config.js'),
+                 rootProject.file('webui/svelte.config.js'),
+                 rootProject.file('webui/package.json')
+    outputs.dir rootProject.file('src/main/resources/assets/webui/static/app')
+}
+
 // Stille Kompatibilitätsaliases für alte Namen
 tasks.register('build1214')     { group = null; dependsOn build1214Task }
 tasks.register('build12111')    { group = null; dependsOn build12111Task }
@@ -116,6 +133,9 @@ subprojects {
                 resources { srcDir rootProject.file('src/main/resources') }
             }
         }
+
+        // Web-UI muss vor den Ressourcen gebaut sein
+        tasks.named('processResources') { dependsOn(':npmBuildWebui') }
 
         // ${version} in fabric.mod.json ersetzen
         processResources {

@@ -26,3 +26,10 @@ Thumbs.db
 
 # Secrets / Logs
 *.log
+
+# Svelte / Vite Web-UI
+webui/node_modules/
+webui/.vite/
+# Vite Build-Output – diese Dateien werden von `npm run build` generiert
+# und sind im Repository für den Gradle-Build enthalten (kein npm-Install nötig für CI)
+# static/app/ wird also committed.
