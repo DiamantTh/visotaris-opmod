@@ -1,6 +1,8 @@
 package systems.diath.visotaris_opmod.web
 
 import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.*
@@ -119,6 +121,13 @@ class WebServer(
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
             get("/api/icon/{material}") {
+                // Nur Anfragen die von einer lokalen Seite stammen (kein Direktaufruf)
+                val referer = call.request.header("Referer") ?: ""
+                val localPrefixes = listOf("http://localhost:", "http://127.0.0.1:", "http://[::1]:")
+                if (localPrefixes.none { referer.startsWith(it) }) {
+                    call.respond(HttpStatusCode.Forbidden); return@get
+                }
+
                 val key = call.parameters["material"]
                     ?.lowercase()
                     ?.filter { it.isLetterOrDigit() || it == '_' }
@@ -128,17 +137,65 @@ class WebServer(
                 val rm = MinecraftClient.getInstance()?.resourceManager
                     ?: run { call.respond(HttpStatusCode.ServiceUnavailable); return@get }
 
-                for (prefix in listOf("item", "block")) {
-                    try {
-                        val bytes = rm.open(Identifier.of("minecraft", "textures/$prefix/$key.png"))
-                            .use { it.readBytes() }
-                        call.respondBytes(bytes, ContentType.Image.PNG)
-                        return@get
-                    } catch (_: Exception) {}
+                val bytes = loadItemIconBytes(rm, key)
+                if (bytes != null) {
+                    call.respondBytes(bytes, ContentType.Image.PNG)
+                } else {
+                    call.respond(HttpStatusCode.NotFound)
                 }
-                call.respond(HttpStatusCode.NotFound)
             }
         }
+    }
+
+    /** Versucht, das Icon-PNG für ein Item zu laden:
+     *  1. textures/item/{key}.png
+     *  2. textures/block/{key}.png
+     *  3. models/item/{key}.json → Textur-Referenz auflösen (folgt parent bis Tiefe 3)
+     *  4. models/block/{key}.json → gleiches Verfahren
+     */
+    private fun loadItemIconBytes(rm: net.minecraft.resource.ResourceManager, key: String): ByteArray? {
+        for (prefix in listOf("item", "block")) {
+            runCatching {
+                return rm.open(Identifier.of("minecraft", "textures/$prefix/$key.png")).use { it.readBytes() }
+            }
+        }
+        for (modelType in listOf("item", "block")) {
+            runCatching {
+                val model = rm.open(Identifier.of("minecraft", "models/$modelType/$key.json"))
+                    .use { JsonParser.parseReader(it.reader()).asJsonObject }
+                val texPath = resolveTextureInModel(rm, model, 0) ?: return@runCatching
+                return rm.open(Identifier.of("minecraft", "textures/$texPath.png")).use { it.readBytes() }
+            }
+        }
+        return null
+    }
+
+    /** Extrahiert den ersten konkreten Texturpfad aus einem Model-JSON.
+     *  Folgt bei Bedarf dem parent-Feld rekursiv (max. Tiefe 3).
+     */
+    private fun resolveTextureInModel(
+        rm: net.minecraft.resource.ResourceManager,
+        model: JsonObject,
+        depth: Int
+    ): String? {
+        if (depth > 3) return null
+        model.getAsJsonObject("textures")?.let { textures ->
+            for (key in listOf("layer0", "all", "cross", "top", "particle")) {
+                val v = textures.get(key)?.asString?.takeIf { !it.startsWith("#") } ?: continue
+                return if (v.contains(":")) v.substringAfter(":") else v
+            }
+            textures.entrySet()
+                .firstOrNull { !it.value.asString.startsWith("#") }
+                ?.value?.asString
+                ?.let { v -> return if (v.contains(":")) v.substringAfter(":") else v }
+        }
+        val parent = model.get("parent")?.asString ?: return null
+        val parentPath = if (parent.contains(":")) parent.substringAfter(":") else parent
+        return runCatching {
+            val parentModel = rm.open(Identifier.of("minecraft", "models/$parentPath.json"))
+                .use { JsonParser.parseReader(it.reader()).asJsonObject }
+            resolveTextureInModel(rm, parentModel, depth + 1)
+        }.getOrNull()
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {
