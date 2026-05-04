@@ -13,24 +13,23 @@ node {
 }
 
 // Root build.gradle – gemeinsame Konfiguration für alle Subprojekte.
-// Der eigentliche Gradle-Build läuft jeweils in 1.21.4/ oder 26/.
+// Der eigentliche Gradle-Build läuft jeweils in 1.21.4/ oder 1.21.11/.
 
 // ── Bequeme Build-Tasks vom Root aus ─────────────────────────────────────────
 //
-//   ./gradlew buildAll          → beide Versionen bauen + JARs nach ./out/ kopieren
-//   ./gradlew build-1.21.4      → nur 1.21.4 bauen  + JAR nach ./out/ kopieren
-//   ./gradlew build-26          → nur 26.x bauen    + JAR nach ./out/ kopieren
-//   ./gradlew runClient         → bevorzugten Dev-Client starten (aktuell 26.x)
-//   ./gradlew runClient-1.21.4  → Dev-Client für 1.21.4 starten
-//   ./gradlew runClient-26      → Dev-Client für 26.x starten
+//   ./gradlew buildAll            → beide Versionen bauen + JARs nach ./out/ kopieren
+//   ./gradlew build-1.21.4        → nur 1.21.4 bauen     + JAR nach ./out/ kopieren
+//   ./gradlew build-1.21.11       → nur 1.21.11 bauen    + JAR nach ./out/ kopieren
+//   ./gradlew runClient           → bevorzugten Dev-Client starten (aktuell 1.21.11)
+//   ./gradlew runClient-1.21.4    → Dev-Client für 1.21.4 starten
+//   ./gradlew runClient-1.21.11   → Dev-Client für 1.21.11 starten
 //
-// Gradle-nativer Weg (Doppelpunkt):
-//   ./gradlew :1.21.4:runClient
-//   ./gradlew :26:runClient
+// Hinweis: Doppelpunkte im Tasknamen (`runClient:1.21.11`) erlaubt Gradle nicht.
+// Der Gradle-native Doppelpunktweg ist stattdessen: `./gradlew :1.21.11:runClient`
 //
 // Die finalen Mod-JARs landen immer unter:
 //   out/visotaris_opmod-<mod_version>+mc1.21.4.jar
-//   out/visotaris_opmod-<mod_version>+mc26.1.2.jar   (mcVersion aus 26/build.gradle)
+//   out/visotaris_opmod-<mod_version>+mc1.21.11.jar
 // ─────────────────────────────────────────────────────────────────────────────
 
 def outDir = rootProject.file('out')
@@ -54,13 +53,13 @@ def build1214Task = tasks.register('build-1.21.4') {
     }
 }
 
-def build26Task = tasks.register('build-26') {
+def build12111Task = tasks.register('build-1.21.11') {
     group       = 'visotaris'
-    description = 'Baut nur MC 26.x und kopiert den JAR nach ./out/'
-    dependsOn   ':26:shadowJar'
+    description = 'Baut nur MC 1.21.11 und kopiert den JAR nach ./out/'
+    dependsOn   ':1.21.11:remapJar'
     doLast {
         outDir.mkdirs()
-        def jar = project('26').tasks.getByName('shadowJar').archiveFile.get().asFile
+        def jar = project('1.21.11').tasks.getByName('remapJar').archiveFile.get().asFile
         copy { from jar; into outDir }
         logger.lifecycle("  → out/${jar.name}")
     }
@@ -69,7 +68,7 @@ def build26Task = tasks.register('build-26') {
 tasks.register('buildAll') {
     group       = 'visotaris'
     description = 'Baut alle MC-Versionen und kopiert die JARs nach ./out/'
-    dependsOn   build1214Task, build26Task
+    dependsOn   build1214Task, build12111Task
 }
 
 def runClient1214Task = tasks.register('runClient-1.21.4') {
@@ -78,16 +77,16 @@ def runClient1214Task = tasks.register('runClient-1.21.4') {
     dependsOn   ':1.21.4:runClient'
 }
 
-def runClient26Task = tasks.register('runClient-26') {
+def runClient12111Task = tasks.register('runClient-1.21.11') {
     group       = 'visotaris'
-    description = 'Startet den Dev-Client für MC 26.x (inkl. Mod Menu).'
-    dependsOn   ':26:runClient'
+    description = 'Startet den Dev-Client für MC 1.21.11 (inkl. Mod Menu).'
+    dependsOn   ':1.21.11:runClient'
 }
 
 tasks.register('runClient') {
     group       = 'visotaris'
-    description = 'Startet den bevorzugten Dev-Client (aktuell MC 26.x, inkl. Mod Menu, ohne Parallelstart beider Versionen).'
-    dependsOn   runClient26Task
+    description = 'Startet den bevorzugten Dev-Client (aktuell MC 1.21.11, inkl. Mod Menu, ohne Parallelstart beider Versionen).'
+    dependsOn   runClient12111Task
 }
 
 // ── Svelte Web-UI Build ───────────────────────────────────────────────────────
@@ -109,15 +108,15 @@ tasks.register('npmBuildWebui', NpmTask) {
 }
 
 // Stille Kompatibilitätsaliases für alte Namen
-tasks.register('build1214')  { group = null; dependsOn build1214Task }
-tasks.register('build26')    { group = null; dependsOn build26Task }
+tasks.register('build1214')     { group = null; dependsOn build1214Task }
+tasks.register('build12111')    { group = null; dependsOn build12111Task }
 tasks.register('runClient1214') { group = null; dependsOn runClient1214Task }
-tasks.register('runClient26')   { group = null; dependsOn runClient26Task }
+tasks.register('runClient12111'){ group = null; dependsOn runClient12111Task }
 
 // Jedes Subprojekt hängt seinen remapJar-Output automatisch nach ./out/
 subprojects {
     // group/version/repos brauchen keine Plugins – direkt setzbar.
-    // version nutzt ext.mcVersion aus dem jeweiligen build.gradle (z.B. '1.21.4' oder '26.1.2'),
+    // version nutzt ext.mcVersion aus dem jeweiligen build.gradle (z.B. '1.21.4' oder '1.21.11'),
     // damit der JAR-Name die exakte MC-Version trägt, unabhängig vom Verzeichnisnamen.
     group   = property('mod_group')
     version = "${property('mod_version')}+mc${project.ext.properties.getOrDefault('mcVersion', project.name)}"

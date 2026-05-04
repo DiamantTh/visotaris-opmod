@@ -1,11 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Visotaris – Minecraft 26.x (ehemals 1.21.11+, neues Mojang-Versionsschema)
-// ─────────────────────────────────────────────────────────────────────────────────
+// Visotaris – Minecraft 1.21.11
+// ─────────────────────────────────────────────────────────────────────────────
 plugins {
-    id 'fabric-loom'                        version '1.16-SNAPSHOT'
+    id 'fabric-loom'                        version '1.14.6'
     id 'org.jetbrains.kotlin.jvm'           version "${kotlin_version}"
     id 'com.gradleup.shadow'                version '9.4.1'
 }
+
+// Exakte MC-Version – wird für JAR-Name genutzt.
+ext.mcVersion  = '1.21.11'
+ext.javaVersion = 21
 
 // ── Shadow / Shade-Konfiguration ─────────────────────────────────────────────
 // OkHttp + Okio werden in den Mod-JAR eingebettet (Pakete relociert, um
@@ -20,16 +24,16 @@ configurations {
 dependencies {
     // Minecraft + Mappings
     //noinspection LoomDependencyNotation
-    minecraft "com.mojang:minecraft:26.1.2"
-    // Yarn-Mappings: auf https://fabricmc.net/develop/ prüfen sobald build.x verfügbar
+    minecraft "com.mojang:minecraft:1.21.11"
+    // TODO: Yarn-Version mit https://fabricmc.net/develop/ abgleichen
     //noinspection LoomDependencyNotation
-    mappings  "net.fabricmc:yarn:26.1.2+build.1:v2"
+    mappings  "net.fabricmc:yarn:1.21.11+build.1:v2"
 
     // Fabric Loader + API
     //noinspection LoomDependencyNotation
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     //noinspection LoomDependencyNotation
-    modImplementation "net.fabricmc.fabric-api:fabric-api:0.146.1+26.1.2"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.3+1.21.11"
 
     // Mod Menu (1.21.11 → Reihe 17.x)
     modImplementation "com.terraformersmc:modmenu:17.0.0"
