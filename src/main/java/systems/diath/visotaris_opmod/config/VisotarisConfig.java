@@ -42,6 +42,7 @@ public final class VisotarisConfig {
     public boolean enableCommandShortforms = true;   // Kurzformen: 1k → 1000, 1.5m → 1500000 …
     public boolean enableAnvilNormalization = true;  // Kurzformen im Amboss-Umbenennenfeld expandieren
     public boolean enableDiscordRpc        = false;  // Standard: deaktiviert
+    public String  discordApplicationId    = "";     // Discord Developer Portal → Application ID
 
     // ── Netzwerk ──────────────────────────────────────────────────────────────
     public int     marketRefreshIntervalSeconds   = 300;

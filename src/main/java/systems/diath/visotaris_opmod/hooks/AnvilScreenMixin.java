@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import systems.diath.visotaris_opmod.VisotarisModClient;
+import systems.diath.visotaris_opmod.util.AmountShortformExpander;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,7 +62,7 @@ public abstract class AnvilScreenMixin {
         Matcher m = SHORTHAND_FULL.matcher(text);
         if (!m.matches()) return;
 
-        String expanded = expandAmount(m.group(1), m.group(2));
+        String expanded = AmountShortformExpander.expandAmount(m.group(1), m.group(2));
         if (expanded == null || expanded.equals(text.trim())) return;
 
         visotaris$expanding = true;
@@ -75,29 +76,5 @@ public abstract class AnvilScreenMixin {
         // Originalen Aufruf mit dem unerweiterten Text abbrechen –
         // der setText()-Aufruf hat bereits den korrekten Wert propagiert.
         ci.cancel();
-    }
-
-    // ── Private Helpers ───────────────────────────────────────────────────────
-
-    static String expandAmount(String digits, String suffix) {
-        // Punkt ist Tausendertrenner nur wenn auch ein Komma vorhanden (dt. Format).
-        // Kein Komma → Punkt ist Dezimalzeichen (int'l Format, z.B. "1.5k").
-        String normalized = digits.contains(",")
-                ? digits.replace(".", "").replace(",", ".")
-                : digits;
-        double number;
-        try {
-            number = Double.parseDouble(normalized);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-        double multiplier = switch (suffix.toLowerCase()) {
-            case "k" -> 1_000.0;
-            case "m" -> 1_000_000.0;
-            case "b" -> 1_000_000_000.0;
-            default  -> 0.0;
-        };
-        if (multiplier == 0.0) return null;
-        return Long.toString((long)(number * multiplier));
     }
 }

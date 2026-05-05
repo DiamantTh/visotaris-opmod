@@ -2,6 +2,7 @@ package systems.diath.visotaris_opmod.services
 
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.config.ConfigManager
+import systems.diath.visotaris_opmod.util.AmountShortformExpander
 
 /**
  * Expandiert Mengenkurzformen in OPSUCHT-Commands vor dem Absenden.
@@ -33,33 +34,13 @@ class CommandRewriteService(private val config: ConfigManager) {
         if (!isMoneyCommand) return rawCommand
 
         val rewritten = SHORTHAND_RE.replace(rawCommand) { match ->
-            expandAmount(match.groupValues[1], match.groupValues[2]) ?: match.value
+            AmountShortformExpander.expandAmount(match.groupValues[1], match.groupValues[2]) ?: match.value
         }
 
         if (rewritten != rawCommand) {
             VisotarisLogger.debug("CommandRewrite: '{}' → '{}'", rawCommand, rewritten)
         }
         return rewritten
-    }
-
-    // ── Private ───────────────────────────────────────────────────────────────
-
-    private fun expandAmount(digits: String, suffix: String): String? {
-        // Nur dann Punkte als Tausendertrenner entfernen, wenn auch ein Komma vorhanden ist
-        // (deutsches Format: "1.234,56"). Bei "1.5" ist der Punkt ein Dezimalzeichen → beibehalten.
-        val normalized = if (digits.contains(',')) {
-            digits.replace(".", "").replace(",", ".")
-        } else {
-            digits  // "1.5", "1000" → unverändert lassen
-        }
-        val number = normalized.toDoubleOrNull() ?: return null
-        val multiplier = when (suffix.lowercase()) {
-            "k" -> 1_000.0
-            "m" -> 1_000_000.0
-            "b" -> 1_000_000_000.0
-            else -> return null
-        }
-        return (number * multiplier).toLong().toString()
     }
 
     companion object {

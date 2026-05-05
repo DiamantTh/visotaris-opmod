@@ -61,6 +61,7 @@ public final class ConfigManager {
             c.enableCommandShortforms  = toml.getOrElse("features.enableCommandShortforms",  toml.getOrElse("enableCommandShortforms",  c.enableCommandShortforms));
             c.enableAnvilNormalization = toml.getOrElse("features.enableAnvilNormalization", toml.getOrElse("enableAnvilNormalization", c.enableAnvilNormalization));
             c.enableDiscordRpc         = toml.getOrElse("features.enableDiscordRpc",         toml.getOrElse("enableDiscordRpc",         c.enableDiscordRpc));
+            c.discordApplicationId     = toml.getOrElse("features.discordApplicationId",     toml.getOrElse("discordApplicationId",     c.discordApplicationId));
             // ── Netzwerk ──────────────────────────────────────────────────────────────
             c.marketRefreshIntervalSeconds   = getInt(toml, "netzwerk.marketRefreshIntervalSeconds",   getInt(toml, "marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds));
             c.merchantRefreshIntervalSeconds = getInt(toml, "netzwerk.merchantRefreshIntervalSeconds", getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds));
@@ -108,6 +109,7 @@ public final class ConfigManager {
             toml.set("features.enableCommandShortforms",  c.enableCommandShortforms);
             toml.set("features.enableAnvilNormalization", c.enableAnvilNormalization);
             toml.set("features.enableDiscordRpc",         c.enableDiscordRpc);
+            toml.set("features.discordApplicationId",     c.discordApplicationId);
             // ── [netzwerk] ────────────────────────────────────────────────────────────
             toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-UI & Proxy");
             toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
