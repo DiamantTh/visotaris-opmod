@@ -157,9 +157,13 @@ subprojects {
         // ${version} in fabric.mod.json ersetzen
         processResources {
             inputs.property 'version', project.version
+            inputs.property 'discordApplicationId', rootProject.findProperty('discord_application_id') ?: ''
             filteringCharset 'UTF-8'
             filesMatching('fabric.mod.json') {
                 expand version: project.version
+            }
+            filesMatching('visotaris_opmod.properties') {
+                expand discordApplicationId: rootProject.findProperty('discord_application_id') ?: ''
             }
         }
     }

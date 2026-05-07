@@ -6,8 +6,11 @@ import okhttp3.Request;
 import systems.diath.visotaris_opmod.config.VisotarisConfig;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -18,6 +21,7 @@ public final class VisotarisConst {
 
     public static final String MOD_ID   = "visotaris_opmod";
     public static final String MOD_NAME = "Visotaris OPMod";
+    public static final String DISCORD_APPLICATION_ID = loadDiscordApplicationId();
 
     /**
      * Baut den HTTP User-Agent-String.
@@ -80,6 +84,18 @@ public final class VisotarisConst {
     public static File getCacheDir(String subdir) {
         return FabricLoader.getInstance().getGameDir()
             .resolve("cache").resolve("visotaris_opmod").resolve(subdir).toFile();
+    }
+
+    private static String loadDiscordApplicationId() {
+        try (InputStream in = VisotarisConst.class.getClassLoader()
+                .getResourceAsStream("visotaris_opmod.properties")) {
+            if (in == null) return "";
+            Properties props = new Properties();
+            props.load(in);
+            return props.getProperty("discordApplicationId", "").strip();
+        } catch (IOException e) {
+            return "";
+        }
     }
 
     private VisotarisConst() {}

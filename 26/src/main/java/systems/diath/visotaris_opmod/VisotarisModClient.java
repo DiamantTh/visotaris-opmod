@@ -75,7 +75,11 @@ public class VisotarisModClient implements ClientModInitializer {
         inventoryValuationService = new InventoryValuationService(marketCache, shardCache, configManager);
         jobTrackerService         = new JobTrackerService(configManager);
         pendingConfirmationService = new PendingConfirmationService(configManager);
-        discordPresenceService     = new DiscordPresenceService(configManager);
+        discordPresenceService     = new DiscordPresenceService(
+            configManager,
+            jobTrackerService,
+            DiscordPresenceService.PresenceMode.ADVANCED
+        );
         commandRewriteService      = new CommandRewriteService(configManager);
         keybindService             = new KeybindService(configManager, marketSyncService, merchantSyncService);
         // 3. Hintergrundfetcher starten
