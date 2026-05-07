@@ -1,8 +1,8 @@
 package systems.diath.visotaris_opmod.services;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.ItemStack;
 import systems.diath.visotaris_opmod.VisotarisLogger;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.PendingAction;
@@ -36,13 +36,13 @@ public final class PendingConfirmationService {
      * @return {@code false} wenn bereits eine andere Aktion aussteht.
      */
     public boolean queue(PendingAction.Type type, String command, String text) {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         var player = mc.player;
         if (player == null) return false;
 
-        ItemStack held = player.getMainHandStack();
+        ItemStack held = player.getMainHandItem();
         String fingerprint = makeFingerprint(held);
-        int slot = player.getInventory().selectedSlot;
+        int slot = player.getInventory().selected;
 
         PendingAction action = new PendingAction(
             type, command, text, fingerprint, slot, DEFAULT_TIMEOUT_MS
@@ -62,10 +62,10 @@ public final class PendingConfirmationService {
         if (!validate(action)) return false;
 
         // Befehl an den Server senden
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         var player = mc.player;
         if (player != null) {
-            player.networkHandler.sendChatCommand(action.getCommand());
+            player.connection.sendCommand(action.getCommand());
         }
         return true;
     }
@@ -133,18 +133,18 @@ public final class PendingConfirmationService {
             VisotarisLogger.debug("PendingAction abgelaufen.");
             return false;
         }
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         var player = mc.player;
         if (player == null) return false;
 
-        int currentSlot = player.getInventory().selectedSlot;
+        int currentSlot = player.getInventory().selected;
         if (currentSlot != action.getSlot()) {
             VisotarisLogger.debug("PendingAction ungültig: Slot gewechselt ({} → {}).",
                 action.getSlot(), currentSlot);
             return false;
         }
 
-        String currentFingerprint = makeFingerprint(player.getMainHandStack());
+        String currentFingerprint = makeFingerprint(player.getMainHandItem());
         if (!currentFingerprint.equals(action.getItemFingerprint())) {
             VisotarisLogger.debug("PendingAction ungültig: Item gewechselt.");
             return false;
@@ -159,8 +159,8 @@ public final class PendingConfirmationService {
     private static String makeFingerprint(ItemStack stack) {
         if (stack.isEmpty()) return "empty";
         // hasCustomName() wurde in 1.21.x durch Data-Components ersetzt
-        String name = stack.contains(DataComponentTypes.CUSTOM_NAME)
-            ? stack.getName().getString() : "";
+        String name = stack.has(DataComponents.CUSTOM_NAME)
+            ? stack.getHoverName().getString() : "";
         return stack.getItem() + ":" + name;
     }
 }

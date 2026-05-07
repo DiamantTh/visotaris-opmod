@@ -10,12 +10,13 @@ import io.ktor.server.engine.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import net.minecraft.client.MinecraftClient
-import net.minecraft.util.Identifier
+import net.minecraft.client.Minecraft
+import net.minecraft.server.packs.resources.ResourceManager
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
+import java.io.InputStream
 
 /**
  * Eingebetteter HTTP-Server für das Visotaris Web-UI.
@@ -134,7 +135,7 @@ class WebServer(
                     .takeIf { !it.isNullOrBlank() }
                     ?: run { call.respond(HttpStatusCode.BadRequest); return@get }
 
-                val rm = MinecraftClient.getInstance()?.resourceManager
+                val rm = Minecraft.getInstance()?.resourceManager
                     ?: run { call.respond(HttpStatusCode.ServiceUnavailable); return@get }
 
                 val bytes = loadItemIconBytes(rm, key)
@@ -153,18 +154,18 @@ class WebServer(
      *  3. models/item/{key}.json → Textur-Referenz auflösen (folgt parent bis Tiefe 3)
      *  4. models/block/{key}.json → gleiches Verfahren
      */
-    private fun loadItemIconBytes(rm: net.minecraft.resource.ResourceManager, key: String): ByteArray? {
+    private fun loadItemIconBytes(rm: ResourceManager, key: String): ByteArray? {
         for (prefix in listOf("item", "block")) {
             runCatching {
-                return rm.open(Identifier.of("minecraft", "textures/$prefix/$key.png")).use { it.readBytes() }
+                return openResource(rm, "minecraft", "textures/$prefix/$key.png").use { it.readBytes() }
             }
         }
         for (modelType in listOf("item", "block")) {
             runCatching {
-                val model = rm.open(Identifier.of("minecraft", "models/$modelType/$key.json"))
+                val model = openResource(rm, "minecraft", "models/$modelType/$key.json")
                     .use { JsonParser.parseReader(it.reader()).asJsonObject }
                 val texPath = resolveTextureInModel(rm, model, 0) ?: return@runCatching
-                return rm.open(Identifier.of("minecraft", "textures/$texPath.png")).use { it.readBytes() }
+                return openResource(rm, "minecraft", "textures/$texPath.png").use { it.readBytes() }
             }
         }
         return null
@@ -174,7 +175,7 @@ class WebServer(
      *  Folgt bei Bedarf dem parent-Feld rekursiv (max. Tiefe 3).
      */
     private fun resolveTextureInModel(
-        rm: net.minecraft.resource.ResourceManager,
+        rm: ResourceManager,
         model: JsonObject,
         depth: Int
     ): String? {
@@ -192,10 +193,24 @@ class WebServer(
         val parent = model.get("parent")?.asString ?: return null
         val parentPath = if (parent.contains(":")) parent.substringAfter(":") else parent
         return runCatching {
-            val parentModel = rm.open(Identifier.of("minecraft", "models/$parentPath.json"))
+            val parentModel = openResource(rm, "minecraft", "models/$parentPath.json")
                 .use { JsonParser.parseReader(it.reader()).asJsonObject }
             resolveTextureInModel(rm, parentModel, depth + 1)
         }.getOrNull()
+    }
+
+    private fun openResource(rm: ResourceManager, namespace: String, path: String): InputStream {
+        val id = createResourceId(namespace, path)
+        val open = rm.javaClass.methods.firstOrNull { it.name == "open" && it.parameterCount == 1 }
+            ?: error("ResourceManager.open(ResourceLocation) nicht gefunden")
+        return open.invoke(rm, id) as InputStream
+    }
+
+    private fun createResourceId(namespace: String, path: String): Any {
+        val idClass = runCatching { Class.forName("net.minecraft.resources.Identifier") }
+            .getOrElse { Class.forName("net.minecraft.resources.ResourceLocation") }
+        return idClass.getMethod("fromNamespaceAndPath", String::class.java, String::class.java)
+            .invoke(null, namespace, path)
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {

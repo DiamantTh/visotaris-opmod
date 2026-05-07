@@ -3,7 +3,7 @@ package systems.diath.visotaris_opmod.services;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import systems.diath.visotaris_opmod.VisotarisConst;
 import systems.diath.visotaris_opmod.VisotarisLogger;
 import systems.diath.visotaris_opmod.config.ConfigManager;
@@ -82,7 +82,7 @@ public final class DiscordPresenceService {
             return;
         }
         sessionStartEpochSeconds = System.currentTimeMillis() / 1000L;
-        publishCurrentPresence(appId, MinecraftClient.getInstance(), true);
+        publishCurrentPresence(appId, Minecraft.getInstance(), true);
     }
 
     private void onDisconnect() {
@@ -99,7 +99,7 @@ public final class DiscordPresenceService {
         executor.shutdown();
     }
 
-    private void onTick(MinecraftClient minecraft) {
+    private void onTick(Minecraft minecraft) {
         VisotarisConfig cfg = config.getConfig();
         if (!cfg.enableDiscordRpc) {
             deactivateIfNeeded();
@@ -121,7 +121,7 @@ public final class DiscordPresenceService {
         publishCurrentPresence(appId, minecraft, false);
     }
 
-    private void publishCurrentPresence(String applicationId, MinecraftClient minecraft, boolean force) {
+    private void publishCurrentPresence(String applicationId, Minecraft minecraft, boolean force) {
         String activityJson = isAdvanced()
             ? advancedActivityJson(minecraft)
             : simpleActivityJson();
@@ -206,7 +206,7 @@ public final class DiscordPresenceService {
             + "}";
     }
 
-    private String advancedActivityJson(MinecraftClient minecraft) {
+    private String advancedActivityJson(Minecraft minecraft) {
         PresenceText text = buildAdvancedText(minecraft);
         return "{"
             + "\"details\":" + DiscordIpcClient.quote(text.details()) + ","
@@ -221,7 +221,7 @@ public final class DiscordPresenceService {
             + "}";
     }
 
-    private PresenceText buildAdvancedText(MinecraftClient minecraft) {
+    private PresenceText buildAdvancedText(Minecraft minecraft) {
         VisotarisConfig cfg = config.getConfig();
         if (cfg.observerModeOnly) {
             return new PresenceText(VisotarisConst.MOD_NAME, "Observer-Modus", "observer", "Observer");
@@ -240,20 +240,20 @@ public final class DiscordPresenceService {
         return new PresenceText(VisotarisConst.MOD_NAME, location, "online", "Online");
     }
 
-    private static String locationText(MinecraftClient minecraft) {
+    private static String locationText(Minecraft minecraft) {
         if (minecraft == null) return "Im Client";
-        var server = minecraft.getCurrentServerEntry();
+        var server = minecraft.getCurrentServer();
         if (server != null) {
-            String label = firstNonBlank(server.name, server.address, "Multiplayer");
-            if (containsIgnoreCase(server.address, "opsucht") || containsIgnoreCase(server.name, "opsucht")) {
+            String label = firstNonBlank(server.name, server.ip, "Multiplayer");
+            if (containsIgnoreCase(server.ip, "opsucht") || containsIgnoreCase(server.name, "opsucht")) {
                 return "Auf OPSUCHT";
             }
             return "Multiplayer: " + limit(label, 40);
         }
-        if (minecraft.isInSingleplayer()) {
+        if (minecraft.isSingleplayer()) {
             return "Singleplayer";
         }
-        if (minecraft.world == null) {
+        if (minecraft.level == null) {
             return "Im Menü";
         }
         return "Ingame";

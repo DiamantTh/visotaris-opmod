@@ -1,10 +1,10 @@
 package systems.diath.visotaris_opmod.services;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.CustomModelDataComponent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomModelData;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
@@ -40,7 +40,7 @@ public final class TooltipValueService {
      * Hängt Preis-Infos an die gegebene Tooltip-Liste.
      * Wird direkt im ItemTooltipCallback auf dem Client-Thread aufgerufen.
      */
-    public void appendTooltips(ItemStack stack, List<Text> lines) {
+    public void appendTooltips(ItemStack stack, List<Component> lines) {
         var cfg = config.getConfig();
         if (!cfg.ingameFeaturesEnabled()) return;
         if (!cfg.showMarketTooltips) return;
@@ -52,15 +52,15 @@ public final class TooltipValueService {
         Optional<MarketPrice> price = marketCache.get(baseKey);
         price.ifPresent(p -> {
             String localName = ItemNameResolver.resolve(baseKey);
-            lines.add(Text.literal("§8[Visotaris] §7" + localName));
-            if (p.getBuy()  > 0) lines.add(Text.literal("§eKaufpreis:      §f" + formatMoney(p.getBuy())));
-            if (p.getSell() > 0) lines.add(Text.literal("§eVerkaufspreis:  §f" + formatMoney(p.getSell())));
+            lines.add(Component.literal("§8[Visotaris] §7" + localName));
+            if (p.getBuy()  > 0) lines.add(Component.literal("§eKaufpreis:      §f" + formatMoney(p.getBuy())));
+            if (p.getSell() > 0) lines.add(Component.literal("§eVerkaufspreis:  §f" + formatMoney(p.getSell())));
         });
 
         // Shardkurs: erst einfaches Lookup, dann mit custom_model_data
         Optional<ShardRate> shard = findShard(stack, baseKey);
         shard.ifPresent(s ->
-            lines.add(Text.literal("§bShardkurs: §f" + s.getExchangeRate() + " OPS"))
+            lines.add(Component.literal("§bShardkurs: §f" + s.getExchangeRate() + " OPS"))
         );
     }
 
@@ -71,7 +71,7 @@ public final class TooltipValueService {
      * z.B. {@code minecraft:acacia_leaves} → {@code acacia_leaves}
      */
     private static String resolveBaseKey(ItemStack stack) {
-        return Registries.ITEM.getId(stack.getItem()).getPath();
+        return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
     }
 
     /**
@@ -82,7 +82,7 @@ public final class TooltipValueService {
      *
      * Komplexe OPSUCHT-Items (Gräbergemisch, Holzbündel) sind paper-Items mit
      * custom_model_data. Ab 1.21.4 liegt der CMD-Wert als floats().get(0) im
-     * CustomModelDataComponent. Daraus wird "paper#626" gebildet, was dem Key
+     * CustomModelData. Daraus wird "paper#626" gebildet, was dem Key
      * im ShardCache (aus MerchantApiClient.normalizeSource) entspricht.
      */
     private Optional<ShardRate> findShard(ItemStack stack, String baseKey) {
@@ -91,7 +91,7 @@ public final class TooltipValueService {
         if (direct.isPresent()) return direct;
 
         // CMD-basiertes Lookup für OPSUCHT-Paper-Items (Gräbergemisch = paper#626 etc.)
-        CustomModelDataComponent cmd = stack.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+        CustomModelData cmd = stack.get(DataComponents.CUSTOM_MODEL_DATA);
         if (cmd != null && !cmd.floats().isEmpty()) {
             int cmdValue = (int) cmd.floats().get(0).floatValue();
             String cmdKey = baseKey + "#" + cmdValue;

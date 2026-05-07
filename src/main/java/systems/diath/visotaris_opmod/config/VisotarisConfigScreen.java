@@ -1,10 +1,10 @@
 package systems.diath.visotaris_opmod.config;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ConfirmScreen;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 
 import java.util.ArrayList;
@@ -17,7 +17,7 @@ import java.util.function.Consumer;
  * Zweispaltig-Layout für boolsche Optionen; Cycling-Buttons für Intervall-Werte.
  * Der Content-Bereich ist scrollbar (Mausrad). Clip via Scissor.
  * Kompatibel mit MC 1.21.4 (double/int Events) und 1.21.11 (Click-basierte Events):
- * Alle Buttons werden per addDrawableChild registriert – das MC-eigene Event-Routing
+ * Alle Buttons werden per addRenderableWidget registriert – das MC-eigene Event-Routing
  * nutzt die versionsrichtige Signatur. visible=false blockiert Off-Screen-Buttons.
  *
  * Speichern → configManager.save(); Abbrechen → configManager.load() (Disk-Stand).
@@ -57,8 +57,8 @@ public final class VisotarisConfigScreen extends Screen {
     private final ConfigManager   configManager;
     private final VisotarisConfig cfg;
 
-    // Content-Buttons (addDrawableChild für natives Event-Routing; sichtbar nur wenn im Viewport)
-    private final List<ButtonWidget> contentButtons = new ArrayList<>();
+    // Content-Buttons (addRenderableWidget für natives Event-Routing; sichtbar nur wenn im Viewport)
+    private final List<Button> contentButtons = new ArrayList<>();
     private final List<Integer>      baseYList      = new ArrayList<>();
 
     // Kategorie-Label-Positionen (werden in render() innerhalb Scissor gezeichnet)
@@ -74,7 +74,7 @@ public final class VisotarisConfigScreen extends Screen {
     private long   refreshStatusMs = 0L;
 
     public VisotarisConfigScreen(Screen parent) {
-        super(Text.literal("Visotaris \u2013 Einstellungen"));
+        super(Component.literal("Visotaris \u2013 Einstellungen"));
         this.parent        = parent;
         this.configManager = VisotarisModClient.getInstance().getConfigManager();
         this.cfg           = configManager.getConfig();
@@ -127,8 +127,8 @@ public final class VisotarisConfigScreen extends Screen {
         addLabel("Features", y);                             y += CAT_H + CAT_GAP;
         addToggle(lx, y, "Job-Tracker",           cfg.enableJobTracker,         v -> cfg.enableJobTracker = v);
         addToggle(rx, y, "Command-Kurzformen",    cfg.enableCommandShortforms,  v -> cfg.enableCommandShortforms = v,
-                Text.literal("\u00a76\u26a0 Kurzformen aktivieren?"),
-                Text.literal("Betr\u00e4ge werden automatisch umgewandelt (1k\u21921000).\nFalsche Eingaben k\u00f6nnen fehlerhafte Befehle ausl\u00f6sen!"));
+                Component.literal("\u00a76\u26a0 Kurzformen aktivieren?"),
+                Component.literal("Betr\u00e4ge werden automatisch umgewandelt (1k\u21921000).\nFalsche Eingaben k\u00f6nnen fehlerhafte Befehle ausl\u00f6sen!"));
         y += BTN_H + BTN_GAP;
         addToggle(lx, y, "Amboss-Normalisierung", cfg.enableAnvilNormalization, v -> cfg.enableAnvilNormalization = v);
         addToggle(rx, y, "Discord Rich Presence", cfg.enableDiscordRpc,         v -> cfg.enableDiscordRpc = v);
@@ -139,15 +139,15 @@ public final class VisotarisConfigScreen extends Screen {
         addCycling(lx, y, "Markt-Refresh",    cfg.marketRefreshIntervalSeconds,    v -> cfg.marketRefreshIntervalSeconds = v);
         addCycling(rx, y, "Merchant-Refresh", cfg.merchantRefreshIntervalSeconds,  v -> cfg.merchantRefreshIntervalSeconds = v);
         y += BTN_H + BTN_GAP + 2;
-        addContent(ButtonWidget.builder(
-                Text.literal("\u27f3 API jetzt abrufen"),
+        addContent(Button.builder(
+                Component.literal("\u27f3 API jetzt abrufen"),
                 b -> onManualRefresh(b)
-        ).dimensions(cx - fw / 2, 0, fw, BTN_H).build(), y);
+        ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
         y += BTN_H + BTN_GAP + 2;
-        addContent(ButtonWidget.builder(
-                Text.literal("Netzwerk-Einstellungen\u2026"),
-                b -> this.client.setScreen(new NetworkSettingsScreen(this))
-        ).dimensions(cx - fw / 2, 0, fw, BTN_H).build(), y);
+        addContent(Button.builder(
+                Component.literal("Netzwerk-Einstellungen\u2026"),
+                b -> this.minecraft.setScreen(new NetworkSettingsScreen(this))
+        ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
         y += BTN_H + BTN_GAP;
 
         // ── Scroll-Bereich berechnen ─────────────────────────────────────────
@@ -157,15 +157,15 @@ public final class VisotarisConfigScreen extends Screen {
 
         // ── Fixierte Bottom-Buttons ──────────────────────────────────────────
         int by = this.height - FOOTER_H + 8;
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("Speichern & Schlie\u00dfen"),
-                b -> { configManager.save(); this.client.setScreen(parent); }
-        ).dimensions(cx - BTN_W - COL_GAP / 2, by, BTN_W, 20).build());
+        this.addRenderableWidget(Button.builder(
+                Component.literal("Speichern & Schlie\u00dfen"),
+                b -> { configManager.save(); this.minecraft.setScreen(parent); }
+        ).bounds(cx - BTN_W - COL_GAP / 2, by, BTN_W, 20).build());
 
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("Abbrechen"),
-                b -> { configManager.load(); this.client.setScreen(parent); }
-        ).dimensions(cx + COL_GAP / 2, by, BTN_W, 20).build());
+        this.addRenderableWidget(Button.builder(
+                Component.literal("Abbrechen"),
+                b -> { configManager.load(); this.minecraft.setScreen(parent); }
+        ).bounds(cx + COL_GAP / 2, by, BTN_W, 20).build());
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -173,9 +173,9 @@ public final class VisotarisConfigScreen extends Screen {
     // ════════════════════════════════════════════════════════════════════════
 
 @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         // 1. Content-Buttons verstecken damit super.render() sie nicht ungeschnitten zeichnet
-        for (ButtonWidget btn : contentButtons) btn.visible = false;
+        for (Button btn : contentButtons) btn.visible = false;
 
         // 2. Minecraft-Standardhintergrund + fixierte Bottom-Buttons
         super.render(ctx, mouseX, mouseY, delta);
@@ -199,7 +199,7 @@ public final class VisotarisConfigScreen extends Screen {
             if (absY + CAT_H > cTop && absY < cBottom)
                 renderCategoryLabel(ctx, labelTexts.get(i), absY);
         }
-        for (ButtonWidget btn : contentButtons) {
+        for (Button btn : contentButtons) {
             if (btn.visible) btn.render(ctx, mouseX, mouseY, delta);
         }
 
@@ -208,10 +208,10 @@ public final class VisotarisConfigScreen extends Screen {
             if (System.currentTimeMillis() - refreshStatusMs > 4_000L) {
                 refreshStatus = null;
             } else {
-                int tw = this.textRenderer.getWidth(refreshStatus);
-                ctx.drawText(this.textRenderer, refreshStatus,
+                int tw = this.font.width(refreshStatus);
+                ctx.drawString(this.font, refreshStatus,
                         (this.width - tw) / 2,
-                        cBottom - this.textRenderer.fontHeight - 6,
+                        cBottom - this.font.lineHeight - 6,
                         0xFF39FF14, true);
             }
         }
@@ -225,7 +225,7 @@ public final class VisotarisConfigScreen extends Screen {
         renderScrollbar(ctx);
     }
 
-    private void renderScrollbar(DrawContext ctx) {
+    private void renderScrollbar(GuiGraphics ctx) {
         if (maxScroll <= 0) return;
         int cTop = HEADER_H;
         int cH   = this.height - HEADER_H - FOOTER_H;
@@ -266,18 +266,18 @@ public final class VisotarisConfigScreen extends Screen {
         int cTop    = HEADER_H;
         int cBottom = this.height - FOOTER_H;
         for (int i = 0; i < contentButtons.size(); i++) {
-            ButtonWidget btn  = contentButtons.get(i);
+            Button btn  = contentButtons.get(i);
             int          absY = cTop + baseYList.get(i) - scrollOffset;
             btn.setY(absY);
             btn.visible = (absY + BTN_H > cTop) && (absY < cBottom);
         }
     }
 
-    /** Fügt einen Content-Button zu drawables/children (via addDrawableChild) hinzu. */
-    private void addContent(ButtonWidget btn, int baseY) {
+    /** Fügt einen Content-Button zu drawables/children (via addRenderableWidget) hinzu. */
+    private void addContent(Button btn, int baseY) {
         contentButtons.add(btn);
         baseYList.add(baseY);
-        this.addDrawableChild(btn);
+        this.addRenderableWidget(btn);
     }
 
     /** Registriert eine Kategorie-Überschrift (wird in render() gezeichnet). */
@@ -287,12 +287,12 @@ public final class VisotarisConfigScreen extends Screen {
     }
 
     /** Zeichnet eine Kategorie-Überschrift mit Trenn-Linien links/rechts. */
-    private void renderCategoryLabel(DrawContext ctx, String text, int absY) {
+    private void renderCategoryLabel(GuiGraphics ctx, String text, int absY) {
         int cx   = this.width / 2;
-        int tw   = this.textRenderer.getWidth(text);
-        int ty   = absY + (CAT_H - this.textRenderer.fontHeight) / 2;
-        ctx.drawCenteredTextWithShadow(this.textRenderer, Text.literal(text), cx, ty, 0xFFEEAA33);
-        int lineY = ty + this.textRenderer.fontHeight / 2;
+        int tw   = this.font.width(text);
+        int ty   = absY + (CAT_H - this.font.lineHeight) / 2;
+        ctx.drawCenteredString(this.font, Component.literal(text), cx, ty, 0xFFEEAA33);
+        int lineY = ty + this.font.lineHeight / 2;
         ctx.fill(cx - 100,        lineY, cx - tw / 2 - 5, lineY + 1, 0x88EEAA33);
         ctx.fill(cx + tw / 2 + 5, lineY, cx + 100,        lineY + 1, 0x88EEAA33);
     }
@@ -304,20 +304,20 @@ public final class VisotarisConfigScreen extends Screen {
     /** Volle-Breite-Toggle für den Observer-Modus mit Bestätigungs-Dialog beim Aktivieren. */
     private void addObserverToggle(int x, int baseY, int width) {
         boolean[] state = {cfg.observerModeOnly};
-        ButtonWidget btn = ButtonWidget.builder(
+        Button btn = Button.builder(
                 makeObserverText(state[0]),
                 b -> {
                     boolean enabling = !state[0];
                     if (enabling) {
-                        this.client.setScreen(new ConfirmScreen(
+                        this.minecraft.setScreen(new ConfirmScreen(
                                 confirmed -> {
                                     if (confirmed) {
                                         cfg.observerModeOnly = true;
                                     }
-                                    this.client.setScreen(VisotarisConfigScreen.this);
+                                    this.minecraft.setScreen(VisotarisConfigScreen.this);
                                 },
-                                Text.literal("\u00a76\u26a0 Observer-Modus aktivieren?"),
-                                Text.literal("Deaktiviert ALLE Ingame-Eingriffe (Tooltips, HUD, Container-Overlay,\nSchutzlogik, Job-Tracker, Command-Kurzformen, Discord RPC).\nNur Marktdaten werden weiter abgerufen.")
+                                Component.literal("\u00a76\u26a0 Observer-Modus aktivieren?"),
+                                Component.literal("Deaktiviert ALLE Ingame-Eingriffe (Tooltips, HUD, Container-Overlay,\nSchutzlogik, Job-Tracker, Command-Kurzformen, Discord RPC).\nNur Marktdaten werden weiter abgerufen.")
                         ));
                     } else {
                         state[0] = false;
@@ -325,27 +325,27 @@ public final class VisotarisConfigScreen extends Screen {
                         b.setMessage(makeObserverText(false));
                     }
                 }
-        ).dimensions(x, 0, width, BTN_H).build();
+        ).bounds(x, 0, width, BTN_H).build();
         addContent(btn, baseY);
     }
 
-    private static Text makeObserverText(boolean v) {
-        return Text.literal("Observer-Modus (nur Datenabruf): "
+    private static Component makeObserverText(boolean v) {
+        return Component.literal("Observer-Modus (nur Datenabruf): "
                 + (v ? "\u00a7aAN" : "\u00a7cAUS"));
     }
 
     private void addToggle(int x, int baseY, String label, boolean initial, Consumer<Boolean> setter,
-                           Text warnTitle, Text warnMsg) {
+                           Component warnTitle, Component warnMsg) {
         boolean[] state = {initial};
-        ButtonWidget btn = ButtonWidget.builder(
+        Button btn = Button.builder(
                 makeToggleText(label, initial),
                 b -> {
                     boolean enabling = !state[0];
                     if (enabling && warnTitle != null) {
-                        this.client.setScreen(new ConfirmScreen(
+                        this.minecraft.setScreen(new ConfirmScreen(
                                 confirmed -> {
                                     if (confirmed) setter.accept(true);
-                                    this.client.setScreen(VisotarisConfigScreen.this);
+                                    this.minecraft.setScreen(VisotarisConfigScreen.this);
                                 },
                                 warnTitle, warnMsg
                         ));
@@ -355,7 +355,7 @@ public final class VisotarisConfigScreen extends Screen {
                         b.setMessage(makeToggleText(label, enabling));
                     }
                 }
-        ).dimensions(x, 0, BTN_W, BTN_H).build();
+        ).bounds(x, 0, BTN_W, BTN_H).build();
         addContent(btn, baseY);
     }
 
@@ -365,29 +365,29 @@ public final class VisotarisConfigScreen extends Screen {
             if (REFRESH_PRESETS[i] == current) { initIdx = i; break; }
         }
         int[] idx = {initIdx};
-        ButtonWidget btn = ButtonWidget.builder(
-                Text.literal(label + ": " + fmtMin(REFRESH_PRESETS[initIdx])),
+        Button btn = Button.builder(
+                Component.literal(label + ": " + fmtMin(REFRESH_PRESETS[initIdx])),
                 b -> {
                     idx[0] = (idx[0] + 1) % REFRESH_PRESETS.length;
                     setter.accept(REFRESH_PRESETS[idx[0]]);
-                    b.setMessage(Text.literal(label + ": " + fmtMin(REFRESH_PRESETS[idx[0]])));
+                    b.setMessage(Component.literal(label + ": " + fmtMin(REFRESH_PRESETS[idx[0]])));
                 }
-        ).dimensions(x, 0, BTN_W, BTN_H).build();
+        ).bounds(x, 0, BTN_W, BTN_H).build();
         addContent(btn, baseY);
     }
 
     private static String fmtMin(int seconds) { return (seconds / 60) + "min"; }
 
-    private static Text makeToggleText(String label, boolean value) {
-        return Text.literal(label + ": " + (value ? "\u00a7aAN" : "\u00a7cAUS"));
+    private static Component makeToggleText(String label, boolean value) {
+        return Component.literal(label + ": " + (value ? "\u00a7aAN" : "\u00a7cAUS"));
     }
 
     /**
      * Dreistufiger Gradient: Dunkelblau → Weiß → Neongrün
      */
-    private void renderGradientTitle(DrawContext ctx) {
+    private void renderGradientTitle(GuiGraphics ctx) {
         String raw = "Visotaris \u2013 Einstellungen";
-        int totalW = this.textRenderer.getWidth(raw);
+        int totalW = this.font.width(raw);
         int x = this.width / 2 - totalW / 2;
         int y = 8;
         int n = raw.length();
@@ -409,15 +409,15 @@ public final class VisotarisConfigScreen extends Screen {
             }
             int color = 0xFF000000 | (r << 16) | (g << 8) | b;
             String ch = String.valueOf(raw.charAt(i));
-            ctx.drawText(this.textRenderer, ch, x, y, color, true);
-            x += this.textRenderer.getWidth(ch);
+            ctx.drawString(this.font, ch, x, y, color, true);
+            x += this.font.width(ch);
         }
     }
 
     /**
      * 2-px-Trennlinie: Dunkelblau links → Weiß Mitte → Neongrün rechts.
      */
-    private void renderGradientSeparator(DrawContext ctx) {
+    private void renderGradientSeparator(GuiGraphics ctx) {
         int x1   = this.width / 2 - 110;
         int x2   = this.width / 2 + 110;
         int span = x2 - x1;
@@ -441,28 +441,28 @@ public final class VisotarisConfigScreen extends Screen {
     }
 
     /** Manueller Refresh-Button: lädt API sofort und zeigt Status-Feedback. */
-    private void onManualRefresh(ButtonWidget btn) {
+    private void onManualRefresh(Button btn) {
         VisotarisModClient mod = VisotarisModClient.getInstance();
         if (mod == null) return;
         btn.active = false;
-        btn.setMessage(Text.literal("⏳ Lade..."));
+        btn.setMessage(Component.literal("⏳ Lade..."));
         Thread.ofVirtual().name("visotaris-manual-refresh").start(() -> {
             try {
                 mod.getMarketSyncService().refresh();
                 mod.getMerchantSyncService().refresh();
                 Thread.sleep(800);
-                net.minecraft.client.MinecraftClient.getInstance().execute(() -> {
+                net.minecraft.client.Minecraft.getInstance().execute(() -> {
                     btn.active = true;
-                    btn.setMessage(Text.literal("⟳ API jetzt abrufen"));
+                    btn.setMessage(Component.literal("⟳ API jetzt abrufen"));
                     refreshStatus   = "§a✔ API-Daten aktualisiert";
                     refreshStatusMs = System.currentTimeMillis();
                 });
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
-                net.minecraft.client.MinecraftClient.getInstance().execute(() -> {
+                net.minecraft.client.Minecraft.getInstance().execute(() -> {
                     btn.active = true;
-                    btn.setMessage(Text.literal("⟳ API jetzt abrufen"));
+                    btn.setMessage(Component.literal("⟳ API jetzt abrufen"));
                     refreshStatus   = "§cFehler: " + e.getMessage();
                     refreshStatusMs = System.currentTimeMillis();
                 });

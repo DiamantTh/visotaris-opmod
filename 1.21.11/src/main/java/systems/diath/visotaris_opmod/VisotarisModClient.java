@@ -8,9 +8,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache;
@@ -102,13 +102,13 @@ public class VisotarisModClient implements ClientModInitializer {
             PendingConfirmationService.Intercepted iv = pendingConfirmationService.tryIntercept(command);
             if (iv == null) return true;
             String label = iv.type() == systems.diath.visotaris_opmod.model.PendingAction.Type.RENAME ? "Rename" : "Sign";
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.player != null) mc.player.sendMessage(Text.empty()
-                .append(Text.literal("§e[Visotaris] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
-                .append(Text.literal("§a§l[✓ Bestätigen]").styled(s ->
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null) mc.player.displayClientMessage(Component.empty()
+                .append(Component.literal("§e[Visotaris] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
+                .append(Component.literal("§a§l[✓ Bestätigen]").withStyle(s ->
                     s.withClickEvent(new ClickEvent.RunCommand(iv.confirmCmd()))))
-                .append(Text.literal("  "))
-                .append(Text.literal("§c§l[✗ Abbrechen]").styled(s ->
+                .append(Component.literal("  "))
+                .append(Component.literal("§c§l[✗ Abbrechen]").withStyle(s ->
                     s.withClickEvent(new ClickEvent.RunCommand(iv.cancelCmd())))), false);
             return false;
         });
@@ -145,7 +145,7 @@ public class VisotarisModClient implements ClientModInitializer {
             if (!cfg.enableOffhandBlocker) return;
             if (client.options == null) return;
             //noinspection StatementWithEmptyBody
-            while (client.options.swapHandsKey.wasPressed()) { /* blockiert */ }
+            while (client.options.keySwapOffhand.consumeClick()) { /* blockiert */ }
         });
 
         VisotarisLogger.info("{} v{} initialisiert (MC 1.21.11).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());

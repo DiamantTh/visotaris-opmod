@@ -4,8 +4,8 @@ import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 import systems.diath.visotaris_opmod.model.PendingAction;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
@@ -101,8 +101,8 @@ public final class VisotarisCommands {
             )
             .then(ClientCommandManager.literal("settings")
                 .executes(ctx -> {
-                    MinecraftClient mc = MinecraftClient.getInstance();
-                    mc.setScreen(new systems.diath.visotaris_opmod.config.VisotarisConfigScreen(mc.currentScreen));
+                    Minecraft mc = Minecraft.getInstance();
+                    mc.setScreen(new systems.diath.visotaris_opmod.config.VisotarisConfigScreen(mc.screen));
                     return 1;
                 })
             )
@@ -111,6 +111,6 @@ public final class VisotarisCommands {
 
     @SuppressWarnings("null")
     private static void send(FabricClientCommandSource source, String text) {
-        source.sendFeedback(Text.literal(text));
+        source.sendFeedback(Component.literal(text));
     }
 }

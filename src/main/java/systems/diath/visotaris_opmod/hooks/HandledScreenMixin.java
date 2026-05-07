@@ -2,15 +2,15 @@ package systems.diath.visotaris_opmod.hooks;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.PlayerScreenHandler;
-import net.minecraft.screen.ShulkerBoxScreenHandler;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.ShulkerBoxMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,21 +24,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Mixin in HandledScreen:
+ * Mixin in AbstractContainerScreen:
  *   - Container-Preis-Overlay  (Phase 2): zeigt Verkaufs-/Kaufwert aller Slots
  *   - Schnellzugriff-Buttons   (Phase 2): 3 OPSUCHT-Commands unterhalb des Hintergrunds
  */
 @Environment(EnvType.CLIENT)
-@Mixin(HandledScreen.class)
-public abstract class HandledScreenMixin<T extends ScreenHandler> {
+@Mixin(AbstractContainerScreen.class)
+public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
 
-    @Shadow protected int x;
-    @Shadow protected int y;
-    @Shadow protected int backgroundWidth;
-    @Shadow protected int backgroundHeight;
+    @Shadow protected int leftPos;
+    @Shadow protected int topPos;
+    @Shadow protected int imageWidth;
+    @Shadow protected int imageHeight;
 
-    /** Gibt den ScreenHandler des Screens zurück (Shadow zur Zielklasse). */
-    @Shadow public abstract T getScreenHandler();
+    /** Gibt den AbstractContainerMenu des Screens zurück (Shadow zur Zielklasse). */
+    @Shadow public abstract T getMenu();
 
 
     // ════════════════════════════════════════════════════════════════════════
@@ -59,10 +59,10 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
         VisotarisModClient mod = VisotarisModClient.getInstance();
         if (mod == null) return;
 
-        T handler = getScreenHandler();
-        boolean isContainer = handler instanceof GenericContainerScreenHandler
-                           || handler instanceof ShulkerBoxScreenHandler
-                           || handler instanceof PlayerScreenHandler;
+        T handler = getMenu();
+        boolean isContainer = handler instanceof ChestMenu
+                           || handler instanceof ShulkerBoxMenu
+                           || handler instanceof InventoryMenu;
         if (!isContainer) return;
 
         var cfg = mod.getConfigManager().getConfig();
@@ -79,16 +79,16 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
     // ════════════════════════════════════════════════════════════════════════
 
     @Inject(method = "render", at = @At("TAIL"))
-    private void onRender(DrawContext ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void onRender(GuiGraphics ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         VisotarisModClient mod = VisotarisModClient.getInstance();
         if (mod == null) return;
 
         // Nur auf Container-Screens (Kisten, Fässer, Shulker) aktivieren.
         // Crafting Table, Ofen, Amboss usw. bleiben unberührt.
-        T handler = getScreenHandler();
-        boolean isContainer = handler instanceof GenericContainerScreenHandler
-                           || handler instanceof ShulkerBoxScreenHandler
-                           || handler instanceof PlayerScreenHandler;
+        T handler = getMenu();
+        boolean isContainer = handler instanceof ChestMenu
+                           || handler instanceof ShulkerBoxMenu
+                           || handler instanceof InventoryMenu;
         if (!isContainer) return;
 
         var cfg = mod.getConfigManager().getConfig();
@@ -102,33 +102,33 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
     //  PRIVATE HELPERS
     // ════════════════════════════════════════════════════════════════════════
 
-    private void renderContainerOverlay(DrawContext ctx, VisotarisModClient mod) {
+    private void renderContainerOverlay(GuiGraphics ctx, VisotarisModClient mod) {
         // Alle Slot-Stacks sammeln
-        T handler = getScreenHandler();
+        T handler = getMenu();
         if (handler.slots == null) return;
         List<ItemStack> stacks = new ArrayList<>(handler.slots.size());
-        for (Slot slot : handler.slots) stacks.add(slot.getStack());
+        for (Slot slot : handler.slots) stacks.add(slot.getItem());
 
         InventoryValuation val = mod.getInventoryValuationService().evaluate(stacks);
         if (val.getSellTotal() <= 0 && val.getBuyTotal() <= 0) return;
 
-        // Text zusammenstellen
+        // Component zusammenstellen
         String line = buildValueLine(val);
 
         // Oberhlab des Screen-Hintergrunds in der Titelzeile rendern
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ctx.drawText(mc.textRenderer, line,
-            x + 4, y - mc.textRenderer.fontHeight - 2,
+        Minecraft mc = Minecraft.getInstance();
+        ctx.drawString(mc.font, line,
+            leftPos + 4, topPos - mc.font.lineHeight - 2,
             0xFFFFFFFF, true);
     }
 
-    private void renderQuickButtons(DrawContext ctx, int mouseX, int mouseY) {
+    private void renderQuickButtons(GuiGraphics ctx, int mouseX, int mouseY) {
         int total  = HandledScreenButtons.BTN_LABELS.length * HandledScreenButtons.BTN_W
                    + (HandledScreenButtons.BTN_LABELS.length - 1) * HandledScreenButtons.BTN_GAP;
-        int startX = x + (backgroundWidth - total) / 2;
-        int rowY   = y + backgroundHeight + 4;
+        int startX = leftPos + (imageWidth - total) / 2;
+        int rowY   = topPos + imageHeight + 4;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         for (int i = 0; i < HandledScreenButtons.BTN_LABELS.length; i++) {
             int bx = startX + i * (HandledScreenButtons.BTN_W + HandledScreenButtons.BTN_GAP);
 
@@ -147,10 +147,10 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
             ctx.fill(bx + HandledScreenButtons.BTN_W - 1, rowY,                      bx + HandledScreenButtons.BTN_W, rowY + HandledScreenButtons.BTN_H,     border); // rechts
 
             // Label mittig
-            int tw = mc.textRenderer.getWidth(HandledScreenButtons.BTN_LABELS[i]);
+            int tw = mc.font.width(HandledScreenButtons.BTN_LABELS[i]);
             int tx = bx + (HandledScreenButtons.BTN_W - tw) / 2;
-            int ty = rowY + (HandledScreenButtons.BTN_H - mc.textRenderer.fontHeight) / 2;
-            ctx.drawText(mc.textRenderer, HandledScreenButtons.BTN_LABELS[i], tx, ty, 0xFFFFFFFF, false);
+            int ty = rowY + (HandledScreenButtons.BTN_H - mc.font.lineHeight) / 2;
+            ctx.drawString(mc.font, HandledScreenButtons.BTN_LABELS[i], tx, ty, 0xFFFFFFFF, false);
         }
     }
 
@@ -172,4 +172,3 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
         return String.format("%.0f", v);
     }
 }
-

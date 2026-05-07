@@ -25,8 +25,7 @@ dependencies {
     // Minecraft + Mappings
     //noinspection LoomDependencyNotation
     minecraft "com.mojang:minecraft:1.21.4"
-    //noinspection LoomDependencyNotation
-    mappings  "net.fabricmc:yarn:1.21.4+build.8:v2"
+    mappings loom.officialMojangMappings()
 
     // Fabric Loader + API
     //noinspection LoomDependencyNotation
@@ -106,7 +105,7 @@ sourceSets {
 // ── Shadow / Remap-JAR-Pipeline ───────────────────────────────────────────────
 // 1. jar      → quellprojektklassen, kein Classifier-Konflikt mit remapJar
 // 2. shadowJar → klassen + OkHttp/Okio (relociert), Basis für remapJar
-// 3. remapJar  → shadowJar-Ausgabe neu gemappt (Minecraft-Methoden → Yarn)
+// 3. remapJar  → shadowJar-Ausgabe neu gemappt (Minecraft-Methoden → official)
 jar {
     archiveClassifier = 'dev'
 }

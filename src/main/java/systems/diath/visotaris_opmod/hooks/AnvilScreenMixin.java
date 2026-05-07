@@ -2,8 +2,8 @@ package systems.diath.visotaris_opmod.hooks;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.gui.screen.ingame.AnvilScreen;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,11 +30,11 @@ public abstract class AnvilScreenMixin {
 
     /** Das Rename-Textfeld – ist direkt auf AnvilScreen gemappt. */
     @Shadow
-    private TextFieldWidget nameField;
+    private EditBox name;
 
     /**
      * Rekursionsschutz: verhindert Endlosschleife,
-     * wenn setText() wieder onRenamed() auslöst.
+     * wenn setValue() wieder onRenamed() auslöst.
      */
     private boolean visotaris$expanding = false;
 
@@ -45,12 +45,12 @@ public abstract class AnvilScreenMixin {
     );
 
     /**
-     * Injiziert vor der originalen AnvilScreen.onRenamed-Logik.
+     * Injiziert vor der originalen AnvilScreen.onNameChanged-Logik.
      * Prüft, ob der gesamte Textfeld-Inhalt eine Kurzform ist –
      * wenn ja, setzt es die voll ausgeschriebene Zahl.
      */
-    @Inject(method = "onRenamed", at = @At("HEAD"), cancellable = true)
-    private void visotaris$onRenamed(String text, CallbackInfo ci) {
+    @Inject(method = "onNameChanged", at = @At("HEAD"), cancellable = true)
+    private void visotaris$onNameChanged(String text, CallbackInfo ci) {
         if (visotaris$expanding) return;
 
         VisotarisModClient mod = VisotarisModClient.getInstance();
@@ -67,14 +67,14 @@ public abstract class AnvilScreenMixin {
 
         visotaris$expanding = true;
         try {
-            // setText() triggert erneut onRenamed – diesmal ohne Expansion
-            this.nameField.setText(expanded);
+            // setValue() triggert erneut onRenamed – diesmal ohne Expansion
+            this.name.setValue(expanded);
         } finally {
             visotaris$expanding = false;
         }
 
-        // Originalen Aufruf mit dem unerweiterten Text abbrechen –
-        // der setText()-Aufruf hat bereits den korrekten Wert propagiert.
+        // Originalen Aufruf mit dem unerweiterten Component abbrechen –
+        // der setValue()-Aufruf hat bereits den korrekten Wert propagiert.
         ci.cancel();
     }
 }

@@ -1,10 +1,9 @@
 package systems.diath.visotaris_opmod.util;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Language;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.locale.Language;
 
 /**
  * Übersetzt englische API-Item-Keys (z.B. {@code "acacia_leaves"}) in den
@@ -14,7 +13,7 @@ import net.minecraft.util.Language;
  * <ol>
  *   <li>API-Key → Minecraft-Registry-ID ({@code minecraft:acacia_leaves})</li>
  *   <li>Registry-Lookup → {@link Item}</li>
- *   <li>{@link Item#getTranslationKey()} → Übersetzungs-Key ({@code block.minecraft.acacia_leaves})</li>
+ *   <li>{@link Item#getDescriptionId()} → Übersetzungs-Key ({@code block.minecraft.acacia_leaves})</li>
  *   <li>{@link Language#getInstance()} → lokalisierter String in der aktiven Spielsprache</li>
  * </ol>
  *
@@ -49,8 +48,14 @@ public final class ItemNameResolver {
         }
 
         // minecraft-Namespace versuchen; bei Vanilla-Items immer korrekt
-        Identifier id = Identifier.of("minecraft", baseKey);
-        Item item = Registries.ITEM.get(id);
+        final String lookupKey = baseKey;
+        Item item = BuiltInRegistries.ITEM.stream()
+            .filter(candidate -> {
+                var id = BuiltInRegistries.ITEM.getKey(candidate);
+                return id != null && "minecraft".equals(id.getNamespace()) && lookupKey.equals(id.getPath());
+            })
+            .findFirst()
+            .orElse(Items.AIR);
 
         // Items.AIR ist der Fallback wenn nichts gefunden – in dem Fall den Key zurückgeben
         if (item == Items.AIR && !"air".equals(baseKey)) {
@@ -58,8 +63,8 @@ public final class ItemNameResolver {
         }
 
         Language lang = Language.getInstance();
-        String translationKey = item.getTranslationKey();
-        String localizedName  = lang.get(translationKey, null);
+        String translationKey = item.getDescriptionId();
+        String localizedName  = lang.getOrDefault(translationKey, null);
 
         // Wenn Language den Key nicht kennt, roh zurückgeben
         if (localizedName == null || localizedName.equals(translationKey)) {

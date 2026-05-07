@@ -2,9 +2,9 @@ package systems.diath.visotaris_opmod.ui;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.DeltaTracker;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.JobSnapshot;
 import systems.diath.visotaris_opmod.services.InventoryValuationService;
@@ -42,13 +42,13 @@ public final class HudOverlay {
     }
 
     /** Wird per HudRenderCallback.EVENT registriert. */
-    public void render(DrawContext ctx, RenderTickCounter tickCounter) {
+    public void render(GuiGraphics ctx, DeltaTracker tickCounter) {
         var cfg = config.getConfig();
         if (!cfg.ingameFeaturesEnabled()) return;
         if (!cfg.showHud) return;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.options.hudHidden) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.options.hideGui) return;
 
         renderJobInfo(ctx, mc);
         if (cfg.enableInventoryWarning) renderInventoryWarning(ctx, mc);
@@ -56,37 +56,37 @@ public final class HudOverlay {
 
     // ── Job-Info ────────────────────────────────────────────────────────────
 
-    private void renderJobInfo(DrawContext ctx, MinecraftClient mc) {
+    private void renderJobInfo(GuiGraphics ctx, Minecraft mc) {
         JobSnapshot snap = jobTracker.getSnapshot();
         if (snap.getJobName().isBlank()) return;
 
-        var font = mc.textRenderer;
+        var font = mc.font;
         int x = posX;
         int y = posY;
-        int lineH = font.fontHeight + 2;
+        int lineH = font.lineHeight + 2;
 
-        ctx.drawText(font, "§6" + snap.getJobName().toUpperCase(), x, y, COLOR_JOB, true);
+        ctx.drawString(font, "§6" + snap.getJobName().toUpperCase(), x, y, COLOR_JOB, true);
         y += lineH;
-        ctx.drawText(font,
+        ctx.drawString(font,
             "Level " + snap.getLevel() + "  §7(" + String.format("%.1f", snap.getPercent()) + "%)",
             x, y, COLOR_VALUE, true);
         y += lineH;
-        ctx.drawText(font, "XP/h: §f" + formatShort(snap.getXpPerHour()),  x, y, COLOR_LABEL, true);
+        ctx.drawString(font, "XP/h: §f" + formatShort(snap.getXpPerHour()),  x, y, COLOR_LABEL, true);
         y += lineH;
-        ctx.drawText(font, "$/h: §f"  + formatShort(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
+        ctx.drawString(font, "$/h: §f"  + formatShort(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
     }
 
     // ── Inventar-voll-Warnung ───────────────────────────────────────────────
 
-    private void renderInventoryWarning(DrawContext ctx, MinecraftClient mc) {
+    private void renderInventoryWarning(GuiGraphics ctx, Minecraft mc) {
         if (mc.player == null) return;
         var inv = mc.player.getInventory();
         // Slots 0–35: Haupt-Inventar + Hotbar
         for (int i = 0; i < 36; i++) {
-            if (inv.getStack(i).isEmpty()) return; // mindestens ein freier Slot → kein Alarm
+            if (inv.getItem(i).isEmpty()) return; // mindestens ein freier Slot → kein Alarm
         }
 
-        var font    = mc.textRenderer;
+        var font    = mc.font;
         String text = "§c§lINVENTAR VOLL";
 
         // Pulsierendes Alpha (0.5–1.0), ~1 Hz
@@ -94,12 +94,12 @@ public final class HudOverlay {
         int    alpha  = (int) (180 + 75 * pulse);   // 180–255
         int    color  = (alpha << 24) | 0x00FF4444; // rötlich
 
-        int tw = font.getWidth(text);
-        int x  = (mc.getWindow().getScaledWidth() - tw) / 2;
+        int tw = font.width(text);
+        int x  = (mc.getWindow().getGuiScaledWidth() - tw) / 2;
         // 2 Zeilen über dem Hotbar-Bereich (Hotbar ≈ 22 px vom unteren Rand)
-        int y  = mc.getWindow().getScaledHeight() - 22 - font.fontHeight * 2 - 4;
+        int y  = mc.getWindow().getGuiScaledHeight() - 22 - font.lineHeight * 2 - 4;
 
-        ctx.drawText(font, text, x, y, color, true);
+        ctx.drawString(font, text, x, y, color, true);
     }
 
     private static String formatShort(double value) {

@@ -2,9 +2,9 @@ package systems.diath.visotaris_opmod.hooks;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.screen.ScreenHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,13 +19,13 @@ import systems.diath.visotaris_opmod.util.HandledScreenButtons;
  * Verarbeitet Klicks auf die OPSUCHT-Schnellzugriff-Buttons.
  */
 @Environment(EnvType.CLIENT)
-@Mixin(HandledScreen.class)
-public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
+@Mixin(AbstractContainerScreen.class)
+public abstract class HandledScreenClickMixin<T extends AbstractContainerMenu> {
 
-    @Shadow protected int x;
-    @Shadow protected int y;
-    @Shadow protected int backgroundWidth;
-    @Shadow protected int backgroundHeight;
+    @Shadow protected int leftPos;
+    @Shadow protected int topPos;
+    @Shadow protected int imageWidth;
+    @Shadow protected int imageHeight;
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void onMouseClicked(double mouseX, double mouseY, int button,
@@ -43,18 +43,18 @@ public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
     private boolean handleButtonClick(double mouseX, double mouseY) {
         int total  = HandledScreenButtons.BTN_LABELS.length * HandledScreenButtons.BTN_W
                    + (HandledScreenButtons.BTN_LABELS.length - 1) * HandledScreenButtons.BTN_GAP;
-        int startX = x + (backgroundWidth - total) / 2;
-        int rowY   = y + backgroundHeight + 4;
+        int startX = leftPos + (imageWidth - total) / 2;
+        int rowY   = topPos + imageHeight + 4;
 
         for (int i = 0; i < HandledScreenButtons.BTN_LABELS.length; i++) {
             int bx = startX + i * (HandledScreenButtons.BTN_W + HandledScreenButtons.BTN_GAP);
             if (mouseX >= bx && mouseX < bx + HandledScreenButtons.BTN_W
                     && mouseY >= rowY && mouseY < rowY + HandledScreenButtons.BTN_H) {
-                MinecraftClient mc = MinecraftClient.getInstance();
+                Minecraft mc = Minecraft.getInstance();
                 if (mc.player != null) {
                     // sendChatCommand ohne führendes '/' – schickt Command-Packet, nicht Chat
                     String cmd = HandledScreenButtons.BTN_LABELS[i];
-                    mc.player.networkHandler.sendChatCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
+                    mc.player.connection.sendCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
                 }
                 return true;
             }

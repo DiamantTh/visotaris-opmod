@@ -2,10 +2,10 @@ package systems.diath.visotaris_opmod.hooks;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.screen.ScreenHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,32 +16,25 @@ import systems.diath.visotaris_opmod.util.HandledScreenButtons;
 
 /**
  * Version-spezifisches Mixin für MC 1.21.11:
- * mouseClicked hat seit dem GUI-Input-Refactoring die Signatur (Click, boolean).
- * {@code Click} enthält nur den Maus-Button; die Position wird aus {@link MinecraftClient#mouse} bezogen.
+ * mouseClicked hat seit dem GUI-Input-Refactoring die Signatur (MouseButtonEvent, boolean).
  */
 @Environment(EnvType.CLIENT)
-@Mixin(HandledScreen.class)
-public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
+@Mixin(AbstractContainerScreen.class)
+public abstract class HandledScreenClickMixin<T extends AbstractContainerMenu> {
 
-    @Shadow protected int x;
-    @Shadow protected int y;
-    @Shadow protected int backgroundWidth;
-    @Shadow protected int backgroundHeight;
+    @Shadow protected int leftPos;
+    @Shadow protected int topPos;
+    @Shadow protected int imageWidth;
+    @Shadow protected int imageHeight;
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void onMouseClicked(Click click, boolean doubled,
+    private void onMouseClicked(MouseButtonEvent click, boolean doubled,
                                 CallbackInfoReturnable<Boolean> cir) {
         if (click.button() != 0) return;
         VisotarisModClient mod = VisotarisModClient.getInstance();
         if (mod == null || !mod.getConfigManager().getConfig().showQuickButtons) return;
 
-        // In 1.21.11 enthält Click nur button(); GUI-Koordinaten kommen aus der Mouse.
-        MinecraftClient mc = MinecraftClient.getInstance();
-        var window = mc.getWindow();
-        double mouseX = mc.mouse.getX() * window.getScaledWidth()  / (double) window.getWidth();
-        double mouseY = mc.mouse.getY() * window.getScaledHeight() / (double) window.getHeight();
-
-        if (handleButtonClick(mouseX, mouseY)) {
+        if (handleButtonClick(click.x(), click.y())) {
             cir.setReturnValue(true);
             cir.cancel();
         }
@@ -50,19 +43,19 @@ public abstract class HandledScreenClickMixin<T extends ScreenHandler> {
     private boolean handleButtonClick(double mouseX, double mouseY) {
         int total  = HandledScreenButtons.BTN_LABELS.length * HandledScreenButtons.BTN_W
                    + (HandledScreenButtons.BTN_LABELS.length - 1) * HandledScreenButtons.BTN_GAP;
-        int startX = x + (backgroundWidth - total) / 2;
-        int rowY   = y + backgroundHeight + 4;
+        int startX = leftPos + (imageWidth - total) / 2;
+        int rowY   = topPos + imageHeight + 4;
 
         for (int i = 0; i < HandledScreenButtons.BTN_LABELS.length; i++) {
             int bx = startX + i * (HandledScreenButtons.BTN_W + HandledScreenButtons.BTN_GAP);
             if (mouseX >= bx && mouseX < bx + HandledScreenButtons.BTN_W
                     && mouseY >= rowY && mouseY < rowY + HandledScreenButtons.BTN_H) {
-                MinecraftClient mc = MinecraftClient.getInstance();
+                Minecraft mc = Minecraft.getInstance();
                 var player = mc.player;
                 if (player != null) {
                     // sendChatCommand ohne führendes '/' – schickt Command-Packet, nicht Chat
                     String cmd = HandledScreenButtons.BTN_LABELS[i];
-                    player.networkHandler.sendChatCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
+                    player.connection.sendCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
                 }
                 return true;
             }

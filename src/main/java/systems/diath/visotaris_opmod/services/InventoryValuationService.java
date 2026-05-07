@@ -1,12 +1,12 @@
 package systems.diath.visotaris_opmod.services;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.block.ShulkerBoxBlock;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.ContainerComponent;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
 import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
@@ -20,7 +20,7 @@ import java.util.Optional;
 /**
  * Berechnet den Gesamtwert eines Inventars oder Containers.
  *
- * Shulker-Inhalte werden rekursiv mitgerechnet (via {@code DataComponentTypes.CONTAINER}).
+ * Shulker-Inhalte werden rekursiv mitgerechnet (via {@code DataComponents.CONTAINER}).
  * Der Aufruf darf vom Render-Thread erfolgen (kein Netzwerk, kein Blocking).
  */
 public final class InventoryValuationService {
@@ -42,12 +42,12 @@ public final class InventoryValuationService {
      * Muss auf dem Client-Thread aufgerufen werden.
      */
     public InventoryValuation evaluatePlayerInventory() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return InventoryValuation.empty();
 
         var inv = mc.player.getInventory();
         List<ItemStack> stacks = new ArrayList<>(36);
-        for (int i = 0; i < 36; i++) stacks.add(inv.getStack(i));
+        for (int i = 0; i < 36; i++) stacks.add(inv.getItem(i));
         return evaluate(stacks);
     }
 
@@ -68,10 +68,10 @@ public final class InventoryValuationService {
             if (config.getConfig().shulkerRecursion
                     && stack.getItem() instanceof BlockItem bi
                     && bi.getBlock() instanceof ShulkerBoxBlock) {
-                ContainerComponent contents = stack.get(DataComponentTypes.CONTAINER);
+                ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
                 if (contents != null) {
                     hasShulkers = true;
-                    InventoryValuation inner = evaluate(contents.iterateNonEmpty());
+                    InventoryValuation inner = evaluate(contents.nonEmptyItems());
                     buy  += inner.getBuyTotal();
                     sell += inner.getSellTotal();
                     continue;
@@ -94,6 +94,6 @@ public final class InventoryValuationService {
     }
 
     private String itemKey(ItemStack stack) {
-        return Registries.ITEM.getId(stack.getItem()).getPath();
+        return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
     }
 }
