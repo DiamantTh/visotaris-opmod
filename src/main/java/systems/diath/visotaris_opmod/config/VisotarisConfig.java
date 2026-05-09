@@ -43,6 +43,16 @@ public final class VisotarisConfig {
     public boolean enableAnvilNormalization = true;  // Kurzformen im Amboss-Umbenennenfeld expandieren
     public boolean enableDiscordRpc        = false;  // Standard: deaktiviert
     public String  discordApplicationId    = "";     // Discord Developer Portal → Application ID
+    public boolean enableDiscordScreenshots = false; // Standard: deaktiviert
+    public boolean saveDiscordScreenshotsLocally = true;
+    public String  discordScreenshotMessage = "Visotaris Screenshot";
+    public final DiscordScreenshotTarget[] discordScreenshotTargets = {
+        new DiscordScreenshotTarget("Ziel 1"),
+        new DiscordScreenshotTarget("Ziel 2"),
+        new DiscordScreenshotTarget("Ziel 3"),
+        new DiscordScreenshotTarget("Ziel 4"),
+        new DiscordScreenshotTarget("Ziel 5")
+    };
 
     // ── Netzwerk ──────────────────────────────────────────────────────────────
     public int     marketRefreshIntervalSeconds   = 300;
@@ -60,5 +70,31 @@ public final class VisotarisConfig {
      */
     public boolean ingameFeaturesEnabled() {
         return !observerModeOnly;
+    }
+
+    public boolean isDiscordScreenshotTargetEnabled(int index) {
+        return isTargetIndex(index) && discordScreenshotTargets[index].enabled;
+    }
+
+    public String getDiscordScreenshotTargetName(int index) {
+        return isTargetIndex(index) ? discordScreenshotTargets[index].name : "";
+    }
+
+    public String getDiscordScreenshotWebhookUrl(int index) {
+        return isTargetIndex(index) ? discordScreenshotTargets[index].webhookUrl : "";
+    }
+
+    private static boolean isTargetIndex(int index) {
+        return index >= 0 && index < 5;
+    }
+
+    public static final class DiscordScreenshotTarget {
+        public boolean enabled = false;
+        public String name;
+        public String webhookUrl = "";
+
+        public DiscordScreenshotTarget(String name) {
+            this.name = name;
+        }
     }
 }

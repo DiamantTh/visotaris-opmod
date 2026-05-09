@@ -23,7 +23,9 @@ import systems.diath.visotaris_opmod.services.MarketSyncService;
 import systems.diath.visotaris_opmod.services.MerchantSyncService;
 import systems.diath.visotaris_opmod.services.CommandRewriteService;
 import systems.diath.visotaris_opmod.services.DiscordPresenceService;
+import systems.diath.visotaris_opmod.services.DiscordScreenshotService;
 import systems.diath.visotaris_opmod.services.KeybindService;
+import systems.diath.visotaris_opmod.services.MinecraftScreenshotCaptureBackend;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 import systems.diath.visotaris_opmod.services.TooltipValueService;
 import systems.diath.visotaris_opmod.ui.HudOverlay;
@@ -50,6 +52,7 @@ public class VisotarisModClient implements ClientModInitializer {
     private InventoryValuationService  inventoryValuationService;
     private PendingConfirmationService pendingConfirmationService;
     private DiscordPresenceService      discordPresenceService;
+    private DiscordScreenshotService    discordScreenshotService;
     private CommandRewriteService       commandRewriteService;
     private KeybindService              keybindService;
 
@@ -80,8 +83,9 @@ public class VisotarisModClient implements ClientModInitializer {
             jobTrackerService,
             DiscordPresenceService.PresenceMode.ADVANCED
         );
+        discordScreenshotService    = new DiscordScreenshotService(configManager, new MinecraftScreenshotCaptureBackend());
         commandRewriteService      = new CommandRewriteService(configManager);
-        keybindService             = new KeybindService(configManager, marketSyncService, merchantSyncService);
+        keybindService             = new KeybindService(configManager, marketSyncService, merchantSyncService, discordScreenshotService);
         // 3. Hintergrundfetcher starten
         marketSyncService.start();
         merchantSyncService.start();
@@ -137,6 +141,7 @@ public class VisotarisModClient implements ClientModInitializer {
 
         // 9. Keybinds registrieren
         keybindService.registerTick();
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> discordScreenshotService.shutdown());
 
         // 10. Offhand-Blocker: Tastendrücke für F-Taste vor handleInputEvents() schlucken
         ClientTickEvents.START_CLIENT_TICK.register(client -> {

@@ -16,6 +16,7 @@ class KeybindService(
     private val config: ConfigManager,
     private val marketSync: MarketSyncService,
     private val merchantSync: MerchantSyncService,
+    private val discordScreenshots: DiscordScreenshotService,
 ) {
     companion object {
         private val CATEGORY: KeyMapping.Category = KeyMapping.Category.MISC
@@ -33,6 +34,12 @@ class KeybindService(
         KeyMapping("visotaris_opmod.key.refresh_market",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
     )
+    private val screenshotKeys: List<KeyMapping> = (1..DiscordScreenshotService.TARGET_COUNT).map { index ->
+        KeyMappingHelper.registerKeyMapping(
+            KeyMapping("visotaris_opmod.key.discord_screenshot_$index",
+                InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
+        )
+    }
 
     fun registerTick() {
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
@@ -46,6 +53,11 @@ class KeybindService(
             while (keyRefreshMarket.consumeClick()) {
                 marketSync.refresh()
                 merchantSync.refresh()
+            }
+            screenshotKeys.forEachIndexed { index, key ->
+                while (key.consumeClick()) {
+                    discordScreenshots.sendToTarget(index)
+                }
             }
         }
     }

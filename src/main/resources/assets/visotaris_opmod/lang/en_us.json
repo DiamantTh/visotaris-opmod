@@ -35,5 +35,10 @@
   "key.categories.visotaris_opmod": "Visotaris OPMod",
   "visotaris_opmod.key.open_settings": "Open settings",
   "visotaris_opmod.key.toggle_hud": "Toggle HUD",
-  "visotaris_opmod.key.refresh_market": "Refresh market data"
+  "visotaris_opmod.key.refresh_market": "Refresh market data",
+  "visotaris_opmod.key.discord_screenshot_1": "Discord screenshot target 1",
+  "visotaris_opmod.key.discord_screenshot_2": "Discord screenshot target 2",
+  "visotaris_opmod.key.discord_screenshot_3": "Discord screenshot target 3",
+  "visotaris_opmod.key.discord_screenshot_4": "Discord screenshot target 4",
+  "visotaris_opmod.key.discord_screenshot_5": "Discord screenshot target 5"
 }

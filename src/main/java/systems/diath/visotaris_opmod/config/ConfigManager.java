@@ -62,6 +62,24 @@ public final class ConfigManager {
             c.enableAnvilNormalization = toml.getOrElse("features.enableAnvilNormalization", toml.getOrElse("enableAnvilNormalization", c.enableAnvilNormalization));
             c.enableDiscordRpc         = toml.getOrElse("features.enableDiscordRpc",         toml.getOrElse("enableDiscordRpc",         c.enableDiscordRpc));
             c.discordApplicationId     = toml.getOrElse("features.discordApplicationId",     toml.getOrElse("discordApplicationId",     c.discordApplicationId));
+            c.enableDiscordScreenshots = toml.getOrElse("features.enableDiscordScreenshots", toml.getOrElse("enableDiscordScreenshots", c.enableDiscordScreenshots));
+            c.saveDiscordScreenshotsLocally = toml.getOrElse("features.saveDiscordScreenshotsLocally", toml.getOrElse("saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally));
+            c.discordScreenshotMessage = toml.getOrElse("features.discordScreenshotMessage", toml.getOrElse("discordScreenshotMessage", c.discordScreenshotMessage));
+            for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
+                int slot = i + 1;
+                c.discordScreenshotTargets[i].enabled = toml.getOrElse(
+                    "discordScreenshots.target" + slot + ".enabled",
+                    toml.getOrElse("discordScreenshotTarget" + slot + "Enabled", c.discordScreenshotTargets[i].enabled)
+                );
+                c.discordScreenshotTargets[i].name = toml.getOrElse(
+                    "discordScreenshots.target" + slot + ".name",
+                    toml.getOrElse("discordScreenshotTarget" + slot + "Name", c.discordScreenshotTargets[i].name)
+                );
+                c.discordScreenshotTargets[i].webhookUrl = toml.getOrElse(
+                    "discordScreenshots.target" + slot + ".webhookUrl",
+                    toml.getOrElse("discordScreenshotTarget" + slot + "WebhookUrl", c.discordScreenshotTargets[i].webhookUrl)
+                );
+            }
             // ── Netzwerk ──────────────────────────────────────────────────────────────
             c.marketRefreshIntervalSeconds   = getInt(toml, "netzwerk.marketRefreshIntervalSeconds",   getInt(toml, "marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds));
             c.merchantRefreshIntervalSeconds = getInt(toml, "netzwerk.merchantRefreshIntervalSeconds", getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds));
@@ -110,6 +128,17 @@ public final class ConfigManager {
             toml.set("features.enableAnvilNormalization", c.enableAnvilNormalization);
             toml.set("features.enableDiscordRpc",         c.enableDiscordRpc);
             toml.set("features.discordApplicationId",     c.discordApplicationId);
+            toml.set("features.enableDiscordScreenshots", c.enableDiscordScreenshots);
+            toml.set("features.saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally);
+            toml.set("features.discordScreenshotMessage", c.discordScreenshotMessage);
+            toml.setComment("discordScreenshots", " Discord-Screenshot-Ziele. Global und pro Ziel standardmäßig deaktiviert.");
+            for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
+                int slot = i + 1;
+                VisotarisConfig.DiscordScreenshotTarget target = c.discordScreenshotTargets[i];
+                toml.set("discordScreenshots.target" + slot + ".enabled", target.enabled);
+                toml.set("discordScreenshots.target" + slot + ".name", target.name);
+                toml.set("discordScreenshots.target" + slot + ".webhookUrl", target.webhookUrl);
+            }
             // ── [netzwerk] ────────────────────────────────────────────────────────────
             toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-UI & Proxy");
             toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);

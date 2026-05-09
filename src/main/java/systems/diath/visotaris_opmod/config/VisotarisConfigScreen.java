@@ -16,7 +16,7 @@ import java.util.function.Consumer;
  *
  * Zweispaltig-Layout für boolsche Optionen; Cycling-Buttons für Intervall-Werte.
  * Der Content-Bereich ist scrollbar (Mausrad). Clip via Scissor.
- * Kompatibel mit MC 1.21.4 (double/int Events) und 1.21.11 (Click-basierte Events):
+ * Kompatibel mit MC 1.21.11 (Click-basierte Events):
  * Alle Buttons werden per addRenderableWidget registriert – das MC-eigene Event-Routing
  * nutzt die versionsrichtige Signatur. visible=false blockiert Off-Screen-Buttons.
  *
@@ -132,6 +132,11 @@ public final class VisotarisConfigScreen extends Screen {
         y += BTN_H + BTN_GAP;
         addToggle(lx, y, "Amboss-Normalisierung", cfg.enableAnvilNormalization, v -> cfg.enableAnvilNormalization = v);
         addToggle(rx, y, "Discord Rich Presence", cfg.enableDiscordRpc,         v -> cfg.enableDiscordRpc = v);
+        y += BTN_H + BTN_GAP;
+        addContent(Button.builder(
+                Component.literal("Discord-Screenshots…"),
+                b -> this.minecraft.setScreen(new DiscordScreenshotSettingsScreen(this))
+        ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
         y += BTN_H + BTN_GAP + SEC_GAP;
 
         // ── Netzwerk ────────────────────────────────────────────────────────
