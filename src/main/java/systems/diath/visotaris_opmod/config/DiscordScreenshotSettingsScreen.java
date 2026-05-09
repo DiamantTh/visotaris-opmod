@@ -43,6 +43,14 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
             }
         ).bounds(MARGIN, y, fw, 20).build());
         y += 32;
+        this.addRenderableWidget(Button.builder(
+            toggleText("Verbose-Log", cfg.verboseDiscordScreenshotLogging),
+            b -> {
+                cfg.verboseDiscordScreenshotLogging = !cfg.verboseDiscordScreenshotLogging;
+                b.setMessage(toggleText("Verbose-Log", cfg.verboseDiscordScreenshotLogging));
+            }
+        ).bounds(MARGIN, y, fw, 20).build());
+        y += 32;
 
         int toggleW = 54;
         int nameW = 78;

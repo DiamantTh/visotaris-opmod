@@ -5,7 +5,8 @@
   "client": [
     "HandledScreenMixin",
     "HandledScreenClickMixin",
-    "AnvilScreenMixin"
+    "AnvilScreenMixin",
+    "ScreenshotMixin"
   ],
   "injectors": {
     "defaultRequire": 1

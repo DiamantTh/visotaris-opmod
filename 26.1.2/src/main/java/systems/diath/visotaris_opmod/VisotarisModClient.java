@@ -161,6 +161,7 @@ public class VisotarisModClient implements ClientModInitializer {
     public JobTrackerService getJobTrackerService()                 { return jobTrackerService; }
     public TooltipValueService getTooltipValueService()             { return tooltipValueService; }
     public PendingConfirmationService getPendingConfirmationService(){ return pendingConfirmationService; }
+    public DiscordScreenshotService getDiscordScreenshotService()      { return discordScreenshotService; }
     public MarketCache getMarketCache()                             { return marketCache; }
     public ShardCache getShardCache()                               { return shardCache; }
 }

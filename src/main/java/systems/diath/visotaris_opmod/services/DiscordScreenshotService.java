@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadFactory;
 public final class DiscordScreenshotService {
 
     public static final int TARGET_COUNT = 5;
+    private static final String INTERNAL_CAPTURE_PREFIX = "visotaris-";
 
     private static final DateTimeFormatter FILE_TIME =
         DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss");
@@ -56,21 +57,62 @@ public final class DiscordScreenshotService {
             captureBackend.notifyUser(targetLabel(cfg, targetIndex) + " hat keine Webhook-URL.");
             return;
         }
+        logVerbose(cfg, "Keybind", targetIndex, webhookUrl);
 
         String filename = "visotaris-" + FILE_TIME.format(LocalDateTime.now()) + ".png";
         captureBackend.notifyUser("Screenshot wird aufgenommen...");
         captureBackend.capture(
             filename,
-            path -> submit(() -> upload(path, targetIndex, webhookUrl.strip())),
+            path -> submit(() -> {
+                if (upload(path, targetIndex, webhookUrl.strip())) {
+                    cleanupIfConfigured(path);
+                }
+            }),
             error -> captureBackend.notifyUser("Screenshot fehlgeschlagen: " + error)
         );
+    }
+
+    public void sendSavedVanillaScreenshot(Path screenshot) {
+        if (screenshot == null || isInternalCapture(screenshot)) return;
+
+        VisotarisConfig cfg = configManager.getConfig();
+        boolean hasEnabledTarget = false;
+        for (int i = 0; i < TARGET_COUNT; i++) {
+            if (cfg.isDiscordScreenshotTargetEnabled(i)) {
+                hasEnabledTarget = true;
+                break;
+            }
+        }
+        if (!hasEnabledTarget) return;
+
+        submit(() -> uploadToEnabledTargets(screenshot));
     }
 
     public void shutdown() {
         executor.shutdown();
     }
 
-    private void upload(Path screenshot, int targetIndex, String webhookUrl) {
+    private void uploadToEnabledTargets(Path screenshot) {
+        VisotarisConfig cfg = configManager.getConfig();
+        boolean uploaded = false;
+        for (int i = 0; i < TARGET_COUNT; i++) {
+            if (!cfg.isDiscordScreenshotTargetEnabled(i)) continue;
+
+            String webhookUrl = cfg.getDiscordScreenshotWebhookUrl(i);
+            if (webhookUrl == null || webhookUrl.isBlank()) {
+                captureBackend.notifyUser(targetLabel(cfg, i) + " hat keine Webhook-URL.");
+                continue;
+            }
+            logVerbose(cfg, "Vanilla-Screenshot", i, webhookUrl);
+            uploaded |= upload(screenshot, i, webhookUrl.strip());
+        }
+
+        if (uploaded) {
+            cleanupIfConfigured(screenshot);
+        }
+    }
+
+    private boolean upload(Path screenshot, int targetIndex, String webhookUrl) {
         VisotarisConfig cfg = configManager.getConfig();
         String label = targetLabel(cfg, targetIndex);
         try {
@@ -85,7 +127,7 @@ public final class DiscordScreenshotService {
                 .build();
 
             Request request = new Request.Builder()
-                .url(webhookUrl)
+                .url(withWaitResponse(webhookUrl))
                 .post(requestBody)
                 .build();
 
@@ -97,13 +139,21 @@ public final class DiscordScreenshotService {
                 }
             }
 
-            if (!cfg.saveDiscordScreenshotsLocally) {
-                Files.deleteIfExists(screenshot);
-            }
             captureBackend.notifyUser("Screenshot an " + label + " gesendet.");
+            return true;
         } catch (Exception e) {
             VisotarisLogger.warn("DiscordScreenshot: Upload fehlgeschlagen: {}", e.getMessage());
             captureBackend.notifyUser("Discord-Upload fehlgeschlagen: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void cleanupIfConfigured(Path screenshot) {
+        if (configManager.getConfig().saveDiscordScreenshotsLocally) return;
+        try {
+            Files.deleteIfExists(screenshot);
+        } catch (IOException e) {
+            VisotarisLogger.warn("DiscordScreenshot: Konnte lokale Datei nicht löschen: {}", e.getMessage());
         }
     }
 
@@ -127,6 +177,33 @@ public final class DiscordScreenshotService {
         String name = cfg.getDiscordScreenshotTargetName(targetIndex);
         if (name != null && !name.isBlank()) return name.strip();
         return "Ziel " + (targetIndex + 1);
+    }
+
+    private static String withWaitResponse(String webhookUrl) {
+        if (webhookUrl.contains("wait=")) return webhookUrl;
+        return webhookUrl + (webhookUrl.contains("?") ? "&" : "?") + "wait=true";
+    }
+
+    private static boolean isInternalCapture(Path screenshot) {
+        Path fileName = screenshot.getFileName();
+        return fileName != null && fileName.toString().startsWith(INTERNAL_CAPTURE_PREFIX);
+    }
+
+    private static void logVerbose(VisotarisConfig cfg, String hook, int targetIndex, String webhookUrl) {
+        if (!cfg.verboseDiscordScreenshotLogging) return;
+        VisotarisLogger.info(
+            "DiscordScreenshot: Hook={} Ziel={} Webhook={}",
+            hook,
+            targetLabel(cfg, targetIndex),
+            redactWebhookUrl(webhookUrl)
+        );
+    }
+
+    private static String redactWebhookUrl(String webhookUrl) {
+        if (webhookUrl == null || webhookUrl.isBlank()) return "<leer>";
+        String stripped = webhookUrl.strip();
+        int keep = Math.min(10, stripped.length());
+        return stripped.substring(0, keep) + "...[zensiert]";
     }
 
     private static final class DaemonThreadFactory implements ThreadFactory {

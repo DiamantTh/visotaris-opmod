@@ -44,6 +44,7 @@ public final class VisotarisConfig {
     public boolean enableDiscordRpc        = false;  // Standard: deaktiviert
     public String  discordApplicationId    = "";     // Discord Developer Portal → Application ID
     public boolean saveDiscordScreenshotsLocally = true;
+    public boolean verboseDiscordScreenshotLogging = false;
     public final DiscordScreenshotTarget[] discordScreenshotTargets = {
         new DiscordScreenshotTarget("Ziel 1"),
         new DiscordScreenshotTarget("Ziel 2"),

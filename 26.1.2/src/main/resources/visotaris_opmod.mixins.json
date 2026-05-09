@@ -2,7 +2,9 @@
   "required": true,
   "package": "systems.diath.visotaris_opmod.hooks",
   "compatibilityLevel": "JAVA_21",
-  "client": [],
+  "client": [
+    "ScreenshotMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
