@@ -86,10 +86,10 @@ Voraussetzungen: Java 21 für 1.21.11, Java 25 für 26.1.2, Gradle (Wrapper inkl
 
 # Einzelne Targets bauen
 ./gradlew :1.21.11:remapJar
-./gradlew :26:shadowJar
+./gradlew :26.1.2:shadowJar
 ```
 
-JARs landen in `1.21.11/build/libs/` bzw. `26/build/libs/`.
+JARs landen in `1.21.11/build/libs/` bzw. `26.1.2/build/libs/`.
 
 ---
 

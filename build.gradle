@@ -49,10 +49,10 @@ def build12111Task = tasks.register('build-1.21.11') {
 def build2612Task = tasks.register('build-26.1.2') {
     group       = 'visotaris'
     description = 'Baut nur MC 26.1.2 und kopiert den JAR nach ./out/'
-    dependsOn   ':26:shadowJar'
+    dependsOn   ':26.1.2:shadowJar'
     doLast {
         outDir.mkdirs()
-        def jar = project('26').tasks.getByName('shadowJar').archiveFile.get().asFile
+        def jar = project('26.1.2').tasks.getByName('shadowJar').archiveFile.get().asFile
         copy { from jar; into outDir }
         logger.lifecycle("  → out/${jar.name}")
     }
@@ -73,7 +73,7 @@ def runClient12111Task = tasks.register('runClient-1.21.11') {
 def runClient2612Task = tasks.register('runClient-26.1.2') {
     group       = 'visotaris'
     description = 'Startet den Dev-Client für MC 26.1.2 (inkl. Mod Menu).'
-    dependsOn   ':26:runClient'
+    dependsOn   ':26.1.2:runClient'
 }
 
 tasks.register('runClient') {
