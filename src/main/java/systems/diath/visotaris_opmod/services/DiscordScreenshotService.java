@@ -13,6 +13,8 @@ import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.config.VisotarisConfig;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -192,7 +194,7 @@ public final class DiscordScreenshotService {
     private static void logVerbose(VisotarisConfig cfg, String hook, int targetIndex, String webhookUrl) {
         if (!cfg.verboseDiscordScreenshotLogging) return;
         VisotarisLogger.info(
-            "DiscordScreenshot: Hook={} Ziel={} Webhook={}",
+            "Visotaris OPMod/DiscordScreenshot: Hook={} Ziel={} Webhook={}",
             hook,
             targetLabel(cfg, targetIndex),
             redactWebhookUrl(webhookUrl)
@@ -202,14 +204,33 @@ public final class DiscordScreenshotService {
     private static String redactWebhookUrl(String webhookUrl) {
         if (webhookUrl == null || webhookUrl.isBlank()) return "<leer>";
         String stripped = webhookUrl.strip();
-        int keep = Math.min(10, stripped.length());
-        return stripped.substring(0, keep) + "...[zensiert]";
+        try {
+            URI uri = new URI(stripped);
+            String scheme = uri.getScheme();
+            String authority = uri.getRawAuthority();
+            if (scheme == null || authority == null) return redactPlainValue(stripped);
+
+            String base = scheme + "://" + authority;
+            String path = uri.getRawPath();
+            if (path == null || path.isBlank() || "/".equals(path)) return base;
+
+            int lastSlash = path.lastIndexOf('/');
+            if (lastSlash <= 0) return base + "/*****";
+            return base + path.substring(0, lastSlash + 1) + "*****";
+        } catch (URISyntaxException ignored) {
+            return redactPlainValue(stripped);
+        }
+    }
+
+    private static String redactPlainValue(String value) {
+        int keep = Math.min(12, value.length());
+        return value.substring(0, keep) + "*****";
     }
 
     private static final class DaemonThreadFactory implements ThreadFactory {
         @Override
         public Thread newThread(Runnable task) {
-            Thread thread = new Thread(task, "Visotaris-DiscordScreenshot");
+            Thread thread = new Thread(task, "Visotaris OPMod/DiscordScreenshot");
             thread.setDaemon(true);
             return thread;
         }
