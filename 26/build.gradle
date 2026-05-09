@@ -108,6 +108,18 @@ def ktOverrides = [
     'systems/diath/visotaris_opmod/web/WebServer.kt',
 ]
 
+def java26Excludes = [
+    'systems/diath/visotaris_opmod/commands/VisotarisCommands.java',
+    'systems/diath/visotaris_opmod/config/DiscordScreenshotSettingsScreen.java',
+    'systems/diath/visotaris_opmod/config/ModMenuApiImpl.java',
+    'systems/diath/visotaris_opmod/config/NetworkSettingsScreen.java',
+    'systems/diath/visotaris_opmod/config/VisotarisConfigScreen.java',
+    'systems/diath/visotaris_opmod/hooks/AnvilScreenMixin.java',
+    'systems/diath/visotaris_opmod/hooks/HandledScreenMixin.java',
+    'systems/diath/visotaris_opmod/services/InventoryValuationService.java',
+    'systems/diath/visotaris_opmod/ui/HudOverlay.java',
+]
+
 sourceSets {
     main {
         kotlin {
@@ -129,6 +141,12 @@ afterEvaluate {
     }.toSet()
     tasks.named('compileKotlin') {
         exclude { fte -> toExclude.contains(fte.file.canonicalPath) }
+    }
+    def javaToExclude = java26Excludes.collect { f ->
+        rootProject.file("src/main/java/$f").canonicalPath
+    }.toSet()
+    tasks.named('compileJava') {
+        exclude { fte -> javaToExclude.contains(fte.file.canonicalPath) }
     }
 }
 

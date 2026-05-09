@@ -18,7 +18,7 @@ import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
 
 /**
- * MC 26.x – Mojang-Klassen: Minecraft (statt MinecraftClient), ResourceLocation (statt Identifier).
+ * MC 26.x – Mojang-Klassen: Minecraft (statt MinecraftClient), Identifier für Ressourcenpfade.
  *
  * Eingebetteter HTTP-Server für das Visotaris Web-UI.
  * Läuft auf localhost:[port] (Standard: 7780).
@@ -174,7 +174,7 @@ class WebServer(
         val parent = model.get("parent")?.asString ?: return null
         val parentPath = if (parent.contains(":")) parent.substringAfter(":") else parent
         return runCatching {
-            val parentModel = rm.open(ResourceLocation.fromNamespaceAndPath("minecraft", "models/$parentPath.json"))
+            val parentModel = rm.open(Identifier.fromNamespaceAndPath("minecraft", "models/$parentPath.json"))
                 .use { JsonParser.parseReader(it.reader()).asJsonObject }
             resolveTextureInModel(rm, parentModel, depth + 1)
         }.getOrNull()

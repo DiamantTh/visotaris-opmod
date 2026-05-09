@@ -13,20 +13,23 @@ node {
 }
 
 // Root build.gradle – gemeinsame Konfiguration für alle Subprojekte.
-// Der eigentliche Gradle-Build läuft im versionsspezifischen 1.21.11/-Subprojekt.
+// Der eigentliche Gradle-Build läuft in den versionsspezifischen Subprojekten.
 
 // ── Bequeme Build-Tasks vom Root aus ─────────────────────────────────────────
 //
-//   ./gradlew buildAll            → 1.21.11 bauen + JAR nach ./out/ kopieren
+//   ./gradlew buildAll            → 1.21.11 und 26.1.2 bauen + JARs nach ./out/ kopieren
 //   ./gradlew build-1.21.11       → 1.21.11 bauen + JAR nach ./out/ kopieren
+//   ./gradlew build-26.1.2        → 26.1.2 bauen + JAR nach ./out/ kopieren
 //   ./gradlew runClient           → bevorzugten Dev-Client starten (aktuell 1.21.11)
 //   ./gradlew runClient-1.21.11   → Dev-Client für 1.21.11 starten
+//   ./gradlew runClient-26.1.2    → Dev-Client für 26.1.2 starten
 //
 // Hinweis: Doppelpunkte im Tasknamen (`runClient:1.21.11`) erlaubt Gradle nicht.
 // Der Gradle-native Doppelpunktweg ist stattdessen: `./gradlew :1.21.11:runClient`
 //
 // Die finalen Mod-JARs landen immer unter:
 //   out/visotaris_opmod-<mod_version>+mc1.21.11.jar
+//   out/visotaris_opmod-<mod_version>+mc26.1.2.jar
 // ─────────────────────────────────────────────────────────────────────────────
 
 def outDir = rootProject.file('out')
@@ -43,16 +46,34 @@ def build12111Task = tasks.register('build-1.21.11') {
     }
 }
 
+def build2612Task = tasks.register('build-26.1.2') {
+    group       = 'visotaris'
+    description = 'Baut nur MC 26.1.2 und kopiert den JAR nach ./out/'
+    dependsOn   ':26:shadowJar'
+    doLast {
+        outDir.mkdirs()
+        def jar = project('26').tasks.getByName('shadowJar').archiveFile.get().asFile
+        copy { from jar; into outDir }
+        logger.lifecycle("  → out/${jar.name}")
+    }
+}
+
 tasks.register('buildAll') {
     group       = 'visotaris'
-    description = 'Baut MC 1.21.11 und kopiert den JAR nach ./out/'
-    dependsOn   build12111Task
+    description = 'Baut MC 1.21.11 und 26.1.2 und kopiert die JARs nach ./out/'
+    dependsOn   build12111Task, build2612Task
 }
 
 def runClient12111Task = tasks.register('runClient-1.21.11') {
     group       = 'visotaris'
     description = 'Startet den Dev-Client für MC 1.21.11 (inkl. Mod Menu).'
     dependsOn   ':1.21.11:runClient'
+}
+
+def runClient2612Task = tasks.register('runClient-26.1.2') {
+    group       = 'visotaris'
+    description = 'Startet den Dev-Client für MC 26.1.2 (inkl. Mod Menu).'
+    dependsOn   ':26:runClient'
 }
 
 tasks.register('runClient') {
@@ -81,15 +102,16 @@ tasks.register('npmBuildWebui', NpmTask) {
 
 // Stille Kompatibilitätsaliases für alte Namen
 tasks.register('build12111')    { group = null; dependsOn build12111Task }
+tasks.register('build2612')     { group = null; dependsOn build2612Task }
 tasks.register('runClient12111'){ group = null; dependsOn runClient12111Task }
+tasks.register('runClient2612') { group = null; dependsOn runClient2612Task }
 
 // Jedes Subprojekt hängt seinen remapJar-Output automatisch nach ./out/
 subprojects {
     // group/version/repos brauchen keine Plugins – direkt setzbar.
-    // version nutzt ext.mcVersion aus dem jeweiligen build.gradle (z.B. '1.21.11'),
+    // version nutzt ext.mcVersion aus dem jeweiligen build.gradle (z.B. '1.21.11' oder '26.1.2'),
     // damit der JAR-Name die exakte MC-Version trägt, unabhängig vom Verzeichnisnamen.
     group   = property('mod_group')
-    version = "${property('mod_version')}+mc${project.ext.properties.getOrDefault('mcVersion', project.name)}"
 
     repositories {
         maven {
@@ -106,6 +128,8 @@ subprojects {
     // Alles was Loom/Java-Plugin voraussetzt muss in afterEvaluate,
     // weil subprojects{} vor dem eigenen build.gradle des Subprojekts läuft.
     afterEvaluate {
+        version = "${property('mod_version')}+mc${project.ext.properties.getOrDefault('mcVersion', project.name)}"
+
         // Java-Compiler-Optionen
         tasks.withType(JavaCompile).configureEach {
             options.encoding = 'UTF-8'

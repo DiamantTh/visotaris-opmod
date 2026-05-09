@@ -4,9 +4,9 @@ import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
+import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import systems.diath.visotaris_opmod.config.ConfigManager
-import systems.diath.visotaris_opmod.config.VisotarisConfigScreen
 
 /**
  * MC 26.x – Mojang-Klassen: KeyMapping (statt KeyBinding), InputConstants (statt InputUtil).
@@ -44,7 +44,7 @@ class KeybindService(
     fun registerTick() {
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
             while (keyOpenSettings.consumeClick()) {
-                mc.setScreen(VisotarisConfigScreen(mc.screen))
+                mc.player?.sendSystemMessage(Component.literal("§e[Visotaris] §7Einstellungen sind für MC 26.1.2 noch nicht portiert."))
             }
             while (keyToggleHud.consumeClick()) {
                 config.getConfig().showHud = !config.getConfig().showHud

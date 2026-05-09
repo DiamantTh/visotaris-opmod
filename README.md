@@ -3,7 +3,7 @@
 Eine **freie, quelloffene** Fabric-Client-Mod für Minecraft mit Fokus auf den
 [OPSUCHT](https://opsucht.net)-Server.
 
-Lizenz: [AGPLv3+](LICENSE) · Minecraft: 1.21.11 · Loader: Fabric
+Lizenz: [AGPLv3+](LICENSE) · Minecraft: 1.21.11 / 26.1.2 · Loader: Fabric
 
 ---
 
@@ -78,14 +78,18 @@ Das vollständige technische Analysedokument liegt unter
 
 ## Build
 
-Voraussetzungen: Java 21, Gradle (Wrapper inklusive)
+Voraussetzungen: Java 21 für 1.21.11, Java 25 für 26.1.2, Gradle (Wrapper inklusive)
 
 ```bash
-# Mod-JAR bauen
+# Beide Mod-JARs bauen
+./gradlew buildAll
+
+# Einzelne Targets bauen
 ./gradlew :1.21.11:remapJar
+./gradlew :26:shadowJar
 ```
 
-JARs landen in `1.21.11/build/libs/`.
+JARs landen in `1.21.11/build/libs/` bzw. `26/build/libs/`.
 
 ---
 

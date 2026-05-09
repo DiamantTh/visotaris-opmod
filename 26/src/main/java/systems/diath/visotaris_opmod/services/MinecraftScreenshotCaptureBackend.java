@@ -26,7 +26,7 @@ public final class MinecraftScreenshotCaptureBackend implements ScreenshotCaptur
         Minecraft mc = Minecraft.getInstance();
         mc.execute(() -> {
             if (mc.player != null) {
-                mc.player.displayClientMessage(Component.literal("§e[Visotaris] §7" + message), false);
+                mc.player.sendSystemMessage(Component.literal("§e[Visotaris] §7" + message));
             }
         });
     }

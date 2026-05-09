@@ -7,17 +7,14 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
-import systems.diath.visotaris_opmod.commands.VisotarisCommands;
 import systems.diath.visotaris_opmod.config.ConfigManager;
-import systems.diath.visotaris_opmod.services.InventoryValuationService;
 import systems.diath.visotaris_opmod.services.JobTrackerService;
 import systems.diath.visotaris_opmod.services.MarketSyncService;
 import systems.diath.visotaris_opmod.services.MerchantSyncService;
@@ -28,7 +25,6 @@ import systems.diath.visotaris_opmod.services.KeybindService;
 import systems.diath.visotaris_opmod.services.MinecraftScreenshotCaptureBackend;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 import systems.diath.visotaris_opmod.services.TooltipValueService;
-import systems.diath.visotaris_opmod.ui.HudOverlay;
 import systems.diath.visotaris_opmod.web.WebServer;
 
 @Environment(EnvType.CLIENT)
@@ -49,15 +45,11 @@ public class VisotarisModClient implements ClientModInitializer {
     private MerchantSyncService        merchantSyncService;
     private JobTrackerService          jobTrackerService;
     private TooltipValueService        tooltipValueService;
-    private InventoryValuationService  inventoryValuationService;
     private PendingConfirmationService pendingConfirmationService;
     private DiscordPresenceService      discordPresenceService;
     private DiscordScreenshotService    discordScreenshotService;
     private CommandRewriteService       commandRewriteService;
     private KeybindService              keybindService;
-
-    // UI
-    private HudOverlay hudOverlay;
 
     // Web-UI
     private WebServer         webServer;
@@ -75,7 +67,6 @@ public class VisotarisModClient implements ClientModInitializer {
         marketSyncService         = new MarketSyncService(marketCache, configManager);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
-        inventoryValuationService = new InventoryValuationService(marketCache, shardCache, configManager);
         jobTrackerService         = new JobTrackerService(configManager);
         pendingConfirmationService = new PendingConfirmationService(configManager);
         discordPresenceService     = new DiscordPresenceService(
@@ -106,14 +97,14 @@ public class VisotarisModClient implements ClientModInitializer {
             PendingConfirmationService.Intercepted iv = pendingConfirmationService.tryIntercept(command);
             if (iv == null) return true;
             String label = iv.type() == systems.diath.visotaris_opmod.model.PendingAction.Type.RENAME ? "Rename" : "Sign";
-            MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.player != null) mc.player.sendMessage(Text.empty()
-                .append(Text.literal("§e[Visotaris] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
-                .append(Text.literal("§a§l[✓ Bestätigen]").styled(s ->
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null) mc.player.sendSystemMessage(Component.empty()
+                .append(Component.literal("§e[Visotaris] §7" + label + ": \"§f" + iv.text() + "§7\"  "))
+                .append(Component.literal("§a§l[✓ Bestätigen]").withStyle(s ->
                     s.withClickEvent(new ClickEvent.RunCommand(iv.confirmCmd()))))
-                .append(Text.literal("  "))
-                .append(Text.literal("§c§l[✗ Abbrechen]").styled(s ->
-                    s.withClickEvent(new ClickEvent.RunCommand(iv.cancelCmd())))), false);
+                .append(Component.literal("  "))
+                .append(Component.literal("§c§l[✗ Abbrechen]").withStyle(s ->
+                    s.withClickEvent(new ClickEvent.RunCommand(iv.cancelCmd())))));
             return false;
         });
 
@@ -126,36 +117,26 @@ public class VisotarisModClient implements ClientModInitializer {
             }
         );
 
-        // 6. HUD registrieren
-        // TODO: Auf HudElementRegistry migrieren, sobald die neue API stabil ist (fabric-rendering-v1 ≥ 16.x).
-        hudOverlay = new HudOverlay(jobTrackerService, inventoryValuationService, configManager);
-        @SuppressWarnings("deprecation")
-        var hudEvent = HudRenderCallback.EVENT;
-        hudEvent.register(hudOverlay::render);
-
-        // 7. Client-Commands registrieren
-        VisotarisCommands.register(pendingConfirmationService);
-
-        // 8. Discord Presence (nur Events registrieren; connect passiert erst bei JOIN)
+        // 6. Discord Presence (nur Events registrieren; connect passiert erst bei JOIN)
         discordPresenceService.registerEvents();
 
-        // 9. Keybinds registrieren
+        // 7. Keybinds registrieren
         keybindService.registerTick();
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> discordScreenshotService.shutdown());
 
-        // 10. Offhand-Blocker: Tastendrücke für F-Taste vor handleInputEvents() schlucken
+        // 8. Offhand-Blocker: Tastendrücke für F-Taste vor handleInputEvents() schlucken
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             var cfg = configManager.getConfig();
             if (!cfg.ingameFeaturesEnabled()) return;
             if (!cfg.enableOffhandBlocker) return;
             if (client.options == null) return;
             //noinspection StatementWithEmptyBody
-            while (client.options.swapHandsKey.wasPressed()) { /* blockiert */ }
+            while (client.options.keySwapOffhand.consumeClick()) { /* blockiert */ }
         });
 
-        VisotarisLogger.info("{} v{} initialisiert (MC 1.21.11).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());
+        VisotarisLogger.info("{} v{} initialisiert (MC 26.1.2).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());
 
-        // 11. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
+        // 9. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
         MarketHistoryApiClient historyApiClient = new MarketHistoryApiClient(configManager);
         priceHistoryCache = new PriceHistoryCache(historyApiClient);
         webServer = new WebServer(
@@ -179,7 +160,6 @@ public class VisotarisModClient implements ClientModInitializer {
     public MerchantSyncService getMerchantSyncService()             { return merchantSyncService; }
     public JobTrackerService getJobTrackerService()                 { return jobTrackerService; }
     public TooltipValueService getTooltipValueService()             { return tooltipValueService; }
-    public InventoryValuationService getInventoryValuationService() { return inventoryValuationService; }
     public PendingConfirmationService getPendingConfirmationService(){ return pendingConfirmationService; }
     public MarketCache getMarketCache()                             { return marketCache; }
     public ShardCache getShardCache()                               { return shardCache; }
