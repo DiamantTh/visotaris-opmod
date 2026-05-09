@@ -19,19 +19,19 @@ Zuletzt aktualisiert: 2026-04-07
 
 ### Minecraft & Plattform
 
-| Abhängigkeit | Version (1.21.4) | Version (1.21.11) | Lizenz | SPDX-ID |
-|---|---|---|---|---|
-| [Minecraft](https://www.minecraft.net/de-de/eula) | 1.21.4 | 1.21.11 | Minecraft EULA (proprietär) | — |
-| [Yarn Mappings](https://github.com/FabricMC/yarn) | 1.21.4+build.8 | 1.21.11+build.1 | Creative Commons Zero v1.0 (CC0) | `CC0-1.0` |
-| [Fabric Loader](https://github.com/FabricMC/fabric-loader) | 0.18.5 | 0.18.5 | Apache License 2.0 | `Apache-2.0` |
-| [Fabric API](https://github.com/FabricMC/fabric) | 0.113.0+1.21.4 | 0.141.3+1.21.11 | Apache License 2.0 | `Apache-2.0` |
+| Abhängigkeit | Version | Lizenz | SPDX-ID |
+|---|---|---|---|
+| [Minecraft](https://www.minecraft.net/de-de/eula) | 1.21.11 | Minecraft EULA (proprietär) | — |
+| [Yarn Mappings](https://github.com/FabricMC/yarn) | 1.21.11+build.1 | Creative Commons Zero v1.0 (CC0) | `CC0-1.0` |
+| [Fabric Loader](https://github.com/FabricMC/fabric-loader) | 0.18.5 | Apache License 2.0 | `Apache-2.0` |
+| [Fabric API](https://github.com/FabricMC/fabric) | 0.141.3+1.21.11 | Apache License 2.0 | `Apache-2.0` |
 
 ### Mod-Abhängigkeiten (modImplementation)
 
-| Abhängigkeit | Version (1.21.4) | Version (1.21.11) | Lizenz | SPDX-ID |
-|---|---|---|---|---|
-| [Mod Menu](https://github.com/TerraformersMC/ModMenu) | 13.0.0 | 14.0.0 | MIT License | `MIT` |
-| [fabric-language-kotlin](https://github.com/FabricMC/fabric-language-kotlin) | 1.13.7+kotlin.2.2.21 | 1.13.7+kotlin.2.2.21 | Apache License 2.0 | `Apache-2.0` |
+| Abhängigkeit | Version | Lizenz | SPDX-ID |
+|---|---|---|---|
+| [Mod Menu](https://github.com/TerraformersMC/ModMenu) | 17.0.0 | MIT License | `MIT` |
+| [fabric-language-kotlin](https://github.com/FabricMC/fabric-language-kotlin) | 1.13.7+kotlin.2.2.21 | Apache License 2.0 | `Apache-2.0` |
 
 ### Eingebettete Bibliotheken (shade / shadowJar)
 

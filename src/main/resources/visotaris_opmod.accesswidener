@@ -1,5 +1,4 @@
 accessWidener	v2	named
 
-# Inventory.selected ist in MC 1.21.11 private (war public in 1.21.4).
-# Das AW ist in 1.21.4 eine No-Op (Feld ist dort bereits public).
+# Inventory.selected ist in MC 1.21.11 private und wird für den Offhand-Blocker benötigt.
 accessible	field	net/minecraft/world/entity/player/Inventory	selected	I

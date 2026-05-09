@@ -81,7 +81,7 @@ public final class TooltipValueService {
      * Registry-Pfad gefunden.
      *
      * Komplexe OPSUCHT-Items (Gräbergemisch, Holzbündel) sind paper-Items mit
-     * custom_model_data. Ab 1.21.4 liegt der CMD-Wert als floats().get(0) im
+     * custom_model_data. In 1.21.11 liegt der CMD-Wert als floats().get(0) im
      * CustomModelData. Daraus wird "paper#626" gebildet, was dem Key
      * im ShardCache (aus MerchantApiClient.normalizeSource) entspricht.
      */
