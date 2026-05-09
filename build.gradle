@@ -4,6 +4,7 @@ plugins {
     // Gradle Node Plugin: lädt Node.js + npm automatisch herunter,
     // kein lokales npm/node auf dem Build-System erforderlich.
     id 'com.github.node-gradle.node'
+    id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}" apply false
 }
 
 node {

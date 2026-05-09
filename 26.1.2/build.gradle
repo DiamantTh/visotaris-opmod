@@ -3,14 +3,14 @@
 // ─────────────────────────────────────────────────────────────────────────────────
 plugins {
     id 'fabric-loom'                        version '1.16-SNAPSHOT'
-    id 'org.jetbrains.kotlin.jvm'           version "${kotlin_version}"
+    id 'org.jetbrains.kotlin.jvm'
     id 'com.gradleup.shadow'                version '9.4.1'
 }
 
 // Exakte MC-Version – wird für JAR-Name genutzt.
 // Beim nächsten MC-Update hier und in den dependencies anpassen.
 ext.mcVersion  = '26.1.2'
-ext.javaVersion = 25    // MC 26.x + ModMenu 18.x erfordert Java 25
+ext.javaVersion = 25    // MC 26.x + ModMenu 18.x erfordert Java 25.
 
 // MC 26.x ist nicht obfuskiert → Loom darf keinen Mappings-/Remapping-Setup durchführen.
 // Muss per ext gesetzt werden, damit Looms lazy Provider es in afterEvaluate findet.
@@ -91,9 +91,8 @@ kotlin {
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-    // Kotlin 2.2.21 kennt JvmTarget.JVM_25 noch nicht → JVM_24 als Bytecode-Target;
-    // Java-Klassen landen auf JVM 25, Kotlin auf JVM 24 – beide laufen auf JDK 25.
-    // Die Mismatch-Validation ist in 26.1.2/gradle.properties auf WARNING gesetzt.
+    // Kotlin 2.2.21 kennt JvmTarget.JVM_25 noch nicht → JVM_24 als Bytecode-Target.
+    // Java-Quellen und Dependencies bleiben auf Java 25; siehe 26.1.2/gradle.properties.
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
         freeCompilerArgs.add("-Xjvm-default=all")

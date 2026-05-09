@@ -62,9 +62,7 @@ public final class ConfigManager {
             c.enableAnvilNormalization = toml.getOrElse("features.enableAnvilNormalization", toml.getOrElse("enableAnvilNormalization", c.enableAnvilNormalization));
             c.enableDiscordRpc         = toml.getOrElse("features.enableDiscordRpc",         toml.getOrElse("enableDiscordRpc",         c.enableDiscordRpc));
             c.discordApplicationId     = toml.getOrElse("features.discordApplicationId",     toml.getOrElse("discordApplicationId",     c.discordApplicationId));
-            c.enableDiscordScreenshots = toml.getOrElse("features.enableDiscordScreenshots", toml.getOrElse("enableDiscordScreenshots", c.enableDiscordScreenshots));
             c.saveDiscordScreenshotsLocally = toml.getOrElse("features.saveDiscordScreenshotsLocally", toml.getOrElse("saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally));
-            c.discordScreenshotMessage = toml.getOrElse("features.discordScreenshotMessage", toml.getOrElse("discordScreenshotMessage", c.discordScreenshotMessage));
             for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
                 int slot = i + 1;
                 c.discordScreenshotTargets[i].enabled = toml.getOrElse(
@@ -128,10 +126,8 @@ public final class ConfigManager {
             toml.set("features.enableAnvilNormalization", c.enableAnvilNormalization);
             toml.set("features.enableDiscordRpc",         c.enableDiscordRpc);
             toml.set("features.discordApplicationId",     c.discordApplicationId);
-            toml.set("features.enableDiscordScreenshots", c.enableDiscordScreenshots);
             toml.set("features.saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally);
-            toml.set("features.discordScreenshotMessage", c.discordScreenshotMessage);
-            toml.setComment("discordScreenshots", " Discord-Screenshot-Ziele. Global und pro Ziel standardmäßig deaktiviert.");
+            toml.setComment("discordScreenshots", " Discord-Screenshot-Ziele. Jedes Ziel ist separat aktivierbar.");
             for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
                 int slot = i + 1;
                 VisotarisConfig.DiscordScreenshotTarget target = c.discordScreenshotTargets[i];

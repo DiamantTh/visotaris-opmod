@@ -29,7 +29,6 @@ public final class DiscordScreenshotService {
     private static final DateTimeFormatter FILE_TIME =
         DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss");
     private static final MediaType PNG = MediaType.get("image/png");
-    private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
     private final ConfigManager configManager;
     private final ScreenshotCaptureBackend captureBackend;
@@ -44,10 +43,6 @@ public final class DiscordScreenshotService {
 
     public void sendToTarget(int targetIndex) {
         VisotarisConfig cfg = configManager.getConfig();
-        if (!cfg.enableDiscordScreenshots) {
-            captureBackend.notifyUser("Discord-Screenshots sind deaktiviert.");
-            return;
-        }
         if (targetIndex < 0 || targetIndex >= TARGET_COUNT) {
             captureBackend.notifyUser("Discord-Screenshot-Ziel ist ungültig.");
             return;
@@ -84,11 +79,9 @@ public final class DiscordScreenshotService {
             }
 
             RequestBody fileBody = RequestBody.create(screenshot.toFile(), PNG);
-            RequestBody payload = RequestBody.create("{\"content\":\"" + jsonEscape(buildContent(cfg, label)) + "\"}", JSON);
             RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("payload_json", null, payload)
-                .addFormDataPart("file", screenshot.getFileName().toString(), fileBody)
+                .addFormDataPart("files[0]", screenshot.getFileName().toString(), fileBody)
                 .build();
 
             Request request = new Request.Builder()
@@ -134,35 +127,6 @@ public final class DiscordScreenshotService {
         String name = cfg.getDiscordScreenshotTargetName(targetIndex);
         if (name != null && !name.isBlank()) return name.strip();
         return "Ziel " + (targetIndex + 1);
-    }
-
-    private static String buildContent(VisotarisConfig cfg, String label) {
-        String message = cfg.discordScreenshotMessage;
-        if (message == null || message.isBlank()) {
-            return "Visotaris Screenshot";
-        }
-        return message.replace("{target}", label);
-    }
-
-    private static String jsonEscape(String value) {
-        StringBuilder out = new StringBuilder(value.length() + 16);
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            switch (ch) {
-                case '"' -> out.append("\\\"");
-                case '\\' -> out.append("\\\\");
-                case '\b' -> out.append("\\b");
-                case '\f' -> out.append("\\f");
-                case '\n' -> out.append("\\n");
-                case '\r' -> out.append("\\r");
-                case '\t' -> out.append("\\t");
-                default -> {
-                    if (ch < 0x20) out.append(String.format("\\u%04x", (int) ch));
-                    else out.append(ch);
-                }
-            }
-        }
-        return out.toString();
     }
 
     private static final class DaemonThreadFactory implements ThreadFactory {

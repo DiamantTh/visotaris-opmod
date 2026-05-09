@@ -43,9 +43,7 @@ public final class VisotarisConfig {
     public boolean enableAnvilNormalization = true;  // Kurzformen im Amboss-Umbenennenfeld expandieren
     public boolean enableDiscordRpc        = false;  // Standard: deaktiviert
     public String  discordApplicationId    = "";     // Discord Developer Portal → Application ID
-    public boolean enableDiscordScreenshots = false; // Standard: deaktiviert
     public boolean saveDiscordScreenshotsLocally = true;
-    public String  discordScreenshotMessage = "Visotaris Screenshot";
     public final DiscordScreenshotTarget[] discordScreenshotTargets = {
         new DiscordScreenshotTarget("Ziel 1"),
         new DiscordScreenshotTarget("Ziel 2"),

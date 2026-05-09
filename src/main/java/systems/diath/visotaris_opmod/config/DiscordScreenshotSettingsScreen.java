@@ -20,7 +20,6 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
     private final ConfigManager configManager;
     private final VisotarisConfig cfg;
     private final List<Button> targetButtons = new ArrayList<>();
-    private EditBox messageField;
 
     public DiscordScreenshotSettingsScreen(Screen parent) {
         super(Component.literal("Visotaris - Discord-Screenshots"));
@@ -37,32 +36,13 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
         int y = 34;
 
         this.addRenderableWidget(Button.builder(
-            toggleText("Discord-Screenshots", cfg.enableDiscordScreenshots),
-            b -> {
-                cfg.enableDiscordScreenshots = !cfg.enableDiscordScreenshots;
-                b.setMessage(toggleText("Discord-Screenshots", cfg.enableDiscordScreenshots));
-            }
-        ).bounds(MARGIN, y, fw / 2 - 3, 20).build());
-
-        this.addRenderableWidget(Button.builder(
             toggleText("Lokal speichern", cfg.saveDiscordScreenshotsLocally),
             b -> {
                 cfg.saveDiscordScreenshotsLocally = !cfg.saveDiscordScreenshotsLocally;
                 b.setMessage(toggleText("Lokal speichern", cfg.saveDiscordScreenshotsLocally));
             }
-        ).bounds(MARGIN + fw / 2 + 3, y, fw / 2 - 3, 20).build());
+        ).bounds(MARGIN, y, fw, 20).build());
         y += 32;
-
-        messageField = new EditBox(this.font, MARGIN, y, fw, FIELD_H, Component.literal("Nachricht"));
-        messageField.setMaxLength(180);
-        messageField.setValue(cfg.discordScreenshotMessage);
-        messageField.setSuggestion("Discord-Nachricht");
-        messageField.setResponder(s -> {
-            cfg.discordScreenshotMessage = s;
-            messageField.setSuggestion(s.isEmpty() ? "Discord-Nachricht" : "");
-        });
-        this.addRenderableWidget(messageField);
-        y += 30;
 
         int toggleW = 54;
         int nameW = 78;
@@ -128,8 +108,6 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
         ctx.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
         ctx.fill(this.width / 2 - 110, 20, this.width / 2 + 110, 21, 0x66AAAAAA);
-        ctx.drawString(this.font, Component.literal("Nachricht ({target} wird ersetzt)"),
-            MARGIN, messageField.getY() - 10, 0xAAAAAA);
         for (int i = 0; i < targetButtons.size(); i++) {
             Button button = targetButtons.get(i);
             ctx.drawString(this.font, Component.literal("Ziel " + (i + 1)),
