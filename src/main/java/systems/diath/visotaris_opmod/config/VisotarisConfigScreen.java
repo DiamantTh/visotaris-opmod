@@ -103,8 +103,8 @@ public final class VisotarisConfigScreen extends Screen {
         addObserverToggle(cx - fw / 2, y, fw);
         y += BTN_H + BTN_GAP + SEC_GAP;
 
-        // ── Anzeige ─────────────────────────────────────────────────────────
-        addLabel("Anzeige", y);                              y += CAT_H + CAT_GAP;
+        // ── Ingame-Anzeige ─────────────────────────────────────────────────
+        addLabel("Ingame-Anzeige", y);                       y += CAT_H + CAT_GAP;
         addToggle(lx, y, "Markt-Tooltips",        cfg.showMarketTooltips,   v -> { cfg.showMarketTooltips = v;   if (v) triggerDataRefresh(); });
         addToggle(rx, y, "HUD anzeigen",           cfg.showHud,              v -> { cfg.showHud = v;              if (v) triggerDataRefresh(); });
         y += BTN_H + BTN_GAP;
@@ -114,8 +114,8 @@ public final class VisotarisConfigScreen extends Screen {
         addToggle(lx, y, "Shulker-Rekursion",      cfg.shulkerRecursion,     v -> cfg.shulkerRecursion = v);
         y += BTN_H + BTN_GAP + SEC_GAP;
 
-        // ── Schutz ──────────────────────────────────────────────────────────
-        addLabel("Schutz", y);                               y += CAT_H + CAT_GAP;
+        // ── Ingame-Schutz ──────────────────────────────────────────────────
+        addLabel("Ingame-Schutz", y);                        y += CAT_H + CAT_GAP;
         addToggle(lx, y, "Rename-Schutz",    cfg.enableRenameProtection, v -> cfg.enableRenameProtection = v);
         addToggle(rx, y, "Sign-Schutz",      cfg.enableSignProtection,   v -> cfg.enableSignProtection = v);
         y += BTN_H + BTN_GAP;
@@ -123,15 +123,19 @@ public final class VisotarisConfigScreen extends Screen {
         addToggle(rx, y, "Inventar-Warnung", cfg.enableInventoryWarning, v -> cfg.enableInventoryWarning = v);
         y += BTN_H + BTN_GAP + SEC_GAP;
 
-        // ── Features ────────────────────────────────────────────────────────
-        addLabel("Features", y);                             y += CAT_H + CAT_GAP;
+        // ── Ingame-Automatisierung ─────────────────────────────────────────
+        addLabel("Ingame-Automatisierung", y);               y += CAT_H + CAT_GAP;
         addToggle(lx, y, "Job-Tracker",           cfg.enableJobTracker,         v -> cfg.enableJobTracker = v);
         addToggle(rx, y, "Command-Kurzformen",    cfg.enableCommandShortforms,  v -> cfg.enableCommandShortforms = v,
                 Component.literal("\u00a76\u26a0 Kurzformen aktivieren?"),
                 Component.literal("Betr\u00e4ge werden automatisch umgewandelt (1k\u21921000).\nFalsche Eingaben k\u00f6nnen fehlerhafte Befehle ausl\u00f6sen!"));
         y += BTN_H + BTN_GAP;
         addToggle(lx, y, "Amboss-Normalisierung", cfg.enableAnvilNormalization, v -> cfg.enableAnvilNormalization = v);
-        addToggle(rx, y, "Discord Rich Presence", cfg.enableDiscordRpc,         v -> cfg.enableDiscordRpc = v);
+        y += BTN_H + BTN_GAP + SEC_GAP;
+
+        // ── Discord ─────────────────────────────────────────────────────────
+        addLabel("Discord", y);                              y += CAT_H + CAT_GAP;
+        addToggle(lx, y, "Rich Presence", cfg.enableDiscordRpc, v -> cfg.enableDiscordRpc = v);
         y += BTN_H + BTN_GAP;
         addContent(Button.builder(
                 Component.literal("Discord-Screenshots…"),
@@ -139,22 +143,24 @@ public final class VisotarisConfigScreen extends Screen {
         ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
         y += BTN_H + BTN_GAP + SEC_GAP;
 
-        // ── Netzwerk ────────────────────────────────────────────────────────
-        addLabel("Netzwerk", y);                             y += CAT_H + CAT_GAP;
-        addToggle(lx, y, "Web-Interface", cfg.enableWebUi, v -> cfg.enableWebUi = v);
-        addCycling(rx, y, "Markt-Refresh",    cfg.marketRefreshIntervalSeconds,    v -> cfg.marketRefreshIntervalSeconds = v);
+        // ── OPSucht-API ─────────────────────────────────────────────────────
+        addLabel("OPSucht-API", y);                          y += CAT_H + CAT_GAP;
+        addCycling(lx, y, "Markt-Refresh",    cfg.marketRefreshIntervalSeconds,    v -> cfg.marketRefreshIntervalSeconds = v);
+        addCycling(rx, y, "Merchant-Refresh", cfg.merchantRefreshIntervalSeconds,  v -> cfg.merchantRefreshIntervalSeconds = v);
         y += BTN_H + BTN_GAP;
-        addCycling(lx, y, "Merchant-Refresh", cfg.merchantRefreshIntervalSeconds,  v -> cfg.merchantRefreshIntervalSeconds = v);
-        y += BTN_H + BTN_GAP + 2;
         addContent(Button.builder(
                 Component.literal("\u27f3 OPSucht-API jetzt prüfen"),
                 b -> onManualRefresh(b)
         ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
-        y += BTN_H + BTN_GAP + 2;
+        y += BTN_H + BTN_GAP + SEC_GAP;
+
+        // ── Web-Interface ──────────────────────────────────────────────────
+        addLabel("Web-Interface", y);                        y += CAT_H + CAT_GAP;
+        addToggle(lx, y, "Lokales Interface", cfg.enableWebUi, v -> cfg.enableWebUi = v);
         addContent(Button.builder(
-                Component.literal("Netzwerk & Web-Port\u2026"),
+                Component.literal("Port, API-Key & Proxy\u2026"),
                 b -> this.minecraft.setScreen(new NetworkSettingsScreen(this))
-        ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
+        ).bounds(rx, 0, BTN_W, BTN_H).build(), y);
         y += BTN_H + BTN_GAP;
 
         // ── Scroll-Bereich berechnen ─────────────────────────────────────────

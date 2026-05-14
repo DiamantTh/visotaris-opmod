@@ -60,10 +60,23 @@ public final class ConfigManager {
             c.enableJobTracker         = toml.getOrElse("features.enableJobTracker",         toml.getOrElse("enableJobTracker",         c.enableJobTracker));
             c.enableCommandShortforms  = toml.getOrElse("features.enableCommandShortforms",  toml.getOrElse("enableCommandShortforms",  c.enableCommandShortforms));
             c.enableAnvilNormalization = toml.getOrElse("features.enableAnvilNormalization", toml.getOrElse("enableAnvilNormalization", c.enableAnvilNormalization));
-            c.enableDiscordRpc         = toml.getOrElse("features.enableDiscordRpc",         toml.getOrElse("enableDiscordRpc",         c.enableDiscordRpc));
-            c.discordApplicationId     = toml.getOrElse("features.discordApplicationId",     toml.getOrElse("discordApplicationId",     c.discordApplicationId));
-            c.saveDiscordScreenshotsLocally = toml.getOrElse("features.saveDiscordScreenshotsLocally", toml.getOrElse("saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally));
-            c.verboseDiscordScreenshotLogging = toml.getOrElse("features.verboseDiscordScreenshotLogging", toml.getOrElse("verboseDiscordScreenshotLogging", c.verboseDiscordScreenshotLogging));
+            // ── Discord (neu: discord.x; alt: features.x / x) ─────────────────────────
+            c.enableDiscordRpc = toml.getOrElse(
+                "discord.enableDiscordRpc",
+                toml.getOrElse("features.enableDiscordRpc", toml.getOrElse("enableDiscordRpc", c.enableDiscordRpc))
+            );
+            c.discordApplicationId = toml.getOrElse(
+                "discord.applicationId",
+                toml.getOrElse("features.discordApplicationId", toml.getOrElse("discordApplicationId", c.discordApplicationId))
+            );
+            c.saveDiscordScreenshotsLocally = toml.getOrElse(
+                "discord.saveScreenshotsLocally",
+                toml.getOrElse("features.saveDiscordScreenshotsLocally", toml.getOrElse("saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally))
+            );
+            c.verboseDiscordScreenshotLogging = toml.getOrElse(
+                "discord.verboseScreenshotLogging",
+                toml.getOrElse("features.verboseDiscordScreenshotLogging", toml.getOrElse("verboseDiscordScreenshotLogging", c.verboseDiscordScreenshotLogging))
+            );
             for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
                 int slot = i + 1;
                 c.discordScreenshotTargets[i].enabled = toml.getOrElse(
@@ -121,14 +134,16 @@ public final class ConfigManager {
             toml.set("schutz.enableOffhandBlocker",   c.enableOffhandBlocker);
             toml.set("schutz.enableInventoryWarning", c.enableInventoryWarning);
             // ── [features] ────────────────────────────────────────────────────────────
-            toml.setComment("features", " Spielmechanik-Features");
+            toml.setComment("features", " Ingame-Spielmechanik-Features");
             toml.set("features.enableJobTracker",         c.enableJobTracker);
             toml.set("features.enableCommandShortforms",  c.enableCommandShortforms);
             toml.set("features.enableAnvilNormalization", c.enableAnvilNormalization);
-            toml.set("features.enableDiscordRpc",         c.enableDiscordRpc);
-            toml.set("features.discordApplicationId",     c.discordApplicationId);
-            toml.set("features.saveDiscordScreenshotsLocally", c.saveDiscordScreenshotsLocally);
-            toml.set("features.verboseDiscordScreenshotLogging", c.verboseDiscordScreenshotLogging);
+            // ── [discord] ─────────────────────────────────────────────────────────────
+            toml.setComment("discord", " Discord Rich Presence und Screenshot-Versand");
+            toml.set("discord.enableDiscordRpc", c.enableDiscordRpc);
+            toml.set("discord.applicationId", c.discordApplicationId);
+            toml.set("discord.saveScreenshotsLocally", c.saveDiscordScreenshotsLocally);
+            toml.set("discord.verboseScreenshotLogging", c.verboseDiscordScreenshotLogging);
             toml.setComment("discordScreenshots", " Discord-Screenshot-Ziele. Jedes Ziel ist separat aktivierbar.");
             for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
                 int slot = i + 1;
