@@ -138,7 +138,7 @@ public final class ConfigManager {
                 toml.set("discordScreenshots.target" + slot + ".webhookUrl", target.webhookUrl);
             }
             // ── [netzwerk] ────────────────────────────────────────────────────────────
-            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-UI & Proxy");
+            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-Interface & Proxy");
             toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
             toml.set("netzwerk.merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
             toml.set("netzwerk.enableWebUi",    c.enableWebUi);

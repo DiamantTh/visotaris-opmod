@@ -14,12 +14,13 @@ public final class VisotarisConfig {
     /**
      * Observer-Modus: deaktiviert sämtliche Ingame-Eingriffe (Tooltips, HUD,
      * Container-Overlay, Quick-Buttons, Schutzlogik, Offhand-Blocker, Job-Tracker,
-     * Command-Kurzformen, Amboss-Normalisierung, Discord RPC).
+     * Command-Kurzformen, Amboss-Normalisierung).
      *
      * Aktiv bleiben ausschließlich:
      *   - Hintergrund-Datenabruf (Markt + Merchant/Shard)
      *   - Caches + Persistenz
-     *   - Web-UI (sofern separat aktiviert)
+     *   - Web-Interface (sofern separat aktiviert)
+     *   - Discord RPC (sofern separat aktiviert)
      *   - Settings-/Refresh-Keybinds
      */
     public boolean observerModeOnly = false;

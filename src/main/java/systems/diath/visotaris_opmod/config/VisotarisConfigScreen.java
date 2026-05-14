@@ -30,7 +30,7 @@ public final class VisotarisConfigScreen extends Screen {
     private static final int BTN_GAP  = 4;
     private static final int COL_GAP  = 8;
     private static final int HEADER_H = 24;  // Titel-Bereich (fixiert)
-    private static final int FOOTER_H = 36;  // Speichern/Abbrechen (fixiert)
+    private static final int FOOTER_H = 48;  // Status + Speichern/Abbrechen (fixiert)
     private static final int SB_W     = 6;   // Scrollbar-Breite
     private static final int SB_PAD   = 2;   // Scrollbar-Rand
     private static final int CAT_H    = 12;  // Höhe einer Kategorie-Überschrift
@@ -141,16 +141,18 @@ public final class VisotarisConfigScreen extends Screen {
 
         // ── Netzwerk ────────────────────────────────────────────────────────
         addLabel("Netzwerk", y);                             y += CAT_H + CAT_GAP;
-        addCycling(lx, y, "Markt-Refresh",    cfg.marketRefreshIntervalSeconds,    v -> cfg.marketRefreshIntervalSeconds = v);
-        addCycling(rx, y, "Merchant-Refresh", cfg.merchantRefreshIntervalSeconds,  v -> cfg.merchantRefreshIntervalSeconds = v);
+        addToggle(lx, y, "Web-Interface", cfg.enableWebUi, v -> cfg.enableWebUi = v);
+        addCycling(rx, y, "Markt-Refresh",    cfg.marketRefreshIntervalSeconds,    v -> cfg.marketRefreshIntervalSeconds = v);
+        y += BTN_H + BTN_GAP;
+        addCycling(lx, y, "Merchant-Refresh", cfg.merchantRefreshIntervalSeconds,  v -> cfg.merchantRefreshIntervalSeconds = v);
         y += BTN_H + BTN_GAP + 2;
         addContent(Button.builder(
-                Component.literal("\u27f3 API jetzt abrufen"),
+                Component.literal("\u27f3 OPSucht-API jetzt prüfen"),
                 b -> onManualRefresh(b)
         ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
         y += BTN_H + BTN_GAP + 2;
         addContent(Button.builder(
-                Component.literal("Netzwerk-Einstellungen\u2026"),
+                Component.literal("Netzwerk & Web-Port\u2026"),
                 b -> this.minecraft.setScreen(new NetworkSettingsScreen(this))
         ).bounds(cx - fw / 2, 0, fw, BTN_H).build(), y);
         y += BTN_H + BTN_GAP;
@@ -164,7 +166,11 @@ public final class VisotarisConfigScreen extends Screen {
         int by = this.height - FOOTER_H + 8;
         this.addRenderableWidget(Button.builder(
                 Component.literal("Speichern & Schlie\u00dfen"),
-                b -> { configManager.save(); this.minecraft.setScreen(parent); }
+                b -> {
+                    configManager.save();
+                    VisotarisModClient.getInstance().applyWebUiConfig();
+                    this.minecraft.setScreen(parent);
+                }
         ).bounds(cx - BTN_W - COL_GAP / 2, by, BTN_W, 20).build());
 
         this.addRenderableWidget(Button.builder(
@@ -192,6 +198,7 @@ public final class VisotarisConfigScreen extends Screen {
 
         // 4. Trennlinie Footer
         ctx.fill(0, cBottom, this.width, cBottom + 1, COL_SEPARATOR);
+        renderWebInterfaceFooterStatus(ctx, cBottom);
 
         // 5. Sichtbarkeit nach Scroll berechnen
         updatePositions();
@@ -322,7 +329,7 @@ public final class VisotarisConfigScreen extends Screen {
                                     this.minecraft.setScreen(VisotarisConfigScreen.this);
                                 },
                                 Component.literal("\u00a76\u26a0 Observer-Modus aktivieren?"),
-                                Component.literal("Deaktiviert ALLE Ingame-Eingriffe (Tooltips, HUD, Container-Overlay,\nSchutzlogik, Job-Tracker, Command-Kurzformen, Discord RPC).\nNur Marktdaten werden weiter abgerufen.")
+                                Component.literal("Deaktiviert ALLE Ingame-Eingriffe (Tooltips, HUD, Container-Overlay,\nSchutzlogik, Job-Tracker, Command-Kurzformen).\nMarktdaten, Web-Interface und Discord RPC bleiben separat steuerbar.")
                         ));
                     } else {
                         state[0] = false;
@@ -385,6 +392,26 @@ public final class VisotarisConfigScreen extends Screen {
 
     private static Component makeToggleText(String label, boolean value) {
         return Component.literal(label + ": " + (value ? "\u00a7aAN" : "\u00a7cAUS"));
+    }
+
+    private Component makeWebUiStatusText() {
+        var server = VisotarisModClient.getInstance().getWebServer();
+        boolean running = server != null && server.isRunning();
+        int port = server != null ? server.getPort() : cfg.webUiPort;
+        return Component.literal("Web-Interface: " + (running ? "\u00a7aaktiv" : "\u00a7cinaktiv")
+                + "\u00a77 - 127.0.0.1:" + port);
+    }
+
+    private void renderWebInterfaceFooterStatus(GuiGraphics ctx, int footerTop) {
+        Component status = makeWebUiStatusText();
+        int x = 12;
+        int y = footerTop + 32;
+        int maxW = Math.max(0, this.width - 24);
+        if (this.font.width(status) > maxW) {
+            var server = VisotarisModClient.getInstance().getWebServer();
+            status = Component.literal("Web-Interface: " + (server != null && server.isRunning() ? "\u00a7aaktiv" : "\u00a7cinaktiv"));
+        }
+        ctx.drawString(this.font, status, x, y, 0xFFFFFF, true);
     }
 
     /**
@@ -450,7 +477,7 @@ public final class VisotarisConfigScreen extends Screen {
         VisotarisModClient mod = VisotarisModClient.getInstance();
         if (mod == null) return;
         btn.active = false;
-        btn.setMessage(Component.literal("⏳ Lade..."));
+        btn.setMessage(Component.literal("⏳ Prüfe OPSucht-API..."));
         Thread.ofVirtual().name("visotaris-manual-refresh").start(() -> {
             try {
                 mod.getMarketSyncService().refresh();
@@ -458,8 +485,8 @@ public final class VisotarisConfigScreen extends Screen {
                 Thread.sleep(800);
                 net.minecraft.client.Minecraft.getInstance().execute(() -> {
                     btn.active = true;
-                    btn.setMessage(Component.literal("⟳ API jetzt abrufen"));
-                    refreshStatus   = "§a✔ API-Daten aktualisiert";
+                    btn.setMessage(Component.literal("⟳ OPSucht-API jetzt prüfen"));
+                    refreshStatus   = "§a✔ OPSucht-API-Daten aktualisiert";
                     refreshStatusMs = System.currentTimeMillis();
                 });
             } catch (InterruptedException ignored) {
@@ -467,7 +494,7 @@ public final class VisotarisConfigScreen extends Screen {
             } catch (Exception e) {
                 net.minecraft.client.Minecraft.getInstance().execute(() -> {
                     btn.active = true;
-                    btn.setMessage(Component.literal("⟳ API jetzt abrufen"));
+                    btn.setMessage(Component.literal("⟳ OPSucht-API jetzt prüfen"));
                     refreshStatus   = "§cFehler: " + e.getMessage();
                     refreshStatusMs = System.currentTimeMillis();
                 });

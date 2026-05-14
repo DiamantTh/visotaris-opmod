@@ -158,13 +158,7 @@ public class VisotarisModClient implements ClientModInitializer {
         // 11. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
         MarketHistoryApiClient historyApiClient = new MarketHistoryApiClient(configManager);
         priceHistoryCache = new PriceHistoryCache(historyApiClient);
-        webServer = new WebServer(
-            configManager.getConfig().webUiPort,
-            marketCache, shardCache, priceHistoryCache
-        );
-        if (configManager.getConfig().enableWebUi) {
-            webServer.start();
-        }
+        applyWebUiConfig();
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> webServer.stop());
     }
 
@@ -184,4 +178,20 @@ public class VisotarisModClient implements ClientModInitializer {
     public DiscordScreenshotService getDiscordScreenshotService()      { return discordScreenshotService; }
     public MarketCache getMarketCache()                             { return marketCache; }
     public ShardCache getShardCache()                               { return shardCache; }
+    public WebServer getWebServer()                                 { return webServer; }
+
+    public void applyWebUiConfig() {
+        var cfg = configManager.getConfig();
+        if (webServer == null || webServer.getPort() != cfg.webUiPort) {
+            if (webServer != null) {
+                webServer.stop();
+            }
+            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, priceHistoryCache);
+        }
+        if (cfg.enableWebUi) {
+            webServer.start();
+        } else {
+            webServer.stop();
+        }
+    }
 }

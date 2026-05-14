@@ -35,7 +35,7 @@ import java.io.InputStream
  *  GET /api/shard     → JSON: alle Shardkurse aus ShardCache
  */
 class WebServer(
-    private val port: Int,
+    val port: Int,
     private val marketCache: MarketCache,
     private val shardCache: ShardCache,
     private val historyCache: PriceHistoryCache
@@ -62,6 +62,8 @@ class WebServer(
 
         VisotarisLogger.info("Web-UI gestartet: http://[::1]:{}/ | http://127.0.0.1:{}/", port, port)
     }
+
+    fun isRunning(): Boolean = servers.isNotEmpty()
 
     fun stop() {
         servers.forEach { it.stop(gracePeriodMillis = 200, timeoutMillis = 1_000) }

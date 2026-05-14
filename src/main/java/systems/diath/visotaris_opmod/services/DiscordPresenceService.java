@@ -223,10 +223,6 @@ public final class DiscordPresenceService {
 
     private PresenceText buildAdvancedText(Minecraft minecraft) {
         VisotarisConfig cfg = config.getConfig();
-        if (cfg.observerModeOnly) {
-            return new PresenceText(VisotarisConst.MOD_NAME, "Observer-Modus", "observer", "Observer");
-        }
-
         String location = locationText(minecraft);
         JobSnapshot snapshot = jobTracker != null ? jobTracker.getSnapshot() : JobSnapshot.empty();
         if (cfg.enableJobTracker && snapshot.getJobName() != null && !snapshot.getJobName().isBlank()) {
