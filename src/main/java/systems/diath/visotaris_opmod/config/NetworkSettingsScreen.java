@@ -200,14 +200,55 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("Port"),
             fieldProxyPort.getX(), fieldProxyPort.getY() - 10 - GAP_LABEL, lColor);
 
-        // Hinweis
+        // Web-Interface-Status + Hinweis
         int noteY = fieldProxyHost.getY() + FIELD_H + 6;
-        ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77Browser-Port: 127.0.0.1:" + cfg.webUiPort + " (localhost)"),
-            this.width / 2, noteY, 0xFFFFFF);
+        renderWebInterfaceStatus(ctx, noteY, mouseX, mouseY);
         ctx.drawCenteredString(this.font,
             Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
             this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
+    }
+
+    private void renderWebInterfaceStatus(GuiGraphics ctx, int y, int mouseX, int mouseY) {
+        var server = VisotarisModClient.getInstance().getWebServer();
+        boolean running = server != null && server.isRunning();
+        int port = server != null ? server.getPort() : cfg.webUiPort;
+        Component status = Component.literal("Web-Interface: " + (running ? "\u00a7aaktiv" : "\u00a7cinaktiv")
+            + "\u00a77 - 127.0.0.1:" + port);
+        int textW = this.font.width(status);
+        int x = (this.width - textW) / 2;
+        int dotX = Math.max(MARGIN, x - 12);
+        ctx.fill(dotX, y + 2, dotX + 7, y + 9, running ? 0xFF39FF14 : 0xFFFF4040);
+        ctx.drawString(this.font, status, x, y, 0xFFFFFF, true);
+        if (mouseX >= dotX && mouseX <= x + textW && mouseY >= y - 2 && mouseY <= y + this.font.lineHeight + 2) {
+            renderSimpleTooltip(ctx, makeWebUiStatusTooltip(), mouseX, mouseY);
+        }
+    }
+
+    private Component makeWebUiStatusTooltip() {
+        var server = VisotarisModClient.getInstance().getWebServer();
+        boolean running = server != null && server.isRunning();
+        int port = server != null ? server.getPort() : cfg.webUiPort;
+        if (running) {
+            return Component.literal("Läuft lokal auf 127.0.0.1:" + port);
+        }
+        if (!cfg.enableWebUi) {
+            return Component.literal("Web-Interface ist deaktiviert.");
+        }
+        String reason = server != null ? server.getLastFailureReason() : "";
+        if (reason == null || reason.isBlank() || reason.length() > 90) {
+            return Component.literal("Start fehlgeschlagen. Details stehen im Log.");
+        }
+        return Component.literal("Start fehlgeschlagen: " + reason);
+    }
+
+    private void renderSimpleTooltip(GuiGraphics ctx, Component text, int mouseX, int mouseY) {
+        int padding = 4;
+        int tw = this.font.width(text);
+        int x = Math.min(mouseX + 10, this.width - tw - padding * 2 - 4);
+        int y = Math.max(4, mouseY - this.font.lineHeight - padding * 2 - 4);
+        ctx.fill(x - 1, y - 1, x + tw + padding * 2 + 1, y + this.font.lineHeight + padding * 2 + 1, 0xEE000000);
+        ctx.fill(x, y, x + tw + padding * 2, y + this.font.lineHeight + padding * 2, 0xEE18294A);
+        ctx.drawString(this.font, text, x + padding, y + padding, 0xFFFFFFFF, false);
     }
 
     private static Integer parsePort(String value) {

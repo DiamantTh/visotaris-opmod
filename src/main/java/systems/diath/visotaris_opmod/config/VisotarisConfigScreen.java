@@ -204,7 +204,7 @@ public final class VisotarisConfigScreen extends Screen {
 
         // 4. Trennlinie Footer
         ctx.fill(0, cBottom, this.width, cBottom + 1, COL_SEPARATOR);
-        renderWebInterfaceFooterStatus(ctx, cBottom);
+        renderWebInterfaceFooterStatus(ctx, cBottom, mouseX, mouseY);
 
         // 5. Sichtbarkeit nach Scroll berechnen
         updatePositions();
@@ -408,16 +408,54 @@ public final class VisotarisConfigScreen extends Screen {
                 + "\u00a77 - 127.0.0.1:" + port);
     }
 
-    private void renderWebInterfaceFooterStatus(GuiGraphics ctx, int footerTop) {
+    private void renderWebInterfaceFooterStatus(GuiGraphics ctx, int footerTop, int mouseX, int mouseY) {
+        var server = VisotarisModClient.getInstance().getWebServer();
+        boolean running = server != null && server.isRunning();
         Component status = makeWebUiStatusText();
         int x = 12;
         int y = footerTop + 32;
-        int maxW = Math.max(0, this.width - 24);
+        int dotColor = running ? 0xFF39FF14 : 0xFFFF4040;
+        ctx.fill(x, y + 2, x + 7, y + 9, dotColor);
+        x += 12;
+        int maxW = Math.max(0, this.width - x - 12);
         if (this.font.width(status) > maxW) {
-            var server = VisotarisModClient.getInstance().getWebServer();
-            status = Component.literal("Web-Interface: " + (server != null && server.isRunning() ? "\u00a7aaktiv" : "\u00a7cinaktiv"));
+            status = Component.literal("Web-Interface: " + (running ? "\u00a7aaktiv" : "\u00a7cinaktiv"));
         }
+        int statusW = this.font.width(status);
         ctx.drawString(this.font, status, x, y, 0xFFFFFF, true);
+        if (mouseX >= 12 && mouseX <= x + statusW && mouseY >= y - 2 && mouseY <= y + this.font.lineHeight + 2) {
+            renderSimpleTooltip(ctx, makeWebUiStatusTooltip(), mouseX, mouseY);
+        }
+    }
+
+    private Component makeWebUiStatusTooltip() {
+        var server = VisotarisModClient.getInstance().getWebServer();
+        boolean running = server != null && server.isRunning();
+        int port = server != null ? server.getPort() : cfg.webUiPort;
+        if (running) {
+            return Component.literal("Läuft lokal auf 127.0.0.1:" + port);
+        }
+        if (!cfg.enableWebUi) {
+            return Component.literal("Web-Interface ist deaktiviert.");
+        }
+        String reason = server != null ? server.getLastFailureReason() : "";
+        if (reason == null || reason.isBlank()) {
+            return Component.literal("Start fehlgeschlagen. Details stehen im Log.");
+        }
+        if (reason.length() > 90) {
+            return Component.literal("Start fehlgeschlagen. Details stehen im Log.");
+        }
+        return Component.literal("Start fehlgeschlagen: " + reason);
+    }
+
+    private void renderSimpleTooltip(GuiGraphics ctx, Component text, int mouseX, int mouseY) {
+        int padding = 4;
+        int tw = this.font.width(text);
+        int x = Math.min(mouseX + 10, this.width - tw - padding * 2 - 4);
+        int y = Math.max(4, mouseY - this.font.lineHeight - padding * 2 - 4);
+        ctx.fill(x - 1, y - 1, x + tw + padding * 2 + 1, y + this.font.lineHeight + padding * 2 + 1, 0xEE000000);
+        ctx.fill(x, y, x + tw + padding * 2, y + this.font.lineHeight + padding * 2, 0xEE18294A);
+        ctx.drawString(this.font, text, x + padding, y + padding, 0xFFFFFFFF, false);
     }
 
     /**

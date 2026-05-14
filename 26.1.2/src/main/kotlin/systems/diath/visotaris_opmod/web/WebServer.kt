@@ -32,19 +32,25 @@ class WebServer(
 ) {
     private val gson = Gson()
     private val servers = mutableListOf<EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>>()
+    var lastFailureReason: String = ""
+        private set
 
     fun start() {
         if (servers.isNotEmpty()) return
+        lastFailureReason = ""
+        val failures = mutableListOf<String>()
 
         for (host in listOf("::1", "127.0.0.1")) {
             try {
                 servers += buildServer(host).start(wait = false)
             } catch (e: Exception) {
+                failures += "$host: ${e.message ?: e.javaClass.simpleName}"
                 VisotarisLogger.warn("Web-UI konnte nicht auf {}:{} starten: {}", host, port, e.message)
             }
         }
 
         if (servers.isEmpty()) {
+            lastFailureReason = failures.joinToString("; ").ifBlank { "Kein lokaler Listener konnte gestartet werden." }
             VisotarisLogger.error("Web-UI konnte auf keiner Adresse starten.")
             return
         }
