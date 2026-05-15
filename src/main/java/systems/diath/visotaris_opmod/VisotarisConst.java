@@ -47,8 +47,8 @@ public final class VisotarisConst {
     }
 
     /**
-     * Erstellt einen {@link OkHttpClient} mit optionalem Proxy und Interceptor
-     * für User-Agent, Accept-Header und Bearer-Authentifizierung.
+     * Erstellt einen {@link OkHttpClient} mit optionalem HTTP-Proxy und Interceptor
+     * für User-Agent und Accept-Header.
      *
      * <p>Der Client wird einmalig pro Service-Instanz gebaut und wiederverwendet.
      * OkHttp nutzt HTTP/2 automatisch (via ALPN/TLS-Aushandlung).
@@ -64,9 +64,6 @@ public final class VisotarisConst {
                 Request.Builder req = chain.request().newBuilder()
                     .header("User-Agent", buildUserAgent(cfg.customUserAgent))
                     .header("Accept", "application/json");
-                if (cfg.apiKey != null && !cfg.apiKey.isBlank()) {
-                    req.header("Authorization", "Bearer " + cfg.apiKey.strip());
-                }
                 return chain.proceed(req.build());
             });
         if (cfg.proxyHost != null && !cfg.proxyHost.isBlank() && cfg.proxyPort > 0) {

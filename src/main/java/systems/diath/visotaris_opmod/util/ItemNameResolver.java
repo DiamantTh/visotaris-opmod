@@ -6,12 +6,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
 
 /**
- * Übersetzt englische API-Item-Keys (z.B. {@code "acacia_leaves"}) in den
+ * Übersetzt englische API-Item-IDs (z.B. {@code "acacia_leaves"}) in den
  * lokalisierten Anzeigenamen der aktuellen Minecraft-Spielsprache.
  *
  * <p>Funktionsweise:
  * <ol>
- *   <li>API-Key → Minecraft-Registry-ID ({@code minecraft:acacia_leaves})</li>
+ *   <li>API-Item-ID → Minecraft-Registry-ID ({@code minecraft:acacia_leaves})</li>
  *   <li>Registry-Lookup → {@link Item}</li>
  *   <li>{@link Item#getDescriptionId()} → Übersetzungs-Key ({@code block.minecraft.acacia_leaves})</li>
  *   <li>{@link Language#getInstance()} → lokalisierter String in der aktiven Spielsprache</li>
@@ -28,23 +28,23 @@ public final class ItemNameResolver {
     private ItemNameResolver() {}
 
     /**
-     * Gibt den lokalisierten Item-Namen für den gegebenen API-Key zurück.
+     * Gibt den lokalisierten Item-Namen für die gegebene API-Item-ID zurück.
      *
-     * @param apiKey  API-Item-Key in Kleinbuchstaben, z.B. {@code "acacia_leaves"}
-     *                oder CMD-Compound {@code "paper#626"}
+     * @param apiItemId  API-Item-ID in Kleinbuchstaben, z.B. {@code "acacia_leaves"}
+     *                   oder CMD-Compound {@code "paper#626"}
      * @return  Lokalisierter Name (z.B. "Akazienblätter" auf Deutsch), oder
-     *          den rohen {@code apiKey} wenn kein Registry-Eintrag gefunden wird
+     *          die rohe {@code apiItemId} wenn kein Registry-Eintrag gefunden wird
      */
-    public static String resolve(String apiKey) {
-        if (apiKey == null || apiKey.isBlank()) return apiKey;
+    public static String resolve(String apiItemId) {
+        if (apiItemId == null || apiItemId.isBlank()) return apiItemId;
 
         // CMD-Compound-Key: "paper#626" → nur "paper" zur Lokalisierung, Suffix anhängen
         String suffix = "";
-        String baseKey = apiKey;
-        int hashIdx = apiKey.indexOf('#');
+        String baseKey = apiItemId;
+        int hashIdx = apiItemId.indexOf('#');
         if (hashIdx >= 0) {
-            baseKey = apiKey.substring(0, hashIdx);
-            suffix  = " (" + apiKey.substring(hashIdx + 1) + ")";
+            baseKey = apiItemId.substring(0, hashIdx);
+            suffix  = " (" + apiItemId.substring(hashIdx + 1) + ")";
         }
 
         // minecraft-Namespace versuchen; bei Vanilla-Items immer korrekt
@@ -59,7 +59,7 @@ public final class ItemNameResolver {
 
         // Items.AIR ist der Fallback wenn nichts gefunden – in dem Fall den Key zurückgeben
         if (item == Items.AIR && !"air".equals(baseKey)) {
-            return apiKey;   // unbekanntes Item → Roh-Key beibehalten
+            return apiItemId;   // unbekanntes Item → Roh-ID beibehalten
         }
 
         Language lang = Language.getInstance();
@@ -68,7 +68,7 @@ public final class ItemNameResolver {
 
         // Wenn Language den Key nicht kennt, roh zurückgeben
         if (localizedName == null || localizedName.equals(translationKey)) {
-            return apiKey + suffix;
+            return apiItemId + suffix;
         }
         return localizedName + suffix;
     }
@@ -77,11 +77,11 @@ public final class ItemNameResolver {
      * Gibt den lokalisierten Namen zurück, oder {@code fallback} wenn die
      * Auflösung keinen bekannten Eintrag liefert.
      *
-     * @param apiKey    API-Item-Key (wie in {@link #resolve(String)})
+     * @param apiItemId API-Item-ID (wie in {@link #resolve(String)})
      * @param fallback  Rückgabewert bei unbekanntem Item
      */
-    public static String resolveOrFallback(String apiKey, String fallback) {
-        String result = resolve(apiKey);
-        return result.equals(apiKey) ? fallback : result;
+    public static String resolveOrFallback(String apiItemId, String fallback) {
+        String result = resolve(apiItemId);
+        return result.equals(apiItemId) ? fallback : result;
     }
 }

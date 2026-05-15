@@ -99,7 +99,6 @@ public final class ConfigManager {
             c.webUiPort      = getInt(toml, "netzwerk.webUiPort",        getInt(toml, "webUiPort",        c.webUiPort));
             c.proxyHost      = toml.getOrElse("netzwerk.proxyHost",      toml.getOrElse("proxyHost",      c.proxyHost));
             c.proxyPort      = getInt(toml, "netzwerk.proxyPort",        getInt(toml, "proxyPort",        c.proxyPort));
-            c.apiKey         = toml.getOrElse("netzwerk.apiKey",         toml.getOrElse("apiKey",         c.apiKey));
             c.customUserAgent = toml.getOrElse("netzwerk.customUserAgent", toml.getOrElse("customUserAgent", c.customUserAgent));
             config = c;
             VisotarisLogger.info("Konfiguration geladen von: {}", configPath);
@@ -153,14 +152,13 @@ public final class ConfigManager {
                 toml.set("discordScreenshots.target" + slot + ".webhookUrl", target.webhookUrl);
             }
             // ── [netzwerk] ────────────────────────────────────────────────────────────
-            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-Interface & Proxy");
+            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-Interface & HTTP-Proxy");
             toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
             toml.set("netzwerk.merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
             toml.set("netzwerk.enableWebUi",    c.enableWebUi);
             toml.set("netzwerk.webUiPort",      c.webUiPort);
             toml.set("netzwerk.proxyHost",      c.proxyHost);
             toml.set("netzwerk.proxyPort",      c.proxyPort);
-            toml.set("netzwerk.apiKey",         c.apiKey);
             toml.set("netzwerk.customUserAgent", c.customUserAgent);
             toml.save();
         } catch (Exception e) {

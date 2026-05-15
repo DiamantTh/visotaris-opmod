@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 
 /**
- * Unter-Screen für Netzwerk-Einstellungen (OPSucht-API, Web-Interface, Proxy).
+ * Unter-Screen für Netzwerk-Einstellungen (OPSucht-API, Web-Interface, HTTP-Proxy).
  *
  * <p>Wird aus {@link VisotarisConfigScreen} geöffnet.
  * Änderungen werden sofort in {@link VisotarisConfig} geschrieben;
@@ -28,7 +28,6 @@ public final class NetworkSettingsScreen extends Screen {
     private final VisotarisConfig    cfg;
 
     private EditBox fieldUserAgent;
-    private EditBox fieldApiKey;
     private EditBox fieldWebUiPort;
     private EditBox fieldProxyHost;
     private EditBox fieldProxyPort;
@@ -68,20 +67,6 @@ public final class NetworkSettingsScreen extends Screen {
         this.addRenderableWidget(fieldUserAgent);
         y += FIELD_H + GAP_ROW;
 
-        // ── API-Schlüssel ────────────────────────────────────────────────
-        y += 10 + GAP_LABEL;
-        fieldApiKey = new EditBox(this.font, fx, y, fw, FIELD_H,
-            Component.literal("API-Key"));
-        fieldApiKey.setMaxLength(256);
-        fieldApiKey.setSuggestion("leer \u2192 kein Bearer-Token");
-        fieldApiKey.setValue(cfg.apiKey);
-        fieldApiKey.setResponder(s -> {
-            cfg.apiKey = s;
-            fieldApiKey.setSuggestion(s.isEmpty() ? "leer \u2192 kein Bearer-Token" : "");
-        });
-        this.addRenderableWidget(fieldApiKey);
-        y += FIELD_H + GAP_ROW;
-
         // ── Web-Interface-Port ───────────────────────────────────────────
         y += 10 + GAP_LABEL;
         fieldWebUiPort = new EditBox(this.font, fx, y, fw, FIELD_H,
@@ -101,20 +86,20 @@ public final class NetworkSettingsScreen extends Screen {
         this.addRenderableWidget(fieldWebUiPort);
         y += FIELD_H + GAP_ROW;
 
-        // ── Proxy-Host + Port ────────────────────────────────────────────
+        // ── HTTP-Proxy-Host + Port ───────────────────────────────────────
         y += 10 + GAP_LABEL;
         int portW     = 52;
         int portGap   = 6;
         int hostW     = fw - portW - portGap;
 
         fieldProxyHost = new EditBox(this.font, fx, y, hostW, FIELD_H,
-            Component.literal("Proxy-Host"));
+            Component.literal("HTTP-Proxy-Host"));
         fieldProxyHost.setMaxLength(256);
-        fieldProxyHost.setSuggestion("leer \u2192 kein Proxy");
+        fieldProxyHost.setSuggestion("leer \u2192 kein HTTP-Proxy");
         fieldProxyHost.setValue(cfg.proxyHost);
         fieldProxyHost.setResponder(s -> {
             cfg.proxyHost = s;
-            fieldProxyHost.setSuggestion(s.isEmpty() ? "leer \u2192 kein Proxy" : "");
+            fieldProxyHost.setSuggestion(s.isEmpty() ? "leer \u2192 kein HTTP-Proxy" : "");
         });
         this.addRenderableWidget(fieldProxyHost);
 
@@ -195,7 +180,7 @@ public final class NetworkSettingsScreen extends Screen {
         ctx.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
         ctx.fill(this.width / 2 - 110, 20, this.width / 2 + 110, 21, 0x66AAAAAA);
         ctx.drawCenteredString(this.font,
-            Component.literal("\u00a7eOPSucht-API, lokales Web-Interface und Proxy"),
+            Component.literal("\u00a7eOPSucht-API, lokales Web-Interface und HTTP-Proxy"),
             this.width / 2, 28, 0xFFFFFF);
 
         // Feld-Labels (oberhalb der jeweiligen EditBoxs)
@@ -204,16 +189,13 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("OPSucht-API User-Agent"),
             MARGIN, fieldUserAgent.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("OPSucht-API-Schl\u00fcssel (Bearer-Auth)"),
-            MARGIN, fieldApiKey.getY() - 10 - GAP_LABEL, lColor);
-        ctx.drawString(this.font,
             Component.literal("Web-Interface-Port (localhost)"),
             MARGIN, fieldWebUiPort.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("Proxy-Host für OPSucht-API"),
+            Component.literal("HTTP-Proxy-Host für OPSucht-API"),
             MARGIN, fieldProxyHost.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("Proxy-Port"),
+            Component.literal("HTTP-Proxy-Port"),
             fieldProxyPort.getX(), fieldProxyPort.getY() - 10 - GAP_LABEL, lColor);
 
         // Web-Interface-Status + Hinweis
@@ -226,7 +208,7 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
             this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
         ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77API-Key, User-Agent und Proxy: ausgehende OPSucht-API."),
+            Component.literal("\u00a77HTTP-Proxy: ausgehende OPSucht-API; HTTPS via CONNECT."),
             this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
         ctx.drawCenteredString(this.font,
             Component.literal("\u00a77Web-Interface: nur lokaler Port."),

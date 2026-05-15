@@ -59,9 +59,8 @@ public final class VisotarisConfig {
     public int     merchantRefreshIntervalSeconds = 300;
     public boolean enableWebUi    = false;          // lokaler HTTP-Server (localhost:webUiPort)
     public int     webUiPort      = 7780;
-    public String  proxyHost      = "";             // leer = Direktverbindung
+    public String  proxyHost      = "";             // leer = Direktverbindung; HTTP-Proxy für ausgehende API-Requests
     public int     proxyPort      = 0;
-    public String  apiKey         = "";             // non-leer → Header "Authorization: Bearer <key>"
     public String  customUserAgent = "";            // leer = auto "Visotaris-OPMod/<ver> (…)"
 
     /**
