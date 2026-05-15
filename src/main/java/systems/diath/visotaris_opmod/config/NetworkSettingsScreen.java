@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 
 /**
- * Unter-Screen für Netzwerk-Einstellungen (OPSucht-API, Web-Interface, HTTP-Proxy).
+ * Unter-Screen für Netzwerk-Einstellungen (OPSucht-API, Web-Interface, Proxy).
  *
  * <p>Wird aus {@link VisotarisConfigScreen} geöffnet.
  * Änderungen werden sofort in {@link VisotarisConfig} geschrieben;
@@ -31,6 +31,7 @@ public final class NetworkSettingsScreen extends Screen {
     private EditBox fieldWebUiPort;
     private EditBox fieldProxyHost;
     private EditBox fieldProxyPort;
+    private Button proxyTypeButton;
     private Button webUiActionButton;
 
     public NetworkSettingsScreen(Screen parent) {
@@ -86,24 +87,34 @@ public final class NetworkSettingsScreen extends Screen {
         this.addRenderableWidget(fieldWebUiPort);
         y += FIELD_H + GAP_ROW;
 
-        // ── HTTP-Proxy-Host + Port ───────────────────────────────────────
+        // ── Proxy-Typ + Host + Port ──────────────────────────────────────
         y += 10 + GAP_LABEL;
+        int typeW     = Math.min(112, fw / 3);
         int portW     = 52;
-        int portGap   = 6;
-        int hostW     = fw - portW - portGap;
+        int colGap    = 6;
+        int hostW     = fw - typeW - portW - colGap * 2;
 
-        fieldProxyHost = new EditBox(this.font, fx, y, hostW, FIELD_H,
-            Component.literal("HTTP-Proxy-Host"));
+        proxyTypeButton = Button.builder(
+            makeProxyTypeText(),
+            b -> {
+                cfg.proxyType = nextProxyType(cfg.proxyType);
+                b.setMessage(makeProxyTypeText());
+            }
+        ).bounds(fx, y, typeW, FIELD_H).build();
+        this.addRenderableWidget(proxyTypeButton);
+
+        fieldProxyHost = new EditBox(this.font, fx + typeW + colGap, y, hostW, FIELD_H,
+            Component.literal("Proxy-Host"));
         fieldProxyHost.setMaxLength(256);
-        fieldProxyHost.setSuggestion("leer \u2192 kein HTTP-Proxy");
+        fieldProxyHost.setSuggestion("leer \u2192 kein Proxy");
         fieldProxyHost.setValue(cfg.proxyHost);
         fieldProxyHost.setResponder(s -> {
             cfg.proxyHost = s;
-            fieldProxyHost.setSuggestion(s.isEmpty() ? "leer \u2192 kein HTTP-Proxy" : "");
+            fieldProxyHost.setSuggestion(s.isEmpty() ? "leer \u2192 kein Proxy" : "");
         });
         this.addRenderableWidget(fieldProxyHost);
 
-        fieldProxyPort = new EditBox(this.font, fx + hostW + portGap, y, portW, FIELD_H,
+        fieldProxyPort = new EditBox(this.font, fx + typeW + colGap + hostW + colGap, y, portW, FIELD_H,
             Component.literal("Port"));
         fieldProxyPort.setMaxLength(5);
         fieldProxyPort.setSuggestion("Port");
@@ -180,7 +191,7 @@ public final class NetworkSettingsScreen extends Screen {
         ctx.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
         ctx.fill(this.width / 2 - 110, 20, this.width / 2 + 110, 21, 0x66AAAAAA);
         ctx.drawCenteredString(this.font,
-            Component.literal("\u00a7eOPSucht-API, lokales Web-Interface und HTTP-Proxy"),
+            Component.literal("\u00a7eOPSucht-API, lokales Web-Interface und Proxy"),
             this.width / 2, 28, 0xFFFFFF);
 
         // Feld-Labels (oberhalb der jeweiligen EditBoxs)
@@ -192,10 +203,13 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("Web-Interface-Port (localhost)"),
             MARGIN, fieldWebUiPort.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("HTTP-Proxy-Host für OPSucht-API"),
-            MARGIN, fieldProxyHost.getY() - 10 - GAP_LABEL, lColor);
+            Component.literal("Proxy-Typ"),
+            proxyTypeButton.getX(), proxyTypeButton.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("HTTP-Proxy-Port"),
+            Component.literal("Proxy-Host für OPSucht-API"),
+            fieldProxyHost.getX(), fieldProxyHost.getY() - 10 - GAP_LABEL, lColor);
+        ctx.drawString(this.font,
+            Component.literal("Proxy-Port"),
             fieldProxyPort.getX(), fieldProxyPort.getY() - 10 - GAP_LABEL, lColor);
 
         // Web-Interface-Status + Hinweis
@@ -208,7 +222,7 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
             this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
         ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77HTTP-Proxy: ausgehende OPSucht-API; HTTPS via CONNECT."),
+            Component.literal("\u00a77Proxy: ausgehende OPSucht-API. HTTPS nutzt CONNECT."),
             this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
         ctx.drawCenteredString(this.font,
             Component.literal("\u00a77Web-Interface: nur lokaler Port."),
@@ -217,6 +231,35 @@ public final class NetworkSettingsScreen extends Screen {
 
     private Component makeWebUiActionText() {
         return Component.literal(isWebUiRunning() ? "Web-Interface stoppen" : "Web-Interface starten");
+    }
+
+    private Component makeProxyTypeText() {
+        return Component.literal("Typ: " + displayProxyType(cfg.proxyType));
+    }
+
+    private static String nextProxyType(String current) {
+        return switch (normalizeProxyType(current)) {
+            case "HTTP" -> "HTTPS";
+            case "HTTPS" -> "SOCKS";
+            default -> "HTTP";
+        };
+    }
+
+    private static String displayProxyType(String value) {
+        return switch (normalizeProxyType(value)) {
+            case "HTTPS" -> "HTTPS";
+            case "SOCKS" -> "SOCKS";
+            default -> "HTTP";
+        };
+    }
+
+    private static String normalizeProxyType(String value) {
+        if (value == null) return "HTTP";
+        String normalized = value.strip().toUpperCase();
+        return switch (normalized) {
+            case "HTTPS", "SOCKS" -> normalized;
+            default -> "HTTP";
+        };
     }
 
     private boolean isWebUiRunning() {

@@ -97,6 +97,7 @@ public final class ConfigManager {
             c.merchantRefreshIntervalSeconds = getInt(toml, "netzwerk.merchantRefreshIntervalSeconds", getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds));
             c.enableWebUi    = toml.getOrElse("netzwerk.enableWebUi",    toml.getOrElse("enableWebUi",    c.enableWebUi));
             c.webUiPort      = getInt(toml, "netzwerk.webUiPort",        getInt(toml, "webUiPort",        c.webUiPort));
+            c.proxyType      = normalizeProxyType(toml.getOrElse("netzwerk.proxyType", toml.getOrElse("proxyType", c.proxyType)));
             c.proxyHost      = toml.getOrElse("netzwerk.proxyHost",      toml.getOrElse("proxyHost",      c.proxyHost));
             c.proxyPort      = getInt(toml, "netzwerk.proxyPort",        getInt(toml, "proxyPort",        c.proxyPort));
             c.customUserAgent = toml.getOrElse("netzwerk.customUserAgent", toml.getOrElse("customUserAgent", c.customUserAgent));
@@ -152,11 +153,12 @@ public final class ConfigManager {
                 toml.set("discordScreenshots.target" + slot + ".webhookUrl", target.webhookUrl);
             }
             // ── [netzwerk] ────────────────────────────────────────────────────────────
-            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-Interface & HTTP-Proxy");
+            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-Interface & Proxy");
             toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
             toml.set("netzwerk.merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
             toml.set("netzwerk.enableWebUi",    c.enableWebUi);
             toml.set("netzwerk.webUiPort",      c.webUiPort);
+            toml.set("netzwerk.proxyType",      normalizeProxyType(c.proxyType));
             toml.set("netzwerk.proxyHost",      c.proxyHost);
             toml.set("netzwerk.proxyPort",      c.proxyPort);
             toml.set("netzwerk.customUserAgent", c.customUserAgent);
@@ -192,5 +194,14 @@ public final class ConfigManager {
     private static int getInt(CommentedFileConfig toml, String key, int def) {
         Object val = toml.get(key);
         return val instanceof Number n ? n.intValue() : def;
+    }
+
+    private static String normalizeProxyType(String value) {
+        if (value == null) return "HTTP";
+        String normalized = value.strip().toUpperCase();
+        return switch (normalized) {
+            case "HTTPS", "SOCKS" -> normalized;
+            default -> "HTTP";
+        };
     }
 }

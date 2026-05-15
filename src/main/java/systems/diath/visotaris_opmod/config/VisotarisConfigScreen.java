@@ -158,7 +158,7 @@ public final class VisotarisConfigScreen extends Screen {
         addLabel("Web-Interface", y);                        y += CAT_H + CAT_GAP;
         addToggle(lx, y, "Lokales Interface", cfg.enableWebUi, v -> cfg.enableWebUi = v);
         addContent(Button.builder(
-                Component.literal("Port & HTTP-Proxy\u2026"),
+                Component.literal("Port & Proxy\u2026"),
                 b -> this.minecraft.setScreen(new NetworkSettingsScreen(this))
         ).bounds(rx, 0, BTN_W, BTN_H).build(), y);
         y += BTN_H + BTN_GAP;

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -47,7 +48,7 @@ public final class VisotarisConst {
     }
 
     /**
-     * Erstellt einen {@link OkHttpClient} mit optionalem HTTP-Proxy und Interceptor
+     * Erstellt einen {@link OkHttpClient} mit optionalem Proxy und Interceptor
      * für User-Agent und Accept-Header.
      *
      * <p>Der Client wird einmalig pro Service-Instanz gebaut und wiederverwendet.
@@ -67,10 +68,15 @@ public final class VisotarisConst {
                 return chain.proceed(req.build());
             });
         if (cfg.proxyHost != null && !cfg.proxyHost.isBlank() && cfg.proxyPort > 0) {
-            builder.proxy(new Proxy(Proxy.Type.HTTP,
+            builder.proxy(new Proxy(resolveProxyType(cfg.proxyType),
                 new InetSocketAddress(cfg.proxyHost.strip(), cfg.proxyPort)));
         }
         return builder.build();
+    }
+
+    private static Proxy.Type resolveProxyType(String configuredType) {
+        String normalized = configuredType == null ? "" : configuredType.strip().toUpperCase(Locale.ROOT);
+        return "SOCKS".equals(normalized) ? Proxy.Type.SOCKS : Proxy.Type.HTTP;
     }
 
     /**
