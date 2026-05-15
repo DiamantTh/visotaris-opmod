@@ -222,7 +222,7 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
             this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
         ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77Proxy: ausgehende OPSucht-API. HTTPS nutzt CONNECT."),
+            Component.literal("\u00a77HTTPS-Proxy: TLS zum Proxy; Ziel-HTTPS via CONNECT."),
             this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
         ctx.drawCenteredString(this.font,
             Component.literal("\u00a77Web-Interface: nur lokaler Port."),

@@ -13,6 +13,7 @@ import java.net.Proxy;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * Gemeinsame Konstanten (Mod-ID, Name) – verhindert Duplikate
@@ -51,6 +52,13 @@ public final class VisotarisConst {
      * Erstellt einen {@link OkHttpClient} mit optionalem Proxy und Interceptor
      * für User-Agent und Accept-Header.
      *
+     * <p>Proxy-Typen:
+     * <ul>
+     *   <li>HTTP: Klartextverbindung zum HTTP-Proxy; HTTPS-Ziele via CONNECT.</li>
+     *   <li>HTTPS: TLS-Verbindung zum Proxy selbst; HTTPS-Ziele anschließend via CONNECT.</li>
+     *   <li>SOCKS: SOCKS-Proxy über {@link Proxy.Type#SOCKS}.</li>
+     * </ul>
+     *
      * <p>Der Client wird einmalig pro Service-Instanz gebaut und wiederverwendet.
      * OkHttp nutzt HTTP/2 automatisch (via ALPN/TLS-Aushandlung).
      *
@@ -68,15 +76,27 @@ public final class VisotarisConst {
                 return chain.proceed(req.build());
             });
         if (cfg.proxyHost != null && !cfg.proxyHost.isBlank() && cfg.proxyPort > 0) {
-            builder.proxy(new Proxy(resolveProxyType(cfg.proxyType),
+            String proxyType = normalizeProxyType(cfg.proxyType);
+            builder.proxy(new Proxy(resolveJavaProxyType(proxyType),
                 new InetSocketAddress(cfg.proxyHost.strip(), cfg.proxyPort)));
+            if ("HTTPS".equals(proxyType)) {
+                builder.socketFactory(SSLSocketFactory.getDefault());
+            }
         }
         return builder.build();
     }
 
-    private static Proxy.Type resolveProxyType(String configuredType) {
-        String normalized = configuredType == null ? "" : configuredType.strip().toUpperCase(Locale.ROOT);
-        return "SOCKS".equals(normalized) ? Proxy.Type.SOCKS : Proxy.Type.HTTP;
+    private static Proxy.Type resolveJavaProxyType(String proxyType) {
+        return "SOCKS".equals(proxyType) ? Proxy.Type.SOCKS : Proxy.Type.HTTP;
+    }
+
+    private static String normalizeProxyType(String configuredType) {
+        if (configuredType == null) return "HTTP";
+        String normalized = configuredType.strip().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "HTTPS", "SOCKS" -> normalized;
+            default -> "HTTP";
+        };
     }
 
     /**
