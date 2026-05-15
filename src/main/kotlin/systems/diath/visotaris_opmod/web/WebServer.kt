@@ -55,14 +55,20 @@ class WebServer(
             try {
                 servers += buildServer(host).start(wait = false)
             } catch (e: Exception) {
-                failures += "$host: ${e.message ?: e.javaClass.simpleName}"
-                VisotarisLogger.warn("Web-UI konnte nicht auf {}:{} starten: {}", host, port, e.message)
+                val friendly = friendlyFailure(host, e)
+                failures += friendly
+                VisotarisLogger.warn("Web-UI Startproblem: {}", friendly)
+                VisotarisLogger.debug("Web-UI Rohfehler für {}:{}: {}", host, port, e.toString())
             }
         }
 
         if (servers.isEmpty()) {
             lastFailureReason = failures.joinToString("; ").ifBlank { "Kein lokaler Listener konnte gestartet werden." }
-            VisotarisLogger.error("Web-UI konnte auf keiner Adresse starten.")
+            VisotarisLogger.error(
+                "Web-UI Start fehlgeschlagen: {}. Prüfe, ob Port {} bereits belegt ist oder lokale Netzwerk-Bindings blockiert werden.",
+                lastFailureReason,
+                port
+            )
             return
         }
 
@@ -75,6 +81,24 @@ class WebServer(
         servers.forEach { it.stop(gracePeriodMillis = 200, timeoutMillis = 1_000) }
         servers.clear()
         VisotarisLogger.info("Web-UI gestoppt.")
+    }
+
+    private fun friendlyFailure(host: String, error: Throwable): String {
+        val root = rootCause(error)
+        val message = root.message ?: error.message ?: root.javaClass.simpleName
+        return when {
+            root.javaClass.name.contains("BindException") || message.contains("Address already in use", ignoreCase = true) ->
+                "$host:$port ist belegt (Port wird bereits genutzt)"
+            message.contains("Permission denied", ignoreCase = true) ->
+                "$host:$port darf nicht geöffnet werden (Berechtigung oder Firewall)"
+            else ->
+                "$host:$port konnte nicht geöffnet werden ($message)"
+        }
+    }
+
+    private tailrec fun rootCause(error: Throwable): Throwable {
+        val cause = error.cause
+        return if (cause == null || cause === error) error else rootCause(cause)
     }
 
     private fun buildServer(host: String) = embeddedServer(CIO, port = port, host = host) {

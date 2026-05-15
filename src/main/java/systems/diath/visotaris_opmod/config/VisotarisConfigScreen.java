@@ -451,7 +451,7 @@ public final class VisotarisConfigScreen extends Screen {
     private void renderSimpleTooltip(GuiGraphics ctx, Component text, int mouseX, int mouseY) {
         int padding = 4;
         int tw = this.font.width(text);
-        int x = Math.min(mouseX + 10, this.width - tw - padding * 2 - 4);
+        int x = Math.max(4, Math.min(mouseX + 10, this.width - tw - padding * 2 - 4));
         int y = Math.max(4, mouseY - this.font.lineHeight - padding * 2 - 4);
         ctx.fill(x - 1, y - 1, x + tw + padding * 2 + 1, y + this.font.lineHeight + padding * 2 + 1, 0xEE000000);
         ctx.fill(x, y, x + tw + padding * 2, y + this.font.lineHeight + padding * 2, 0xEE18294A);

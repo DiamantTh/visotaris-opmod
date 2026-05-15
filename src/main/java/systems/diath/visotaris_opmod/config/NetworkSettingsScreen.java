@@ -32,6 +32,7 @@ public final class NetworkSettingsScreen extends Screen {
     private EditBox fieldWebUiPort;
     private EditBox fieldProxyHost;
     private EditBox fieldProxyPort;
+    private Button webUiActionButton;
 
     public NetworkSettingsScreen(Screen parent) {
         super(Component.literal("Visotaris \u2013 Netzwerk & Web-Interface"));
@@ -144,6 +145,21 @@ public final class NetworkSettingsScreen extends Screen {
         int by  = this.height - 28;
         int bx  = this.width / 2 - bw - gap / 2;
 
+        webUiActionButton = Button.builder(
+            makeWebUiActionText(),
+            b -> {
+                Integer webUiPort = parsePort(fieldWebUiPort.getValue());
+                if (webUiPort != null) {
+                    cfg.webUiPort = webUiPort;
+                }
+                cfg.enableWebUi = !isWebUiRunning();
+                configManager.save();
+                VisotarisModClient.getInstance().applyWebUiConfig();
+                b.setMessage(makeWebUiActionText());
+            }
+        ).bounds(this.width / 2 - (bw * 2 + gap) / 2, by - 24, bw * 2 + gap, bh).build();
+        this.addRenderableWidget(webUiActionButton);
+
         this.addRenderableWidget(Button.builder(
             Component.literal("Speichern & Schlie\u00dfen"),
             b -> {
@@ -185,7 +201,7 @@ public final class NetworkSettingsScreen extends Screen {
         // Feld-Labels (oberhalb der jeweiligen EditBoxs)
         int lColor = 0xAAAAAA;
         ctx.drawString(this.font,
-            Component.literal("Benutzerdefinierter User-Agent"),
+            Component.literal("OPSucht-API User-Agent"),
             MARGIN, fieldUserAgent.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
             Component.literal("OPSucht-API-Schl\u00fcssel (Bearer-Auth)"),
@@ -194,18 +210,36 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("Web-Interface-Port (localhost)"),
             MARGIN, fieldWebUiPort.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("Proxy-Host"),
+            Component.literal("Proxy-Host für OPSucht-API"),
             MARGIN, fieldProxyHost.getY() - 10 - GAP_LABEL, lColor);
         ctx.drawString(this.font,
-            Component.literal("Port"),
+            Component.literal("Proxy-Port"),
             fieldProxyPort.getX(), fieldProxyPort.getY() - 10 - GAP_LABEL, lColor);
 
         // Web-Interface-Status + Hinweis
         int noteY = fieldProxyHost.getY() + FIELD_H + 6;
+        if (webUiActionButton != null) {
+            webUiActionButton.setMessage(makeWebUiActionText());
+        }
         renderWebInterfaceStatus(ctx, noteY, mouseX, mouseY);
         ctx.drawCenteredString(this.font,
             Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
             this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
+        ctx.drawCenteredString(this.font,
+            Component.literal("\u00a77API-Key, User-Agent und Proxy: ausgehende OPSucht-API."),
+            this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
+        ctx.drawCenteredString(this.font,
+            Component.literal("\u00a77Web-Interface: nur lokaler Port."),
+            this.width / 2, noteY + (this.font.lineHeight + 2) * 3, 0xFFFFFF);
+    }
+
+    private Component makeWebUiActionText() {
+        return Component.literal(isWebUiRunning() ? "Web-Interface stoppen" : "Web-Interface starten");
+    }
+
+    private boolean isWebUiRunning() {
+        var server = VisotarisModClient.getInstance().getWebServer();
+        return server != null && server.isRunning();
     }
 
     private void renderWebInterfaceStatus(GuiGraphics ctx, int y, int mouseX, int mouseY) {
@@ -244,7 +278,7 @@ public final class NetworkSettingsScreen extends Screen {
     private void renderSimpleTooltip(GuiGraphics ctx, Component text, int mouseX, int mouseY) {
         int padding = 4;
         int tw = this.font.width(text);
-        int x = Math.min(mouseX + 10, this.width - tw - padding * 2 - 4);
+        int x = Math.max(4, Math.min(mouseX + 10, this.width - tw - padding * 2 - 4));
         int y = Math.max(4, mouseY - this.font.lineHeight - padding * 2 - 4);
         ctx.fill(x - 1, y - 1, x + tw + padding * 2 + 1, y + this.font.lineHeight + padding * 2 + 1, 0xEE000000);
         ctx.fill(x, y, x + tw + padding * 2, y + this.font.lineHeight + padding * 2, 0xEE18294A);
