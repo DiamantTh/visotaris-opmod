@@ -151,6 +151,7 @@ class WebServer(
 
                 val key = call.parameters["material"]
                     ?.lowercase()
+                    ?.substringBefore('#')   // "paper#626" → "paper" (Custom-Items)
                     ?.filter { it.isLetterOrDigit() || it == '_' }
                     .takeIf { !it.isNullOrBlank() }
                     ?: run { call.respond(HttpStatusCode.BadRequest); return@get }

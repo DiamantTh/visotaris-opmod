@@ -31,10 +31,11 @@ import java.util.regex.Pattern;
  * Echtes API-Format (verifiziert):
  * <pre>
  * [
- *   {"source":"diamond_block",  "target":"opshards", "exchangeRate":9.46},
- *   {"source":"netherite_ingot","target":"opshards", "exchangeRate":54.79},
- *   {"source":"minecraft:paper[item_name='{...}',custom_model_data=626,...]",
- *    "target":"opshards", "exchangeRate":20.96},
+ *   {"source":"diamond_block",  "target":"opshards", "base":8.0,  "exchangeRate":8.06},
+ *   {"source":"netherite_ingot","target":"opshards", "base":60.0, "exchangeRate":60.52},
+ *   {"source":"minecraft:paper[custom_name={extra: [{... text: \"Gräbergemisch\" ...}], text: \"\"},
+ *                custom_model_data={floats: [626.0f]}, item_name={...}]",
+ *    "target":"opshards", "base":20.0, "exchangeRate":19.44},
  *   ...
  * ]
  * </pre>
@@ -44,7 +45,9 @@ import java.util.regex.Pattern;
  *   <li>Einfache Sources (kein {@code [}): Namespace-Präfix entfernen, lowercase.
  *       z.B. {@code diamond_block}, {@code netherite_ingot}</li>
  *   <li>Komplexe Sources (mit {@code [}): Item-ID vor {@code [} + {@code #CMD} Suffix.
- *       z.B. {@code paper#626} für custom_model_data=626.
+ *       z.B. {@code paper#626} für custom_model_data 626 (altes Format
+ *       {@code custom_model_data=626} und neues Format
+ *       {@code custom_model_data={floats: [626.0f]}} werden unterstützt).
  *       Damit kann der TooltipValueService per CMD-Wert gezielt nachschlagen.</li>
  * </ul>
  */
@@ -52,8 +55,16 @@ public final class MerchantApiClient {
 
     private static final String  ENDPOINT    = "https://api.opsucht.net/merchant/rates";
     private static final Gson    GSON        = new Gson();
-    /** Extrahiert den Wert von custom_model_data=NNN aus einem komplexen MC-Komponentenstring. */
-    private static final Pattern CMD_PATTERN = Pattern.compile("custom_model_data=(\\d+)");
+    /**
+     * Extrahiert den custom_model_data-Wert aus einem komplexen MC-Komponentenstring.
+     * Unterstützt das alte Format {@code custom_model_data=626} und das neue
+     * Komponenten-Format {@code custom_model_data={floats: [626.0f]}}.
+     */
+    private static final Pattern CMD_PATTERN =
+        Pattern.compile("custom_model_data=(?:\\{[^}]*?\\[\\s*(\\d+)(?:\\.\\d+)?f?|(\\d+))");
+    /** Erster nicht-leerer text:"..."-Wert – lesbarer Anzeigename eines Custom-Items. */
+    private static final Pattern NAME_PATTERN =
+        Pattern.compile("text:\\s*\"([^\"]+)\"");
 
     private final OkHttpClient  httpClient;
 
@@ -116,9 +127,12 @@ public final class MerchantApiClient {
                 String rawSource = getStringOrNull(obj, "source");
                 if (rawSource == null || rawSource.isBlank()) continue;
 
-                double rate = getDouble(obj, "exchangeRate");
-                String key  = normalizeSource(rawSource);
-                result.add(new ShardRate(key, rate));
+                double rate   = getDouble(obj, "exchangeRate");
+                double base   = getDouble(obj, "base");
+                String target = getStringOrNull(obj, "target");
+                String key    = normalizeSource(rawSource);
+                String name   = extractDisplayName(rawSource);
+                result.add(new ShardRate(key, rate, base, target, name));
             }
 
             VisotarisLogger.debug("Merchant-API: {} Shardkurs-Einträge geladen.", result.size());
@@ -146,12 +160,31 @@ public final class MerchantApiClient {
 
             // custom_model_data-Wert als Suffix anhängen (für gezieltes Lookup)
             Matcher m = CMD_PATTERN.matcher(s);
-            return m.find() ? base + "#" + m.group(1) : base;
+            if (m.find()) {
+                String cmd = m.group(1) != null ? m.group(1) : m.group(2);
+                return base + "#" + cmd;
+            }
+            return base;
         }
 
         // Einfacher Source-String
         if (s.contains(":")) s = s.substring(s.lastIndexOf(':') + 1);
         return s.toLowerCase().replace(" ", "_");
+    }
+
+    /**
+     * Extrahiert den lesbaren Anzeigenamen eines Custom-Items aus dem rohen
+     * Source-String (erster nicht-leerer {@code text:"..."}-Wert im
+     * custom_name-Komponentenblock). Für einfache Sources: {@code null}.
+     */
+    static String extractDisplayName(String raw) {
+        if (raw == null || !raw.contains("[")) return null;
+        Matcher m = NAME_PATTERN.matcher(raw);
+        while (m.find()) {
+            String text = m.group(1).trim();
+            if (!text.isEmpty()) return text;
+        }
+        return null;
     }
 
     private static String getStringOrNull(JsonObject obj, String key) {

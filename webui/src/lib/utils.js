@@ -40,3 +40,34 @@ export function spreadClass(buy, sell) {
   if (ratio < 0.20) return 'spread-mid'
   return 'spread-high'
 }
+
+/**
+ * Kompakte Zahl für Stat-Karten: 115400 → "115,4K", 5600000 → "5,6M".
+ */
+export function fmtCompact(v) {
+  if (v == null || v === 0) return '0'
+  const abs = Math.abs(v)
+  if (abs >= 1_000_000_000) return fmtDec(v / 1_000_000_000) + 'B'
+  if (abs >= 1_000_000)     return fmtDec(v / 1_000_000) + 'M'
+  if (abs >= 10_000)        return fmtDec(v / 1_000) + 'K'
+  return new Intl.NumberFormat('de-DE').format(v)
+}
+
+function fmtDec(v) {
+  return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(v)
+}
+
+/**
+ * URL für das lokale Item-Icon. Encodiert Custom-Keys wie "paper#626"
+ * korrekt (# wäre sonst ein URL-Fragment).
+ */
+export function itemIcon(key) {
+  return '/api/icon/' + encodeURIComponent(key ?? '')
+}
+
+/**
+ * Fehler-Handler für Icon-<img>: blendet das Bild aus statt Broken-Image anzuzeigen.
+ */
+export function hideOnError(e) {
+  e.currentTarget.style.visibility = 'hidden'
+}

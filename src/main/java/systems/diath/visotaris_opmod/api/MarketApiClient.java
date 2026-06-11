@@ -106,28 +106,38 @@ public final class MarketApiClient {
 
             for (Map.Entry<String, JsonElement> catEntry : root.entrySet()) {
                 if (!catEntry.getValue().isJsonObject()) continue;
-                JsonObject category = catEntry.getValue().getAsJsonObject();
+                String     categoryName = catEntry.getKey();
+                JsonObject category     = catEntry.getValue().getAsJsonObject();
 
                 for (Map.Entry<String, JsonElement> itemEntry : category.entrySet()) {
                     String itemKey = itemEntry.getKey().toLowerCase();
                     if (!itemEntry.getValue().isJsonArray()) continue;
                     JsonArray orders = itemEntry.getValue().getAsJsonArray();
 
-                    double buyPrice  = 0;
-                    double sellPrice = 0;
+                    double buyPrice   = 0;
+                    double sellPrice  = 0;
+                    int    buyOrders  = 0;
+                    int    sellOrders = 0;
 
                     for (JsonElement orderEl : orders) {
                         if (!orderEl.isJsonObject()) continue;
                         JsonObject order = orderEl.getAsJsonObject();
-                        String side  = getStringOrNull(order, "orderSide");
-                        double price = getDouble(order, "price");
+                        String side   = getStringOrNull(order, "orderSide");
+                        double price  = getDouble(order, "price");
+                        int    active = (int) getDouble(order, "activeOrders");
 
-                        if ("BUY".equalsIgnoreCase(side))       buyPrice  = price;
-                        else if ("SELL".equalsIgnoreCase(side)) sellPrice = price;
+                        if ("BUY".equalsIgnoreCase(side)) {
+                            buyPrice  = price;
+                            buyOrders = active;
+                        } else if ("SELL".equalsIgnoreCase(side)) {
+                            sellPrice  = price;
+                            sellOrders = active;
+                        }
                     }
 
                     if (buyPrice > 0 || sellPrice > 0) {
-                        result.add(new MarketPrice(itemKey, buyPrice, sellPrice));
+                        result.add(new MarketPrice(itemKey, buyPrice, sellPrice,
+                            buyOrders, sellOrders, categoryName));
                     }
                 }
             }

@@ -3,7 +3,7 @@
   import { fade } from 'svelte/transition'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
-  import { fmtItem, fmtInt, fmt } from '../../lib/utils.js'
+  import { fmtItem, fmtInt, fmt, fmtCompact, itemIcon, hideOnError } from '../../lib/utils.js'
 
   // ECharts wird als globale Variable aus /static/js/echarts.min.js geladen
   /** @type {typeof import('echarts')} */
@@ -15,6 +15,7 @@
   let materialInput   = $state('')
   let currentMaterial = $state('')
   let history         = $state(null)
+  let live            = $state(null)   // Live-Preis aus /api/market/{material}
   let granularity     = $state('DAILY')
   let loading         = $state(false)
   let error           = $state(null)
@@ -29,7 +30,24 @@
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const currentPoints = $derived(history ? (history[granularity] ?? []) : [])
-
+  // Aggregierte Kennzahlen über die aktuelle Granularität (für Stat-Karten)
+  const stats = $derived.by(() => {
+    const pts = currentPoints
+    if (!pts.length) return null
+    let maxPrice = 0, minPrice = Infinity, totalTx = 0, totalItems = 0
+    for (const p of pts) {
+      if (p.maxPrice > maxPrice) maxPrice = p.maxPrice
+      if (p.minPrice > 0 && p.minPrice < minPrice) minPrice = p.minPrice
+      totalTx    += p.transactions ?? 0
+      totalItems += p.items ?? 0
+    }
+    return {
+      maxPrice,
+      minPrice: minPrice === Infinity ? 0 : minPrice,
+      totalTx,
+      totalItems
+    }
+  })
   const dateRange = $derived.by(() => {
     const pts = currentPoints
     if (pts.length < 2) return '–'
@@ -66,11 +84,16 @@
     error           = null
     currentMaterial = mat
     history         = null
+    live            = null
     destroyCharts()
     try {
-      const res = await fetch('/api/history/' + encodeURIComponent(mat))
-      if (!res.ok) throw new Error('HTTP ' + res.status)
-      history = await res.json()
+      const [histRes, liveRes] = await Promise.all([
+        fetch('/api/history/' + encodeURIComponent(mat)),
+        fetch('/api/market/' + encodeURIComponent(mat))
+      ])
+      if (!histRes.ok) throw new Error('HTTP ' + histRes.status)
+      history = await histRes.json()
+      live    = liveRes.ok ? await liveRes.json() : null
       if (!recent.includes(mat)) {
         recent = [mat, ...recent].slice(0, 8)
         try { localStorage.setItem(LS_RECENT, JSON.stringify(recent)) } catch(_) {}
@@ -211,16 +234,6 @@
     <h5 class="m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon="lucide:trending-up" width={15} style="color:var(--vi-accent)" />Preisverlauf
     </h5>
-    {#if currentMaterial}
-      <div class="flex items-center gap-2" transition:fade>
-        <img
-          src="/api/icon/{currentMaterial}"
-          class="item-icon-lg" alt=""
-          onerror={(e) => e.currentTarget.style.display = 'none'}
-        >
-        <span class="font-semibold text-base">{fmtItem(currentMaterial)}</span>
-      </div>
-    {/if}
     <div class="ml-auto flex gap-2 items-center">
       <input
         type="text"
@@ -248,6 +261,31 @@
           {fmtItem(m)}
         </button>
       {/each}
+    </div>
+  {/if}
+
+  <!-- ── Analytics-Item-Header ─────────────────────────────────────────────── -->
+  {#if currentMaterial}
+    <div class="vi-card mb-3" transition:fade={{ duration: 150 }}>
+      <div class="vi-card-header">
+        <div class="flex items-center gap-3">
+          <img src={itemIcon(currentMaterial)} class="item-icon-lg" alt="" onerror={hideOnError}>
+          <div>
+            <div class="font-bold" style="font-size:1.15rem;line-height:1.2">{fmtItem(currentMaterial)}</div>
+            <div class="text-xs mt-1" style="color:var(--vi-text-muted)">Historische Preis- und Transaktionsdaten</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex">
+            {#each [['HOURLY','Stündlich'],['DAILY','Täglich'],['WEEKLY','Wöchentlich'],['MONTHLY','Monatlich']] as [key, label] (key)}
+              <button type="button" class="btn-seg" class:active={granularity === key} onclick={() => granularity = key}>{label}</button>
+            {/each}
+          </div>
+          <a href="/" class="btn-outline" style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.78rem;white-space:nowrap">
+            <Icon icon="lucide:arrow-left" width={12} />Zum Markt
+          </a>
+        </div>
+      </div>
     </div>
   {/if}
 
@@ -290,24 +328,52 @@
 
   <!-- ── Charts ────────────────────────────────────────────────────────────── -->
   {#if !loading && history && currentPoints.length > 0}
-
+    <!-- Kennzahlen -->
+    <div class="stat-grid mb-3" transition:fade>
+      {#if live}
+        <div class="stat-card live" title="Aktueller Kaufpreis">
+          <div class="stat-value">{fmt(live.buy)}</div>
+          <div class="stat-label">Live Kaufpreis</div>
+        </div>
+        <div class="stat-card live" title="Aktueller Verkaufspreis">
+          <div class="stat-value">{fmt(live.sell)}</div>
+          <div class="stat-label">Live Verkaufspreis</div>
+        </div>
+        <div class="stat-card live" title="Aktive Kauf-Aufträge">
+          <div class="stat-value">{fmtInt(live.buyOrders ?? 0)}</div>
+          <div class="stat-label">Kauf-Aufträge</div>
+        </div>
+        <div class="stat-card live" title="Aktive Verkauf-Aufträge">
+          <div class="stat-value">{fmtInt(live.sellOrders ?? 0)}</div>
+          <div class="stat-label">Verkauf-Aufträge</div>
+        </div>
+      {/if}
+      {#if stats}
+        <div class="stat-card" title="Höchster Preis im Zeitraum">
+          <div class="stat-value">{fmt(stats.maxPrice)}</div>
+          <div class="stat-label">Höchster Preis</div>
+        </div>
+        <div class="stat-card" title="Niedrigster Preis im Zeitraum">
+          <div class="stat-value">{fmt(stats.minPrice)}</div>
+          <div class="stat-label">Niedrigster Preis</div>
+        </div>
+        <div class="stat-card" title="Summe aller Transaktionen im Zeitraum">
+          <div class="stat-value">{fmtCompact(stats.totalTx)}</div>
+          <div class="stat-label">Gesamte Transaktionen</div>
+        </div>
+        <div class="stat-card" title="Summe aller gehandelten Items im Zeitraum">
+          <div class="stat-value">{fmtCompact(stats.totalItems)}</div>
+          <div class="stat-label">Gehandelte Items</div>
+        </div>
+      {/if}
+    </div>
     <!-- Preisentwicklung -->
     <div class="vi-card mb-3" transition:fade>
       <div class="vi-card-header">
         <span class="flex items-center gap-2">
           <Icon icon="lucide:trending-up" width={14} style="color:var(--vi-accent)" />Preisentwicklung
-          <small style="color:var(--vi-text-muted)">{currentMaterial}</small>
+          <small style="color:var(--vi-text-muted)">{dateRange}</small>
         </span>
-        <div class="flex">
-          {#each [['HOURLY','Stündlich'],['DAILY','Täglich'],['WEEKLY','Wöchentlich'],['MONTHLY','Monatlich']] as [key, label] (key)}
-            <button
-              type="button"
-              class="btn-seg"
-              class:active={granularity === key}
-              onclick={() => granularity = key}
-            >{label}</button>
-          {/each}
-        </div>
       </div>
       <div class="vi-card-body">
         <div class="chart-container" bind:this={chartPriceEl}></div>

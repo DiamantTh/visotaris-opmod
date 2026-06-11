@@ -249,3 +249,138 @@ tbody tr { will-change: transform; }
 .btn-seg:not(:first-child) { border-left: none; }
 .btn-seg.active { background-color: var(--vi-accent); color: #0f172a; border-color: var(--vi-accent); }
 .btn-seg:not(.active):hover { color: var(--vi-text); }
+
+/* ── Kategorie-Chips ─────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  background: transparent;
+  border: 1px solid var(--vi-border);
+  color: var(--vi-text-muted);
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  white-space: nowrap;
+}
+.chip:hover { color: var(--vi-text); border-color: var(--vi-accent); }
+.chip.active {
+  background-color: var(--vi-accent);
+  color: #0f172a;
+  border-color: var(--vi-accent);
+  font-weight: 600;
+}
+
+/* ── Markt-Grid (Karten-Ansicht) ─────────────────────────────────────────────── */
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.7rem;
+}
+.market-card {
+  background-color: var(--vi-bg-card);
+  border: 1px solid var(--vi-border);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-decoration: none;
+  color: var(--vi-text);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.market-card:hover {
+  border-color: var(--vi-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.market-card .mc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 28px;
+}
+.market-card .mc-icon {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+.market-card .mc-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.market-card .mc-cat {
+  font-size: 0.7rem;
+  color: var(--vi-text-muted);
+}
+.market-card .mc-prices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+.market-card .mc-label {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vi-text-muted);
+}
+.market-card .mc-orders {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--vi-text-muted);
+  border-top: 1px solid var(--vi-border);
+  padding-top: 0.4rem;
+}
+
+/* ── Stat-Karten (History-Übersicht) ─────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+}
+.stat-card {
+  position: relative;
+  background-color: var(--vi-bg-card);
+  border: 1px solid var(--vi-border);
+  border-radius: 0.5rem;
+  padding: 0.8rem 0.6rem;
+  text-align: center;
+}
+.stat-card .stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--vi-accent);
+}
+.stat-card .stat-label {
+  font-size: 0.75rem;
+  color: var(--vi-text-muted);
+  margin-top: 0.15rem;
+}
+.stat-card.live {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.07), var(--vi-bg-card));
+}
+.stat-card.live .stat-value { color: var(--vi-buy); }
+.stat-card.live::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--vi-buy);
+  box-shadow: 0 0 6px var(--vi-buy);
+}
