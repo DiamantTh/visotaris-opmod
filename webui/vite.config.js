@@ -7,8 +7,24 @@ import { fileURLToPath } from 'url'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const resDir    = resolve(__dirname, '../src/main/resources/assets/webui')
 
+/** Injiziert externe (nicht zu bundelnde) Scripts nach dem HTML-Transform,
+ *  damit Vite sie beim Parsen nicht sieht und keine Warnung ausgibt. */
+const injectExternalScripts = {
+  name: 'inject-external-scripts',
+  transformIndexHtml: {
+    order: 'post',
+    handler(html, ctx) {
+      if (!ctx.filename.endsWith('history.html')) return html
+      return html.replace(
+        '</body>',
+        '  <!-- ECharts: lokale Datei, kein CDN, extern zu Rollup -->\n  <script src="/static/js/echarts.min.js"><\/script>\n</body>'
+      )
+    }
+  }
+}
+
 export default defineConfig({
-  plugins: [tailwindcss(), svelte()],
+  plugins: [tailwindcss(), svelte(), injectExternalScripts],
   base: '/',
   publicDir: false,
 
