@@ -11,6 +11,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import net.minecraft.client.Minecraft
+import net.minecraft.resources.Identifier
 import net.minecraft.server.packs.resources.ResourceManager
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
@@ -233,25 +234,12 @@ class WebServer(
     }
 
     private fun openResource(rm: ResourceManager, namespace: String, path: String): InputStream {
-        val id = createResourceId(namespace, path)
-        // MC 1.19+: ResourceManager.getResource(id) → Optional<Resource> → Resource.open()
-        // Das alte direkte open(ResourceLocation) auf ResourceManager wurde entfernt.
-        val getRes = rm.javaClass.methods.firstOrNull { m -> m.name == "getResource" && m.parameterCount == 1 }
-            ?: error("ResourceManager.getResource nicht gefunden")
-        val opt = getRes.invoke(rm, id)
-        val isPresent = opt.javaClass.getMethod("isPresent").invoke(opt) as Boolean
-        if (!isPresent) throw java.io.FileNotFoundException("$namespace:$path nicht gefunden")
-        val resource = opt.javaClass.getMethod("get").invoke(opt)
-        val openFn = resource.javaClass.methods.firstOrNull { m -> m.name == "open" && m.parameterCount == 0 }
-            ?: error("Resource.open() nicht gefunden")
-        return openFn.invoke(resource) as InputStream
+        val id = Identifier.fromNamespaceAndPath(namespace, path)
+        return rm.getResource(id).orElseThrow().open()
     }
 
-    private fun createResourceId(namespace: String, path: String): Any {
-        val idClass = runCatching { Class.forName("net.minecraft.resources.Identifier") }
-            .getOrElse { Class.forName("net.minecraft.resources.ResourceLocation") }
-        return idClass.getMethod("fromNamespaceAndPath", String::class.java, String::class.java)
-            .invoke(null, namespace, path)
+    private fun createResourceId(namespace: String, path: String): Identifier {
+        return Identifier.fromNamespaceAndPath(namespace, path)
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {
