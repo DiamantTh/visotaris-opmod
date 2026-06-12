@@ -169,19 +169,23 @@ class WebServer(
         }
     }
 
-    /** Versucht, das Icon-PNG für ein Item zu laden. */
+    /** Versucht, das Icon-PNG für ein Item zu laden.
+     *  MC 26.x: ResourceManager.getResource(Identifier) → Optional<Resource> → Resource.open()
+     */
     private fun loadItemIconBytes(rm: net.minecraft.server.packs.resources.ResourceManager, key: String): ByteArray? {
         for (prefix in listOf("item", "block")) {
             runCatching {
-                return rm.open(Identifier.fromNamespaceAndPath("minecraft", "textures/$prefix/$key.png")).use { it.readBytes() }
+                return rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "textures/$prefix/$key.png"))
+                    .orElseThrow().open().use { it.readBytes() }
             }
         }
         for (modelType in listOf("item", "block")) {
             runCatching {
-                val model = rm.open(Identifier.fromNamespaceAndPath("minecraft", "models/$modelType/$key.json"))
-                    .use { JsonParser.parseReader(it.reader()).asJsonObject }
+                val model = rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "models/$modelType/$key.json"))
+                    .orElseThrow().open().use { JsonParser.parseReader(it.reader()).asJsonObject }
                 val texPath = resolveTextureInModel(rm, model, 0) ?: return@runCatching
-                return rm.open(Identifier.fromNamespaceAndPath("minecraft", "textures/$texPath.png")).use { it.readBytes() }
+                return rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "textures/$texPath.png"))
+                    .orElseThrow().open().use { it.readBytes() }
             }
         }
         return null
@@ -207,8 +211,8 @@ class WebServer(
         val parent = model.get("parent")?.asString ?: return null
         val parentPath = if (parent.contains(":")) parent.substringAfter(":") else parent
         return runCatching {
-            val parentModel = rm.open(Identifier.fromNamespaceAndPath("minecraft", "models/$parentPath.json"))
-                .use { JsonParser.parseReader(it.reader()).asJsonObject }
+            val parentModel = rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "models/$parentPath.json"))
+                .orElseThrow().open().use { JsonParser.parseReader(it.reader()).asJsonObject }
             resolveTextureInModel(rm, parentModel, depth + 1)
         }.getOrNull()
     }

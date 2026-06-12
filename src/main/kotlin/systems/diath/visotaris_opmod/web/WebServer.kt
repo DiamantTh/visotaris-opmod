@@ -234,9 +234,17 @@ class WebServer(
 
     private fun openResource(rm: ResourceManager, namespace: String, path: String): InputStream {
         val id = createResourceId(namespace, path)
-        val open = rm.javaClass.methods.firstOrNull { it.name == "open" && it.parameterCount == 1 }
-            ?: error("ResourceManager.open(ResourceLocation) nicht gefunden")
-        return open.invoke(rm, id) as InputStream
+        // MC 1.19+: ResourceManager.getResource(id) → Optional<Resource> → Resource.open()
+        // Das alte direkte open(ResourceLocation) auf ResourceManager wurde entfernt.
+        val getRes = rm.javaClass.methods.firstOrNull { m -> m.name == "getResource" && m.parameterCount == 1 }
+            ?: error("ResourceManager.getResource nicht gefunden")
+        val opt = getRes.invoke(rm, id)
+        val isPresent = opt.javaClass.getMethod("isPresent").invoke(opt) as Boolean
+        if (!isPresent) throw java.io.FileNotFoundException("$namespace:$path nicht gefunden")
+        val resource = opt.javaClass.getMethod("get").invoke(opt)
+        val openFn = resource.javaClass.methods.firstOrNull { m -> m.name == "open" && m.parameterCount == 0 }
+            ?: error("Resource.open() nicht gefunden")
+        return openFn.invoke(resource) as InputStream
     }
 
     private fun createResourceId(namespace: String, path: String): Any {
