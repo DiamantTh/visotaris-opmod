@@ -11,6 +11,8 @@ plugins {
 // Beim nächsten MC-Update hier und in den dependencies anpassen.
 ext.mcVersion  = '26.2'
 ext.javaVersion = 25    // MC 26.x + ModMenu 18.x erfordert Java 25.
+// Finaler, ausgelieferter Mod-JAR (kein Remapping nötig, MC 26.x ist unobfuskiert) – Maven-Publish.
+ext.publishTaskName = 'shadowJar'
 
 // MC 26.x ist nicht obfuskiert → Loom darf keinen Mappings-/Remapping-Setup durchführen.
 // Muss per ext gesetzt werden, damit Looms lazy Provider es in afterEvaluate findet.

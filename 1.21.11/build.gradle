@@ -10,6 +10,8 @@ plugins {
 // Exakte MC-Version – wird für JAR-Name genutzt.
 ext.mcVersion  = '1.21.11'
 ext.javaVersion = 21
+// Finaler, ausgelieferter Mod-JAR (nach Remapping) – wird fürs Maven-Publish genutzt.
+ext.publishTaskName = 'remapJar'
 
 // ── Shadow / Shade-Konfiguration ─────────────────────────────────────────────
 // OkHttp + Okio werden in den Mod-JAR eingebettet (Pakete relociert, um

@@ -109,6 +109,8 @@ tasks.register('runClient2612') { group = null; dependsOn runClient26xTask }
 
 // Jedes Subprojekt hängt seinen remapJar-Output automatisch nach ./out/
 subprojects {
+    apply plugin: 'maven-publish'
+
     // group/version/repos brauchen keine Plugins – direkt setzbar.
     // version nutzt ext.mcVersion aus dem jeweiligen build.gradle (z.B. '1.21.11' oder '26.2'),
     // damit der JAR-Name die exakte MC-Version trägt, unabhängig vom Verzeichnisnamen.
@@ -159,6 +161,36 @@ subprojects {
             }
             filesMatching('visotaris_opmod.properties') {
                 expand discordApplicationId: rootProject.findProperty('discord_application_id') ?: ''
+            }
+        }
+
+        // ── Maven-Publish (Forgejo-Package-Registry, Gruppe "Minecraft") ─────────
+        // URL + Token kommen NICHT aus diesem Repo, sondern aus der globalen
+        // ~/.gradle/gradle.properties (Profil-Schema "forgejo.<Profil>.url/.token").
+        // publishTaskName wird pro Subprojekt gesetzt (remapJar bei 1.21.11, shadowJar bei 26.x),
+        // weil das der jeweils finale, ausgelieferte Mod-JAR ist.
+        def publishTaskName = project.ext.properties.getOrDefault('publishTaskName', 'jar')
+        publishing {
+            publications {
+                maven(MavenPublication) {
+                    artifactId = "visotaris_opmod-${project.name}"
+                    artifact(tasks.named(publishTaskName)) {
+                        builtBy tasks.named(publishTaskName)
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    name = 'forgejo'
+                    url  = rootProject.findProperty('forgejo.Minecraft_s_git.url') ?: ''
+                    credentials(HttpHeaderCredentials) {
+                        name  = 'Authorization'
+                        value = "token ${rootProject.findProperty('forgejo.Minecraft_s_git.token') ?: ''}"
+                    }
+                    authentication {
+                        header(HttpHeaderAuthentication)
+                    }
+                }
             }
         }
     }

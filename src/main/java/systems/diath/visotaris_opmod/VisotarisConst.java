@@ -45,7 +45,7 @@ public final class VisotarisConst {
         return "Visotaris-OPMod/" + modVer
             + " (MC/" + mcVer
             + "; Fabric/" + fabricVer
-            + "; git.diath.systems/DiamantTh/visotaris-opmod)";
+            + "; git.diath.systems/Minecraft/visotaris-opmod)";
     }
 
     /**
