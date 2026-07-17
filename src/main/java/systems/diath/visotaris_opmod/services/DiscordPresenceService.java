@@ -246,7 +246,7 @@ public final class DiscordPresenceService {
             }
             return "Multiplayer: " + limit(label, 40);
         }
-        if (minecraft.isSingleplayer()) {
+        if (minecraft.hasSingleplayerServer()) {
             return "Singleplayer";
         }
         if (minecraft.level == null) {

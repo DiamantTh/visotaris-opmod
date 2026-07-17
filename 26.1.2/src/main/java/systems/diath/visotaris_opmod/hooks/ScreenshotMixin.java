@@ -14,8 +14,10 @@ import java.util.function.Consumer;
 @Mixin(Screenshot.class)
 public abstract class ScreenshotMixin {
 
+    // MC 26.2 hat eine neue grab(Minecraft, boolean)-Überladung mit 2 zusätzlichen Lambdas
+    // vor dieser Stelle bekommen -> lambda$grab$1 (26.1.2) ist jetzt lambda$grab$3 (26.2).
     @Inject(
-        method = "lambda$grab$1",
+        method = "lambda$grab$3",
         at = @At(
             value = "INVOKE",
             target = "Ljava/util/function/Consumer;accept(Ljava/lang/Object;)V",

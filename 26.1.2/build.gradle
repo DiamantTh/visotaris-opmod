@@ -9,7 +9,7 @@ plugins {
 
 // Exakte MC-Version – wird für JAR-Name genutzt.
 // Beim nächsten MC-Update hier und in den dependencies anpassen.
-ext.mcVersion  = '26.1.2'
+ext.mcVersion  = '26.2'
 ext.javaVersion = 25    // MC 26.x + ModMenu 18.x erfordert Java 25.
 
 // MC 26.x ist nicht obfuskiert → Loom darf keinen Mappings-/Remapping-Setup durchführen.
@@ -29,7 +29,7 @@ configurations {
 dependencies {
     // Minecraft – MC 26.x ist nicht obfuskiert, daher keine mappings-Zeile
     //noinspection LoomDependencyNotation
-    minecraft "com.mojang:minecraft:26.1.2"
+    minecraft "com.mojang:minecraft:26.2"
 
     // Fabric Loader + API (implementation, nicht modImplementation – kein Remapping nötig)
     implementation "net.fabricmc:fabric-loader:${fabric_loader_version_26}"

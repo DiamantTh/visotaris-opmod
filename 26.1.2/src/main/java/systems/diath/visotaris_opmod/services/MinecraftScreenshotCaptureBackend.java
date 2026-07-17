@@ -13,7 +13,7 @@ public final class MinecraftScreenshotCaptureBackend implements ScreenshotCaptur
     public void capture(String filename, Consumer<Path> onSaved, Consumer<String> onFailure) {
         Minecraft mc = Minecraft.getInstance();
         try {
-            Screenshot.grab(mc.gameDirectory, filename, mc.getMainRenderTarget(), 1, message ->
+            Screenshot.grab(mc.gameDirectory, filename, mc.gameRenderer.mainRenderTarget(), 1, message ->
                 onSaved.accept(mc.gameDirectory.toPath().resolve("screenshots").resolve(filename))
             );
         } catch (Exception e) {
