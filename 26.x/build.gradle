@@ -92,7 +92,7 @@ kotlin {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     // Kotlin 2.2.21 kennt JvmTarget.JVM_25 noch nicht → JVM_24 als Bytecode-Target.
-    // Java-Quellen und Dependencies bleiben auf Java 25; siehe 26.1.2/gradle.properties.
+    // Java-Quellen und Dependencies bleiben auf Java 25; siehe 26.x/gradle.properties.
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
         freeCompilerArgs.add("-Xjvm-default=all")

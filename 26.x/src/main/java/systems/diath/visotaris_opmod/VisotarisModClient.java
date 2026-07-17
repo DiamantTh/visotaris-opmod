@@ -134,7 +134,7 @@ public class VisotarisModClient implements ClientModInitializer {
             while (client.options.keySwapOffhand.consumeClick()) { /* blockiert */ }
         });
 
-        VisotarisLogger.info("{} v{} initialisiert (MC 26.1.2).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());
+        VisotarisLogger.info("{} v{} initialisiert (MC 26.x).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());
 
         // 9. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
         MarketHistoryApiClient historyApiClient = new MarketHistoryApiClient(configManager);

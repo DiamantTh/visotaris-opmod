@@ -1,7 +1,7 @@
 # Visotaris OPMod – Abhängigkeiten und Lizenzen
 
 Dieses Dokument listet alle direkten Abhängigkeiten des Projekts mit ihren jeweiligen Lizenzen auf.
-Zuletzt aktualisiert: 2026-04-07
+Zuletzt aktualisiert: 2026-07-18
 
 ---
 
@@ -19,16 +19,16 @@ Zuletzt aktualisiert: 2026-04-07
 
 ### Minecraft & Plattform
 
-| Abhängigkeit | Version (1.21.11) | Version (26.1.2) | Lizenz | SPDX-ID |
+| Abhängigkeit | Version (1.21.11) | Version (26.x, aktuell 26.2) | Lizenz | SPDX-ID |
 |---|---|---|---|---|
-| [Minecraft](https://www.minecraft.net/de-de/eula) | 1.21.11 | 26.1.2 | Minecraft EULA (proprietär) | — |
+| [Minecraft](https://www.minecraft.net/de-de/eula) | 1.21.11 | 26.2 | Minecraft EULA (proprietär) | — |
 | [Yarn Mappings](https://github.com/FabricMC/yarn) | 1.21.11+build.1 | nicht benötigt | Creative Commons Zero v1.0 (CC0) | `CC0-1.0` |
-| [Fabric Loader](https://github.com/FabricMC/fabric-loader) | 0.18.5 | 0.18.6 | Apache License 2.0 | `Apache-2.0` |
-| [Fabric API](https://github.com/FabricMC/fabric) | 0.141.3+1.21.11 | 0.147.0+26.1.2 | Apache License 2.0 | `Apache-2.0` |
+| [Fabric Loader](https://github.com/FabricMC/fabric-loader) | 0.18.5 | 0.19.3 | Apache License 2.0 | `Apache-2.0` |
+| [Fabric API](https://github.com/FabricMC/fabric) | 0.141.3+1.21.11 | 0.155.2+26.2 | Apache License 2.0 | `Apache-2.0` |
 
 ### Mod-Abhängigkeiten (modImplementation)
 
-| Abhängigkeit | Version (1.21.11) | Version (26.1.2) | Lizenz | SPDX-ID |
+| Abhängigkeit | Version (1.21.11) | Version (26.x, aktuell 26.2) | Lizenz | SPDX-ID |
 |---|---|---|---|---|
 | [Mod Menu](https://github.com/TerraformersMC/ModMenu) | 17.0.0 | 18.0.0-alpha.8 | MIT License | `MIT` |
 | [fabric-language-kotlin](https://github.com/FabricMC/fabric-language-kotlin) | 1.13.7+kotlin.2.2.21 | 1.13.7+kotlin.2.2.21 | Apache License 2.0 | `Apache-2.0` |

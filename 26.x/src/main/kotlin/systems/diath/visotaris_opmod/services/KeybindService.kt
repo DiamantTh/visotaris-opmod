@@ -44,7 +44,7 @@ class KeybindService(
     fun registerTick() {
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
             while (keyOpenSettings.consumeClick()) {
-                mc.player?.sendSystemMessage(Component.literal("§e[Visotaris] §7Einstellungen sind für MC 26.1.2 noch nicht portiert."))
+                mc.player?.sendSystemMessage(Component.literal("§e[Visotaris] §7Einstellungen sind für MC 26.x noch nicht portiert."))
             }
             while (keyToggleHud.consumeClick()) {
                 config.getConfig().showHud = !config.getConfig().showHud
