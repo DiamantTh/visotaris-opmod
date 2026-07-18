@@ -169,11 +169,17 @@ subprojects {
         // ~/.gradle/gradle.properties (Profil-Schema "forgejo.<Profil>.url/.token").
         // publishTaskName wird pro Subprojekt gesetzt (remapJar bei 1.21.11, shadowJar bei 26.x),
         // weil das der jeweils finale, ausgelieferte Mod-JAR ist.
+        //
+        // Eine artifactId fuer alle MC-Versionen ("visotaris_opmod"): project.version
+        // enthaelt bereits das +mcX-Suffix (z.B. "1.1.5-2+mc26.2"), das reicht als
+        // Unterscheidung - Maven-Versionen sind unsortierte Strings, es muss ohnehin
+        // immer die exakte Version angefragt werden. Getrennte artifactIds pro
+        // MC-Version brachten nur Registry-Unordnung ohne echten Nutzen.
         def publishTaskName = project.ext.properties.getOrDefault('publishTaskName', 'jar')
         publishing {
             publications {
                 maven(MavenPublication) {
-                    artifactId = "visotaris_opmod-${project.name}"
+                    artifactId = property('mod_id')
                     artifact(tasks.named(publishTaskName)) {
                         builtBy tasks.named(publishTaskName)
                     }
