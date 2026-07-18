@@ -79,6 +79,10 @@ class WebServer(
     fun isRunning(): Boolean = servers.isNotEmpty()
 
     fun stop() {
+        if (servers.isEmpty()) {
+            VisotarisLogger.debug("Web-UI stop() aufgerufen, war aber nicht aktiv - nichts zu tun.")
+            return
+        }
         servers.forEach { it.stop(gracePeriodMillis = 200, timeoutMillis = 1_000) }
         servers.clear()
         VisotarisLogger.info("Web-UI gestoppt.")

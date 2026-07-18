@@ -1,0 +1,120 @@
+package systems.diath.visotaris_opmod.commands;
+
+import com.mojang.brigadier.CommandDispatcher;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import systems.diath.visotaris_opmod.VisotarisModClient;
+import systems.diath.visotaris_opmod.model.PendingAction;
+import systems.diath.visotaris_opmod.services.PendingConfirmationService;
+
+/**
+ * Registriert alle Client-Commands der Visotaris Mod.
+ *
+ * MC 26.x: {@code ClientCommandManager} wurde durch {@code ClientCommands} ersetzt
+ * (fabric-command-api-v2 3.x), Minecraft.setScreen()/screen() sind nach
+ * {@code Minecraft.gui} gewandert (Mojang-Refactoring der Gui-Klasse).
+ *
+ * Interne Bestätigungs-Commands:
+ *   /.confirmRename  /.cancelRename
+ *   /.confirmSign    /.cancelSign
+ *
+ * Sonstige Commands:
+ *   /visotaris refresh   – Markt & Shard-Daten sofort neu laden
+ *   /visotaris tracker   – aktuellen Job-Snapshot ausgeben
+ *   /visotaris status    – Mod-Status anzeigen
+ *   /visotaris settings  – Config-Screen öffnen
+ */
+public final class VisotarisCommands {
+
+    private VisotarisCommands() {}
+
+    public static void register(PendingConfirmationService confirmService) {
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
+            registerAll(dispatcher, confirmService)
+        );
+    }
+
+    private static void registerAll(CommandDispatcher<FabricClientCommandSource> d,
+                                    PendingConfirmationService confirmService) {
+
+        // ── Bestätigungs-Commands ──────────────────────────────────────────────
+        d.register(ClientCommands.literal(".confirmRename")
+            .executes(ctx -> {
+                boolean ok = confirmService.confirm(PendingAction.Type.RENAME);
+                send(ctx.getSource(), ok ? "§aRename bestätigt." : "§cKein ausstehender Rename.");
+                return ok ? 1 : 0;
+            })
+        );
+        d.register(ClientCommands.literal(".cancelRename")
+            .executes(ctx -> {
+                confirmService.cancel(PendingAction.Type.RENAME);
+                send(ctx.getSource(), "§7Rename abgebrochen.");
+                return 1;
+            })
+        );
+        d.register(ClientCommands.literal(".confirmSign")
+            .executes(ctx -> {
+                boolean ok = confirmService.confirm(PendingAction.Type.SIGN);
+                send(ctx.getSource(), ok ? "§aSign bestätigt." : "§cKein ausstehender Sign.");
+                return ok ? 1 : 0;
+            })
+        );
+        d.register(ClientCommands.literal(".cancelSign")
+            .executes(ctx -> {
+                confirmService.cancel(PendingAction.Type.SIGN);
+                send(ctx.getSource(), "§7Sign abgebrochen.");
+                return 1;
+            })
+        );
+
+        // ── Verwaltungs-Commands ───────────────────────────────────────────────
+        d.register(ClientCommands.literal("visotaris")
+            .then(ClientCommands.literal("refresh")
+                .executes(ctx -> {
+                    VisotarisModClient mod = VisotarisModClient.getInstance();
+                    mod.getMarketSyncService().refresh();
+                    mod.getMerchantSyncService().refresh();
+                    send(ctx.getSource(), "§aMarkt & Shard-Daten werden neu geladen...");
+                    return 1;
+                })
+            )
+            .then(ClientCommands.literal("tracker")
+                .executes(ctx -> {
+                    var snap = VisotarisModClient.getInstance().getJobTrackerService().getSnapshot();
+                    send(ctx.getSource(), "§eJob: §f" + snap.getJobName()
+                        + " §eLevel: §f" + snap.getLevel()
+                        + " §eXP/h: §f" + String.format("%.0f", snap.getXpPerHour())
+                        + " §e$/h: §f" + String.format("%.0f", snap.getMoneyPerHour())
+                    );
+                    return 1;
+                })
+            )
+            .then(ClientCommands.literal("status")
+                .executes(ctx -> {
+                    VisotarisModClient mod = VisotarisModClient.getInstance();
+                    send(ctx.getSource(), "§b[Visotaris] Status");
+                    send(ctx.getSource(), "  Marktpreise: §f" +
+                        (mod.getMarketCache().isEmpty() ? "§cnicht geladen" : "§ageladen"));
+                    send(ctx.getSource(), "  Shardkurse:  §f" +
+                        (mod.getShardCache().isEmpty() ? "§cnicht geladen" : "§ageladen"));
+                    return 1;
+                })
+            )
+            .then(ClientCommands.literal("settings")
+                .executes(ctx -> {
+                    Minecraft mc = Minecraft.getInstance();
+                    mc.gui.setScreen(new systems.diath.visotaris_opmod.config.VisotarisConfigScreen(mc.gui.screen()));
+                    return 1;
+                })
+            )
+        );
+    }
+
+    @SuppressWarnings("null")
+    private static void send(FabricClientCommandSource source, String text) {
+        source.sendFeedback(Component.literal(text));
+    }
+}

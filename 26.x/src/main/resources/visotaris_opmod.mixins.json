@@ -3,6 +3,8 @@
   "package": "systems.diath.visotaris_opmod.hooks",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "HandledScreenMixin",
+    "AnvilScreenMixin",
     "ScreenshotMixin"
   ],
   "injectors": {

@@ -7,14 +7,18 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
+import systems.diath.visotaris_opmod.commands.VisotarisCommands;
 import systems.diath.visotaris_opmod.config.ConfigManager;
+import systems.diath.visotaris_opmod.services.InventoryValuationService;
 import systems.diath.visotaris_opmod.services.JobTrackerService;
 import systems.diath.visotaris_opmod.services.MarketSyncService;
 import systems.diath.visotaris_opmod.services.MerchantSyncService;
@@ -25,6 +29,7 @@ import systems.diath.visotaris_opmod.services.KeybindService;
 import systems.diath.visotaris_opmod.services.MinecraftScreenshotCaptureBackend;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 import systems.diath.visotaris_opmod.services.TooltipValueService;
+import systems.diath.visotaris_opmod.ui.HudOverlay;
 import systems.diath.visotaris_opmod.web.WebServer;
 
 @Environment(EnvType.CLIENT)
@@ -45,11 +50,15 @@ public class VisotarisModClient implements ClientModInitializer {
     private MerchantSyncService        merchantSyncService;
     private JobTrackerService          jobTrackerService;
     private TooltipValueService        tooltipValueService;
+    private InventoryValuationService  inventoryValuationService;
     private PendingConfirmationService pendingConfirmationService;
     private DiscordPresenceService      discordPresenceService;
     private DiscordScreenshotService    discordScreenshotService;
     private CommandRewriteService       commandRewriteService;
     private KeybindService              keybindService;
+
+    // UI
+    private HudOverlay hudOverlay;
 
     // Web-UI
     private WebServer         webServer;
@@ -67,6 +76,7 @@ public class VisotarisModClient implements ClientModInitializer {
         marketSyncService         = new MarketSyncService(marketCache, configManager);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
+        inventoryValuationService = new InventoryValuationService(marketCache, shardCache, configManager);
         jobTrackerService         = new JobTrackerService(configManager);
         pendingConfirmationService = new PendingConfirmationService(configManager);
         discordPresenceService     = new DiscordPresenceService(
@@ -134,9 +144,16 @@ public class VisotarisModClient implements ClientModInitializer {
             while (client.options.keySwapOffhand.consumeClick()) { /* blockiert */ }
         });
 
-        VisotarisLogger.info("{} v{} initialisiert (MC 26.x).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());
+        // 9. HUD registrieren (fabric-rendering-v1: HudElementRegistry ersetzt das entfernte HudRenderCallback)
+        hudOverlay = new HudOverlay(jobTrackerService, inventoryValuationService, configManager);
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), hudOverlay);
 
-        // 9. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
+        // 10. Client-Commands registrieren
+        VisotarisCommands.register(pendingConfirmationService);
+
+        VisotarisLogger.info("{} v{} initialisiert (MC 26.x).", MOD_NAME, modVersion());
+
+        // 11. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
         MarketHistoryApiClient historyApiClient = new MarketHistoryApiClient(configManager);
         priceHistoryCache = new PriceHistoryCache(historyApiClient);
         applyWebUiConfig();
@@ -149,11 +166,24 @@ public class VisotarisModClient implements ClientModInitializer {
         return instance;
     }
 
+    /**
+     * Mod-Version aus den FabricLoader-Metadaten.
+     * {@code getPackage().getImplementationVersion()} liefert IMMER null, da der jar-Task
+     * kein Implementation-Version-Manifest-Attribut setzt - weder im Dev-Client noch im
+     * fertigen Mod-JAR.
+     */
+    private static String modVersion() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(MOD_ID)
+            .map(c -> c.getMetadata().getVersion().getFriendlyString())
+            .orElse("?");
+    }
+
     public ConfigManager getConfigManager()                         { return configManager; }
     public MarketSyncService getMarketSyncService()                 { return marketSyncService; }
     public MerchantSyncService getMerchantSyncService()             { return merchantSyncService; }
     public JobTrackerService getJobTrackerService()                 { return jobTrackerService; }
     public TooltipValueService getTooltipValueService()             { return tooltipValueService; }
+    public InventoryValuationService getInventoryValuationService() { return inventoryValuationService; }
     public PendingConfirmationService getPendingConfirmationService(){ return pendingConfirmationService; }
     public DiscordScreenshotService getDiscordScreenshotService()      { return discordScreenshotService; }
     public MarketCache getMarketCache()                             { return marketCache; }
@@ -171,6 +201,8 @@ public class VisotarisModClient implements ClientModInitializer {
         if (cfg.enableWebUi) {
             webServer.start();
         } else {
+            VisotarisLogger.info("Web-UI ist deaktiviert (enableWebUi=false in der Config) - kein Start versucht. " +
+                "Aktivieren über ModMenu (Visotaris → Web-Interface) oder /visotaris settings.");
             webServer.stop();
         }
     }

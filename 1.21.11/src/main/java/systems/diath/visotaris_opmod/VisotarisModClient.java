@@ -153,7 +153,7 @@ public class VisotarisModClient implements ClientModInitializer {
             while (client.options.keySwapOffhand.consumeClick()) { /* blockiert */ }
         });
 
-        VisotarisLogger.info("{} v{} initialisiert (MC 1.21.11).", MOD_NAME, VisotarisModClient.class.getPackage().getImplementationVersion());
+        VisotarisLogger.info("{} v{} initialisiert (MC 1.21.11).", MOD_NAME, modVersion());
 
         // 11. Web-UI starten (Standard: deaktiviert – via Config aktivierbar)
         MarketHistoryApiClient historyApiClient = new MarketHistoryApiClient(configManager);
@@ -166,6 +166,18 @@ public class VisotarisModClient implements ClientModInitializer {
 
     public static VisotarisModClient getInstance() {
         return instance;
+    }
+
+    /**
+     * Mod-Version aus den FabricLoader-Metadaten.
+     * {@code getPackage().getImplementationVersion()} liefert IMMER null, da der jar-Task
+     * kein Implementation-Version-Manifest-Attribut setzt - weder im Dev-Client noch im
+     * fertigen Mod-JAR.
+     */
+    private static String modVersion() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(MOD_ID)
+            .map(c -> c.getMetadata().getVersion().getFriendlyString())
+            .orElse("?");
     }
 
     public ConfigManager getConfigManager()                         { return configManager; }
@@ -191,6 +203,8 @@ public class VisotarisModClient implements ClientModInitializer {
         if (cfg.enableWebUi) {
             webServer.start();
         } else {
+            VisotarisLogger.info("Web-UI ist deaktiviert (enableWebUi=false in der Config) - kein Start versucht. " +
+                "Aktivieren über ModMenu (Visotaris → Web-Interface) oder /visotaris settings.");
             webServer.stop();
         }
     }

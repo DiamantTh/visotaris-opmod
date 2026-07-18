@@ -37,9 +37,9 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${fabric_loader_version_26}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version_26}"
 
-    // Mod Menu (MC 26.1.x → Reihe 18.x)
+    // Mod Menu (MC 26.2 → Reihe 20.x; 18.x deckte nur 26.1.x ab und rendert auf 26.2 nicht mehr)
     // kein modImplementation: im disableObfuscation-Modus gibt es keine Remap-Konfigurationen
-    implementation "com.terraformersmc:modmenu:18.0.0-alpha.8"
+    implementation "com.terraformersmc:modmenu:20.0.1"
 
     // Kotlin Runtime (fabric-language-kotlin stellt Stdlib + Coroutinen bereit)
     implementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}"
@@ -115,7 +115,6 @@ def java26Excludes = [
     'systems/diath/visotaris_opmod/config/ModMenuApiImpl.java',
     'systems/diath/visotaris_opmod/config/NetworkSettingsScreen.java',
     'systems/diath/visotaris_opmod/config/VisotarisConfigScreen.java',
-    'systems/diath/visotaris_opmod/hooks/AnvilScreenMixin.java',
     'systems/diath/visotaris_opmod/hooks/HandledScreenMixin.java',
     'systems/diath/visotaris_opmod/services/InventoryValuationService.java',
     'systems/diath/visotaris_opmod/ui/HudOverlay.java',
