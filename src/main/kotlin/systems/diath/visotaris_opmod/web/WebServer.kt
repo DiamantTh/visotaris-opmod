@@ -166,22 +166,45 @@ class WebServer(
                     call.respond(HttpStatusCode.Forbidden); return@get
                 }
 
-                val key = call.parameters["material"]
-                    ?.lowercase()
-                    ?.substringBefore('#')   // "paper#626" → "paper" (Custom-Items)
-                    ?.filter { it.isLetterOrDigit() || it == '_' }
-                    .takeIf { !it.isNullOrBlank() }
-                    ?: run { call.respond(HttpStatusCode.BadRequest); return@get }
+                val rawKey = call.parameters["material"]?.lowercase() ?: run {
+                    call.respond(HttpStatusCode.BadRequest); return@get
+                }
 
                 val rm = Minecraft.getInstance()?.resourceManager
                     ?: run { call.respond(HttpStatusCode.ServiceUnavailable); return@get }
 
-                val bytes = loadItemIconBytes(rm, key)
+                // Zuerst versuchen mit Original-Key (auch Custom Items wie "paper#626")
+                var bytes = loadItemIconBytes(rm, rawKey)
                 if (bytes != null) {
                     call.respondBytes(bytes, ContentType.Image.PNG)
-                } else {
-                    call.respond(HttpStatusCode.NotFound)
+                    return@get
                 }
+
+                // Fallback: Custom Item? (paper#626 → paper) 
+                val key = rawKey
+                    .substringBefore('#')
+                    .filter { it.isLetterOrDigit() || it == '_' }
+                    .takeIf { !it.isNullOrBlank() }
+
+                if (key != null) {
+                    bytes = loadItemIconBytes(rm, key)
+                    if (bytes != null) {
+                        call.respondBytes(bytes, ContentType.Image.PNG)
+                        return@get
+                    }
+
+                    // Zweiter Fallback: Custom-Item-Mapping (paper#626 → purple_dye, etc.)
+                    val fallbackKey = getCustomItemFallback(rawKey, key)
+                    if (fallbackKey != null) {
+                        bytes = loadItemIconBytes(rm, fallbackKey)
+                        if (bytes != null) {
+                            call.respondBytes(bytes, ContentType.Image.PNG)
+                            return@get
+                        }
+                    }
+                }
+
+                call.respond(HttpStatusCode.NotFound)
             }
         }
     }
@@ -244,6 +267,23 @@ class WebServer(
 
     private fun createResourceId(namespace: String, path: String): Identifier {
         return Identifier.fromNamespaceAndPath(namespace, path)
+    }
+
+    /** Fallback-Icon für bekannte Custom Items.
+     *  Nutzt visotaris-spezifische Custom-ModelData-Items und mappt sie auf bessere Icons.
+     *  Daten aus https://api.opsucht.net/merchant/rates
+     */
+    private fun getCustomItemFallback(rawKey: String, baseKey: String): String? {
+        if (baseKey != "paper") return null  // Nur für Paper-basierte Custom Items
+
+        // Custom ModelData → Fallback Icon Mapping (OPSUCHT Shardhändler Items)
+        val customModelData = rawKey.substringAfter('#').takeIf { it.isNotEmpty() }?.toIntOrNull()
+        return when (customModelData) {
+            625 -> "stick"                 // Holzbündel - braunes Icon
+            626 -> "amethyst_shard"        // Gräbergemisch - violettes Icon
+            635 -> "stone"                 // Steinplatten - graues Icon
+            else -> null
+        }
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {
