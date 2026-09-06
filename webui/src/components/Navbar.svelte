@@ -1,6 +1,6 @@
 <script>
   import Icon from '@iconify/svelte'
-  /** @type {{ activePage: 'market' | 'shard' | 'history' }} */
+  /** @type {{ activePage: 'market' | 'shard' | 'redcoins' | 'history' }} */
   let { activePage } = $props()
 </script>
 
@@ -18,6 +18,10 @@
     <a href="/shard" class="flex items-center gap-1 text-sm no-underline transition-colors"
        style="color:{activePage === 'shard' ? 'var(--vi-text)' : 'var(--vi-text-muted)'}">
       <Icon icon="lucide:gem" width={13} />Shards
+    </a>
+    <a href="/redcoins" class="flex items-center gap-1 text-sm no-underline transition-colors"
+       style="color:{activePage === 'redcoins' ? 'var(--vi-text)' : 'var(--vi-text-muted)'}">
+      <Icon icon="lucide:circle-dollar-sign" width={13} />Redcoins
     </a>
     <a href="/history" class="flex items-center gap-1 text-sm no-underline transition-colors"
        style="color:{activePage === 'history' ? 'var(--vi-text)' : 'var(--vi-text-muted)'}">

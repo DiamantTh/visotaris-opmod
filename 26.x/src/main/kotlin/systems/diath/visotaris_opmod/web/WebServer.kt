@@ -100,6 +100,7 @@ class WebServer(
             get("/") { serveResource(call, "assets/webui/index.html", ContentType.Text.Html) }
             get("/history") { serveResource(call, "assets/webui/history.html", ContentType.Text.Html) }
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
+            get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
 
             // ── Statische Dateien ────────────────────────────────────────────────
             get("/static/{path...}") {
@@ -142,7 +143,10 @@ class WebServer(
                 call.respondText(gson.toJson(history), ContentType.Application.Json)
             }
             get("/api/shard") {
-                call.respondText(gson.toJson(shardCache.snapshot()), ContentType.Application.Json)
+                call.respondText(gson.toJson(merchantRatesFor("opshards")), ContentType.Application.Json)
+            }
+            get("/api/redcoins") {
+                call.respondText(gson.toJson(merchantRatesFor("redcoins")), ContentType.Application.Json)
             }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
@@ -195,6 +199,11 @@ class WebServer(
             }
         }
     }
+
+    /** Filtert die gemeinsame Merchant-API nach Zielwährung für getrennte Web-Ansichten. */
+    private fun merchantRatesFor(target: String) = shardCache.snapshot().values
+        .filter { it.target.equals(target, ignoreCase = true) }
+        .sortedBy { it.source }
 
     /** Versucht, das Icon-PNG für ein Item zu laden.
      *  MC 26.x: ResourceManager.getResource(Identifier) → Optional<Resource> → Resource.open()

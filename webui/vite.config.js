@@ -39,6 +39,7 @@ export default defineConfig({
         market:  resolve(__dirname, 'index.html'),
         history: resolve(__dirname, 'history.html'),
         shard:   resolve(__dirname, 'shard.html'),
+        redcoins: resolve(__dirname, 'redcoins.html'),
       },
       output: {
         globals:        { echarts: 'echarts' },

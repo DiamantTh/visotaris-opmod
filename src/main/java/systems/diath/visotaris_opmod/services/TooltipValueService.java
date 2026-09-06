@@ -57,11 +57,16 @@ public final class TooltipValueService {
             if (p.getSell() > 0) lines.add(Component.literal("§eVerkaufspreis:  §f" + formatMoney(p.getSell())));
         });
 
-        // Shardkurs: erst einfaches Lookup, dann mit custom_model_data
-        Optional<ShardRate> shard = findShard(stack, baseKey);
-        shard.ifPresent(s ->
-            lines.add(Component.literal("§bShardkurs: §f" + s.getExchangeRate() + " OPS"))
-        );
+        // Händlerkurs: erst einfaches Lookup, dann mit custom_model_data.
+        // Die Merchant-API liefert inzwischen neben OPSHARDS auch REDCOINS.
+        // Daher die Zielwährung aus der API anzeigen, statt jeden Kurs als OPS
+        // auszugeben.
+        Optional<ShardRate> merchantRate = findShard(stack, baseKey);
+        merchantRate.ifPresent(rate -> {
+            String target = formatTarget(rate.getTarget());
+            String label = "OPSHARDS".equalsIgnoreCase(target) ? "§bShardkurs" : "§cRedcoin-Kurs";
+            lines.add(Component.literal(label + ": §f" + rate.getExchangeRate() + " " + target));
+        });
     }
 
     // ── Item-Key-Ableitung ────────────────────────────────────────────────────
@@ -99,6 +104,11 @@ public final class TooltipValueService {
         }
 
         return Optional.empty();
+    }
+
+    private static String formatTarget(String target) {
+        if (target == null || target.isBlank()) return "OPS";
+        return target.toUpperCase();
     }
 
     private static String formatMoney(double value) {

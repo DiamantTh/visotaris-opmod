@@ -6,6 +6,13 @@
   import Navbar       from '../../components/Navbar.svelte'
   import { fmtItem, itemIcon, hideOnError } from '../../lib/utils.js'
 
+  /** @type {{ currency: 'opshards' | 'redcoins' }} */
+  let { currency = 'opshards' } = $props()
+  const isShard = $derived(currency === 'opshards')
+  const pageTitle = $derived(isShard ? 'Shardkurse' : 'Redcoin-Kurse')
+  const apiPath = $derived(isShard ? '/api/shard' : '/api/redcoins')
+  const unitLabel = $derived(isShard ? 'Shards / Einheit' : 'Redcoins / Einheit')
+
   // ── State ──────────────────────────────────────────────────────────────────
   let items     = $state([])
   let loading   = $state(false)
@@ -82,7 +89,7 @@
     loading = true
     error   = null
     try {
-      const res  = await fetch('/api/shard')
+      const res  = await fetch(apiPath)
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const data = await res.json()
       items     = Array.isArray(data) ? data : Object.values(data)
@@ -97,14 +104,14 @@
   $effect.root(() => { loadData() })
 </script>
 
-<Navbar activePage="shard" />
+<Navbar activePage={isShard ? 'shard' : 'redcoins'} />
 
 <div class="w-full px-4 py-3">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
   <div class="flex items-center gap-3 mb-3 flex-wrap">
     <h5 class="m-0 flex items-center gap-2 font-semibold text-base">
-      <Icon icon="lucide:gem" width={15} style="color:var(--vi-accent)" />Shardkurse
+      <Icon icon={isShard ? 'lucide:gem' : 'lucide:circle-dollar-sign'} width={15} style="color:var(--vi-accent)" />{pageTitle}
     </h5>
     <span class={statusBadgeClass}>{statusText}</span>
     <div class="ml-auto flex gap-2">
@@ -127,7 +134,7 @@
       <div class="text-center">
         <span class="inline-block w-6 h-6 border-2 rounded-full animate-spin mb-2 mx-auto block"
               style="border-color:var(--vi-accent); border-top-color:transparent"></span>
-        <div>Lade Shardkurse…</div>
+        <div>Lade {pageTitle}…</div>
       </div>
     </div>
   {/if}
@@ -149,7 +156,7 @@
               <th onclick={() => setSort('item')} class={sortCls('item')}>Material</th>
               <th onclick={() => setSort('base')} class="text-right {sortCls('base')}">Basiskurs</th>
               <th onclick={() => setSort('rate')} class="text-right {sortCls('rate')}">
-                Shards / Einheit
+                {unitLabel}
               </th>
               <th onclick={() => setSort('diff')} class="text-right {sortCls('diff')}">Trend</th>
             </tr>

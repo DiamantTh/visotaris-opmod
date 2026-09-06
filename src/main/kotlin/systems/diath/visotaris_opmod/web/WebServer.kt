@@ -29,11 +29,13 @@ import java.io.InputStream
  *  GET /              → index.html (Marktpreise)
  *  GET /history       → history.html (Preisverlauf-Charts)
  *  GET /shard         → shard.html (Shardkurse)
+ *  GET /redcoins      → redcoins.html (Redcoin-Händlerkurse)
  *  GET /static/...    → statische Dateien aus JAR-Classpath
  *  GET /api/market    → JSON: alle Marktpreise aus MarketCache
  *  GET /api/market/{material} → JSON: einzelner Marktpreis
  *  GET /api/history/{material}→ JSON: Preisverlauf (lazy fetch)
  *  GET /api/shard     → JSON: alle Shardkurse aus ShardCache
+ *  GET /api/redcoins  → JSON: alle Redcoin-Kurse aus ShardCache
  */
 class WebServer(
     val port: Int,
@@ -112,6 +114,7 @@ class WebServer(
             get("/") { serveResource(call, "assets/webui/index.html", ContentType.Text.Html) }
             get("/history") { serveResource(call, "assets/webui/history.html", ContentType.Text.Html) }
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
+            get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
 
             // ── Statische Dateien ────────────────────────────────────────────────
             get("/static/{path...}") {
@@ -154,7 +157,10 @@ class WebServer(
                 call.respondText(gson.toJson(history), ContentType.Application.Json)
             }
             get("/api/shard") {
-                call.respondText(gson.toJson(shardCache.snapshot()), ContentType.Application.Json)
+                call.respondText(gson.toJson(merchantRatesFor("opshards")), ContentType.Application.Json)
+            }
+            get("/api/redcoins") {
+                call.respondText(gson.toJson(merchantRatesFor("redcoins")), ContentType.Application.Json)
             }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
@@ -208,6 +214,11 @@ class WebServer(
             }
         }
     }
+
+    /** Filtert die gemeinsame Merchant-API nach Zielwährung für getrennte Web-Ansichten. */
+    private fun merchantRatesFor(target: String) = shardCache.snapshot().values
+        .filter { it.target.equals(target, ignoreCase = true) }
+        .sortedBy { it.source }
 
     /** Versucht, das Icon-PNG für ein Item zu laden:
      *  1. textures/item/{key}.png
