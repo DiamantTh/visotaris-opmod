@@ -64,7 +64,9 @@ public final class TooltipValueService {
         Optional<ShardRate> merchantRate = findShard(stack, baseKey);
         merchantRate.ifPresent(rate -> {
             String target = formatTarget(rate.getTarget());
-            String label = "OPSHARDS".equalsIgnoreCase(target) ? "§bShardkurs" : "§cRedcoin-Kurs";
+            String label = "OPSHARDS".equalsIgnoreCase(target) ? "§bShardkurs"
+                : "REDCOINS".equalsIgnoreCase(target) ? "§cRedcoin-Kurs"
+                : "§dHändlerkurs";
             lines.add(Component.literal(label + ": §f" + rate.getExchangeRate() + " " + target));
         });
     }

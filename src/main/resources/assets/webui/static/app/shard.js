@@ -1,1 +1,1 @@
-import{H as p}from"./utils.js";import{A as r}from"./App.js";import"./index.js";p(r,{target:document.getElementById("app"),props:{currency:"opshards"}});
+import{T as e}from"./utils.js";import{t}from"./App.js";e(t,{target:document.getElementById(`app`),props:{currency:`opshards`}});

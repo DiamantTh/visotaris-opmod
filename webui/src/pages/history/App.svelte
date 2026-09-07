@@ -1,13 +1,10 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { fade } from 'svelte/transition'
+  import * as echarts from 'echarts'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
   import { fmtItem, fmtInt, fmt, fmtCompact, itemIcon, hideOnError } from '../../lib/utils.js'
-
-  // ECharts wird als globale Variable aus /static/js/echarts.min.js geladen
-  /** @type {typeof import('echarts')} */
-  const echarts = /** @type {any} */ (window).echarts
 
   const LS_RECENT = 'visotaris_history_recent'
 

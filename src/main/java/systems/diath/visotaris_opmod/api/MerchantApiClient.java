@@ -21,7 +21,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -111,7 +113,15 @@ public final class MerchantApiClient {
         try (InputStream is = body.byteStream();
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
             JsonElement root = GSON.fromJson(reader, JsonElement.class);
+            return parseRates(root);
+        }
+    }
 
+    /**
+     * Parst einen Merchant-API-Response. Paket-sichtbar für den Contract-Test,
+     * damit neue Zielwährungen nicht versehentlich aus dem Modell fallen.
+     */
+    static List<ShardRate> parseRates(JsonElement root) {
             if (!root.isJsonArray()) {
                 VisotarisLogger.warn("Merchant-API: unerwartetes Root-Element (kein Array).");
                 return Collections.emptyList();
@@ -119,6 +129,7 @@ public final class MerchantApiClient {
 
             JsonArray array = root.getAsJsonArray();
             List<ShardRate> result = new ArrayList<>(array.size());
+            Set<String> targets = new HashSet<>();
 
             for (JsonElement el : array) {
                 if (!el.isJsonObject()) continue;
@@ -130,14 +141,24 @@ public final class MerchantApiClient {
                 double rate   = getDouble(obj, "exchangeRate");
                 double base   = getDouble(obj, "base");
                 String target = getStringOrNull(obj, "target");
+                if (target != null && !target.isBlank()) targets.add(target.toLowerCase());
                 String key    = normalizeSource(rawSource);
                 String name   = extractDisplayName(rawSource);
                 result.add(new ShardRate(key, rate, base, target, name));
             }
 
+            // Die API ist erweiterbar: neue Zielwährungen werden bewusst nicht
+            // verworfen. Der Hinweis sorgt jedoch dafür, dass sie in einer
+            // Folgeversion eine eigene Oberfläche bekommen können.
+            for (String target : targets) {
+                if (!"opshards".equals(target) && !"redcoins".equals(target)) {
+                    VisotarisLogger.warn("Merchant-API: neue Zielwährung '{}' erkannt; Daten sind über /api/merchant/{} verfügbar.",
+                        target, target);
+                }
+            }
+
             VisotarisLogger.debug("Merchant-API: {} Shardkurs-Einträge geladen.", result.size());
             return result;
-        }
     }
 
     /**

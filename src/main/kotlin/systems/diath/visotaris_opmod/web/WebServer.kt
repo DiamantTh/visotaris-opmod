@@ -36,6 +36,8 @@ import java.io.InputStream
  *  GET /api/history/{material}→ JSON: Preisverlauf (lazy fetch)
  *  GET /api/shard     → JSON: alle Shardkurse aus ShardCache
  *  GET /api/redcoins  → JSON: alle Redcoin-Kurse aus ShardCache
+ *  GET /api/merchant  → JSON: alle Merchant-Kurse, nach Zielwährung gruppiert
+ *  GET /api/merchant/{target} → JSON: Kurse einer beliebigen Zielwährung
  */
 class WebServer(
     val port: Int,
@@ -162,6 +164,17 @@ class WebServer(
             get("/api/redcoins") {
                 call.respondText(gson.toJson(merchantRatesFor("redcoins")), ContentType.Application.Json)
             }
+            get("/api/merchant") {
+                call.respondText(gson.toJson(merchantRatesByTarget()), ContentType.Application.Json)
+            }
+            get("/api/merchant/{target}") {
+                val target = call.parameters["target"]?.lowercase()?.trim().orEmpty()
+                if (target.isBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, "target fehlt")
+                    return@get
+                }
+                call.respondText(gson.toJson(merchantRatesFor(target)), ContentType.Application.Json)
+            }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
             get("/api/icon/{material}") {
@@ -217,8 +230,14 @@ class WebServer(
 
     /** Filtert die gemeinsame Merchant-API nach Zielwährung für getrennte Web-Ansichten. */
     private fun merchantRatesFor(target: String) = shardCache.snapshot().values
-        .filter { it.target.equals(target, ignoreCase = true) }
+        .filter { target.equals(it.target, ignoreCase = true) }
         .sortedBy { it.source }
+
+    /** Vollständige, erweiterbare Merchant-Übersicht für neue API-Zielwährungen. */
+    private fun merchantRatesByTarget() = shardCache.snapshot().values
+        .groupBy { it.target?.lowercase() ?: "unknown" }
+        .toSortedMap()
+        .mapValues { (_, rates) -> rates.sortedBy { it.source } }
 
     /** Versucht, das Icon-PNG für ein Item zu laden:
      *  1. textures/item/{key}.png

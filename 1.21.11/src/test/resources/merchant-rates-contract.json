@@ -1,0 +1,20 @@
+[
+  {
+    "source": "diamond_block",
+    "target": "opshards",
+    "base": 6.0,
+    "exchangeRate": 5.72
+  },
+  {
+    "source": "book",
+    "target": "redcoins",
+    "base": 1.0,
+    "exchangeRate": 1.11
+  },
+  {
+    "source": "minecraft:paper[custom_model_data={floats: [626.0f]}]",
+    "target": "futurecoins",
+    "base": 2.0,
+    "exchangeRate": 2.5
+  }
+]
