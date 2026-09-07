@@ -3,6 +3,7 @@ package systems.diath.visotaris_opmod.services;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -12,6 +13,8 @@ import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.InventoryValuation;
 import systems.diath.visotaris_opmod.model.MarketPrice;
+import systems.diath.visotaris_opmod.model.MerchantCurrency;
+import systems.diath.visotaris_opmod.model.ShardRate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +34,6 @@ import java.util.Optional;
 public final class InventoryValuationService {
 
     private final MarketCache   marketCache;
-    @SuppressWarnings("unused") // TODO: Shard-Bewertung (siehe evaluate())
     private final ShardCache    shardCache;
     private final ConfigManager config;
 
@@ -63,7 +65,9 @@ public final class InventoryValuationService {
         double buy   = 0;
         double sell  = 0;
         double shard = 0;
+        double redcoins = 0;
         boolean hasShards   = false;
+        boolean hasRedcoins = false;
         boolean hasShulkers = false;
 
         for (ItemStack stack : stacks) {
@@ -79,6 +83,10 @@ public final class InventoryValuationService {
                     InventoryValuation inner = evaluate(contents.nonEmptyItemCopyStream().toList());
                     buy  += inner.getBuyTotal();
                     sell += inner.getSellTotal();
+                    shard += inner.getShardTotal();
+                    redcoins += inner.getRedcoinTotal();
+                    hasShards |= inner.hasShards();
+                    hasRedcoins |= inner.hasRedcoins();
                     continue;
                 }
             }
@@ -92,13 +100,33 @@ public final class InventoryValuationService {
                 sell += price.get().getSell() * count;
             }
 
-            // TODO: Shard-Wert für shard-fähige Items addieren
+            Optional<ShardRate> merchantRate = shardCache.get(merchantKey(stack, key));
+            if (merchantRate.isPresent()) {
+                double total = merchantRate.get().getExchangeRate() * stack.getCount();
+                MerchantCurrency currency = MerchantCurrency.fromApiTarget(merchantRate.get().getTarget());
+                if (currency == MerchantCurrency.OPSHARDS) {
+                    shard += total;
+                    hasShards = true;
+                } else if (currency == MerchantCurrency.REDCOINS) {
+                    redcoins += total;
+                    hasRedcoins = true;
+                }
+            }
         }
 
-        return new InventoryValuation(buy, sell, shard, hasShards, hasShulkers);
+        return new InventoryValuation(buy, sell, shard, redcoins, hasShards, hasRedcoins, hasShulkers);
     }
 
     private String itemKey(ItemStack stack) {
         return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+    }
+
+    /** Ergänzt den Key für OPSUCHT-Custom-Items (z.B. paper#626). */
+    private static String merchantKey(ItemStack stack, String baseKey) {
+        CustomModelData cmd = stack.get(DataComponents.CUSTOM_MODEL_DATA);
+        if (cmd != null && !cmd.floats().isEmpty()) {
+            return baseKey + "#" + (int) cmd.floats().get(0).floatValue();
+        }
+        return baseKey;
     }
 }

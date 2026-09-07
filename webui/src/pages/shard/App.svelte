@@ -12,6 +12,8 @@
   const pageTitle = $derived(isShard ? 'Shardkurse' : 'Redcoin-Kurse')
   const apiPath = $derived(isShard ? '/api/shard' : '/api/redcoins')
   const unitLabel = $derived(isShard ? 'Shards / Einheit' : 'Redcoins / Einheit')
+  const currencyAccent = $derived(isShard ? 'var(--vi-accent)' : 'var(--vi-redcoin)')
+  const rateClass = $derived(isShard ? 'price-buy' : 'price-redcoin')
 
   // ── State ──────────────────────────────────────────────────────────────────
   let items     = $state([])
@@ -111,7 +113,7 @@
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
   <div class="flex items-center gap-3 mb-3 flex-wrap">
     <h5 class="m-0 flex items-center gap-2 font-semibold text-base">
-      <Icon icon={isShard ? 'lucide:gem' : 'lucide:circle-dollar-sign'} width={15} style="color:var(--vi-accent)" />{pageTitle}
+      <Icon icon={isShard ? 'lucide:gem' : 'lucide:circle-dollar-sign'} width={15} style="color:{currencyAccent}" />{pageTitle}
     </h5>
     <span class={statusBadgeClass}>{statusText}</span>
     <div class="ml-auto flex gap-2">
@@ -141,8 +143,7 @@
 
   <!-- ── Fehler ────────────────────────────────────────────────────────────── -->
   {#if error && !loading}
-    <div class="rounded p-3 mb-3 text-sm"
-         style="background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5"
+    <div class="vi-alert-error mb-3"
          transition:fade>{error}</div>
   {/if}
 
@@ -187,7 +188,7 @@
                   {/if}
                 </td>
                 <td class="text-right">
-                  <span class="price-buy">{fmtRate(item.exchangeRate)}</span>
+                  <span class={rateClass}>{fmtRate(item.exchangeRate)}</span>
                   <span class="text-sm ml-1" style="color:var(--vi-text-muted)">{(item.target ?? 'OPS').toUpperCase() === 'OPSHARDS' ? 'OPS' : (item.target ?? 'OPS')}</span>
                 </td>
                 <td class="text-right" style="font-variant-numeric:tabular-nums">
@@ -208,6 +209,12 @@
           </tbody>
         </table>
       </div>
+      {#if filteredItems.length === 0}
+        <div class="empty-state">
+          <Icon icon="lucide:search-x" width={30} />
+          <div>Keine Kurse für diese Suche.</div>
+        </div>
+      {/if}
       <div class="vi-card-footer flex justify-between">
         <span>{filteredItems.length} / {items.length} Einträge</span>
         {#if lastFetch}<span>Stand: {lastFetch}</span>{/if}

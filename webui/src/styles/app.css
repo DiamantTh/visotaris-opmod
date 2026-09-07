@@ -16,9 +16,15 @@
   --vi-text:       #e2e8f0;
   --vi-text-muted: #94a3b8;
   --vi-accent:     #38bdf8;
+  --vi-redcoin:    #fbbf24;
   --vi-buy:        #4ade80;
   --vi-sell:       #f87171;
   --vi-hover:      #273549;
+  --vi-text-on-muted: #cbd5e1;
+  --vi-chart-grid: #1e293b;
+  --vi-danger-bg: #450a0a;
+  --vi-danger-border: #7f1d1d;
+  --vi-danger-text: #fca5a5;
 }
 
 /* Tailwind-Tokens aus vi-Vars – ermöglicht bg-vi-accent, text-vi-muted etc. */
@@ -30,6 +36,7 @@
   --color-vi-text:     var(--vi-text);
   --color-vi-muted:    var(--vi-text-muted);
   --color-vi-accent:   var(--vi-accent);
+  --color-vi-redcoin:  var(--vi-redcoin);
   --color-vi-buy:      var(--vi-buy);
   --color-vi-sell:     var(--vi-sell);
   --color-vi-hover:    var(--vi-hover);
@@ -125,6 +132,7 @@ tbody tr { will-change: transform; }
 /* ── Preis-Werte ─────────────────────────────────────────────────────────────── */
 .price-buy  { color: var(--vi-buy);  font-variant-numeric: tabular-nums; }
 .price-sell { color: var(--vi-sell); font-variant-numeric: tabular-nums; }
+.price-redcoin { color: var(--vi-redcoin); font-variant-numeric: tabular-nums; }
 .price-na   { color: var(--vi-text-muted); font-style: italic; }
 
 /* ── ECharts-Container ───────────────────────────────────────────────────────── */
@@ -136,7 +144,7 @@ tbody tr { will-change: transform; }
 }
 
 /* ── Status-Badge ────────────────────────────────────────────────────────────── */
-.badge-secondary { background-color: #334155; color: #94a3b8; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.78rem; }
+.badge-secondary { background-color: #334155; color: var(--vi-text-on-muted); border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.78rem; }
 .badge-stale { background-color: #92400e; color: #fde68a; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.78rem; }
 .badge-fresh { background-color: #14532d; color: #86efac; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.78rem; }
 .badge-empty { background-color: #1e293b; color: #94a3b8; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.78rem; }
@@ -152,6 +160,28 @@ tbody tr { will-change: transform; }
   justify-content: center;
   min-height: 160px;
   color: var(--vi-text-muted);
+}
+.empty-state {
+  min-height: 160px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 1.5rem;
+  color: var(--vi-text-muted);
+  text-align: center;
+  border: 1px dashed var(--vi-border);
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--vi-bg-card) 92%, var(--vi-accent)), var(--vi-bg-card));
+}
+.empty-state small { color: var(--vi-text-muted); }
+.vi-alert-error {
+  padding: 0.75rem;
+  border: 1px solid var(--vi-danger-border);
+  border-radius: 0.25rem;
+  color: var(--vi-danger-text);
+  background: var(--vi-danger-bg);
+  font-size: 0.875rem;
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────────── */
@@ -199,6 +229,11 @@ tbody tr { will-change: transform; }
   transition: color 0.15s, border-color 0.15s;
 }
 .btn-icon:hover { color: var(--vi-text); border-color: var(--vi-accent); }
+.btn-icon:focus-visible, .btn-primary:focus-visible, .btn-outline:focus-visible,
+.btn-seg:focus-visible, .chip:focus-visible, .search-input:focus-visible {
+  outline: 2px solid var(--vi-accent);
+  outline-offset: 2px;
+}
 
 /* ── Primär-Button ───────────────────────────────────────────────────────────── */
 .btn-primary {
@@ -383,4 +418,14 @@ tbody tr { will-change: transform; }
   border-radius: 9999px;
   background: var(--vi-buy);
   box-shadow: 0 0 6px var(--vi-buy);
+}
+
+/* Respektiert die Systemvorgabe für reduzierte Bewegung. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

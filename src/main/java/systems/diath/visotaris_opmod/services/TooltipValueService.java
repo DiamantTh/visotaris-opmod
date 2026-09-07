@@ -9,6 +9,7 @@ import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.MarketPrice;
+import systems.diath.visotaris_opmod.model.MerchantCurrency;
 import systems.diath.visotaris_opmod.model.ShardRate;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
 
@@ -64,10 +65,12 @@ public final class TooltipValueService {
         Optional<ShardRate> merchantRate = findShard(stack, baseKey);
         merchantRate.ifPresent(rate -> {
             String target = formatTarget(rate.getTarget());
-            String label = "OPSHARDS".equalsIgnoreCase(target) ? "§bShardkurs"
-                : "REDCOINS".equalsIgnoreCase(target) ? "§cRedcoin-Kurs"
-                : "§dHändlerkurs";
-            lines.add(Component.literal(label + ": §f" + rate.getExchangeRate() + " " + target));
+            MerchantCurrency currency = MerchantCurrency.fromApiTarget(rate.getTarget());
+            String color = currency == MerchantCurrency.OPSHARDS ? "§b"
+                : currency == MerchantCurrency.REDCOINS ? "§6" : "§d";
+            String unit = currency == MerchantCurrency.UNKNOWN ? target : currency.getDisplayUnit();
+            lines.add(Component.literal(color + currency.getDisplayLabel() + ": §f"
+                + rate.getExchangeRate() + " " + unit));
         });
     }
 

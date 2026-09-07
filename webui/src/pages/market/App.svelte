@@ -175,8 +175,7 @@
 
   <!-- ── Fehler ────────────────────────────────────────────────────────────── -->
   {#if error && !loading}
-    <div class="rounded p-3 mb-3 text-sm"
-         style="background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5"
+    <div class="vi-alert-error mb-3"
          transition:fade>{error}</div>
   {/if}
 
@@ -218,6 +217,13 @@
         </a>
       {/each}
     </div>
+    {#if filteredItems.length === 0}
+      <div class="empty-state mb-3">
+        <Icon icon="lucide:search-x" width={30} />
+        <div>Keine Marktpreise für diese Auswahl.</div>
+        <small>Suche oder Kategorie zurücksetzen.</small>
+      </div>
+    {/if}
     <div class="vi-card-footer flex justify-between rounded"
          style="border:1px solid var(--vi-border); background:var(--vi-bg-card)">
       <span>{filteredItems.length} / {items.length} Einträge</span>
@@ -290,6 +296,12 @@
           </tbody>
         </table>
       </div>
+      {#if filteredItems.length === 0}
+        <div class="empty-state">
+          <Icon icon="lucide:search-x" width={30} />
+          <div>Keine Marktpreise für diese Auswahl.</div>
+        </div>
+      {/if}
       <div class="vi-card-footer flex justify-between">
         <span>{filteredItems.length} / {items.length} Einträge</span>
         {#if lastFetch}<span>Stand: {lastFetch}</span>{/if}

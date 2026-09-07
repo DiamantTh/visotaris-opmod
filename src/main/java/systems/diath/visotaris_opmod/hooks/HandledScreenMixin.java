@@ -110,7 +110,8 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
         for (Slot slot : handler.slots) stacks.add(slot.getItem());
 
         InventoryValuation val = mod.getInventoryValuationService().evaluate(stacks);
-        if (val.getSellTotal() <= 0 && val.getBuyTotal() <= 0) return;
+        if (val.getSellTotal() <= 0 && val.getBuyTotal() <= 0
+                && !val.hasShards() && !val.hasRedcoins()) return;
 
         // Component zusammenstellen
         String line = buildValueLine(val);
@@ -162,6 +163,14 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
         if (val.getBuyTotal() > 0) {
             if (sb.length() > 0) sb.append(" ");
             sb.append("§7K: §a").append(fmtVal(val.getBuyTotal()));
+        }
+        if (val.hasShards()) {
+            if (sb.length() > 0) sb.append(" ");
+            sb.append("§7S: §b").append(fmtVal(val.getShardTotal()));
+        }
+        if (val.hasRedcoins()) {
+            if (sb.length() > 0) sb.append(" ");
+            sb.append("§7R: §6").append(fmtVal(val.getRedcoinTotal()));
         }
         return sb.toString();
     }

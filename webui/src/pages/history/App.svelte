@@ -1,10 +1,17 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { fade } from 'svelte/transition'
-  import * as echarts from 'echarts'
+  import * as echarts from 'echarts/core'
+  import { LineChart, BarChart } from 'echarts/charts'
+  import { GridComponent, TooltipComponent } from 'echarts/components'
+  import { CanvasRenderer } from 'echarts/renderers'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
   import { fmtItem, fmtInt, fmt, fmtCompact, itemIcon, hideOnError } from '../../lib/utils.js'
+
+  // Nur die verwendeten ECharts-Bausteine registrieren. Das hält den History-
+  // Download deutlich kleiner als der vollständige "echarts"-Import.
+  echarts.use([LineChart, BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
   const LS_RECENT = 'visotaris_history_recent'
 
@@ -105,6 +112,20 @@
   // ── Charts rendern ──────────────────────────────────────────────────────────
   function renderCharts(points, gran) {
     destroyCharts()
+    const css = getComputedStyle(document.documentElement)
+    const color = name => css.getPropertyValue(name).trim()
+    const hexAlpha = (hex, alpha) => {
+      const value = hex.replace('#', '')
+      const r = parseInt(value.slice(0, 2), 16)
+      const g = parseInt(value.slice(2, 4), 16)
+      const b = parseInt(value.slice(4, 6), 16)
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`
+    }
+    const chart = {
+      muted: color('--vi-text-muted'), text: color('--vi-text'), border: color('--vi-border'),
+      surface: color('--vi-bg-card'), grid: color('--vi-chart-grid'), accent: color('--vi-accent'),
+      items: color('--vi-redcoin')
+    }
     const isHourly = gran === 'HOURLY'
     const fmtTs = ts => {
       const d = new Date(ts)
@@ -119,18 +140,18 @@
     const GRID   = { left:64, right:20, top:30, bottom:40 }
     const xAxis  = {
       type: 'category', data: labels,
-      axisLabel: { color:'#94a3b8', fontSize:10 },
-      axisLine:  { lineStyle: { color:'#334155' } },
+      axisLabel: { color: chart.muted, fontSize:10 },
+      axisLine:  { lineStyle: { color: chart.border } },
       splitLine: { show: false }
     }
-    const yLbl = { color:'#94a3b8', fontSize:10, formatter: axFmt }
+    const yLbl = { color: chart.muted, fontSize:10, formatter: axFmt }
 
     // ── Preisentwicklung ──
     chartInstances.price = echarts.init(chartPriceEl, 'dark', { backgroundColor:'transparent' })
     chartInstances.price.setOption({
       tooltip: {
-        trigger:'axis', backgroundColor:'#1e293b', borderColor:'#334155',
-        textStyle: { color:'#e2e8f0' },
+        trigger:'axis', backgroundColor: chart.surface, borderColor: chart.border,
+        textStyle: { color: chart.text },
         formatter(params) {
           const p = points[params[0].dataIndex]
           return `<b>${params[0].axisValueLabel}</b><br>`
@@ -139,27 +160,27 @@
         }
       },
       grid: GRID, xAxis,
-      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color:'#1e293b' } } },
+      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color: chart.grid } } },
       series: [
         {
           name:'Max', type:'line',
           data: points.map(p => p.maxPrice > 0 ? +p.maxPrice.toFixed(2) : null),
           smooth:true, symbol:'none', lineStyle:{ width:0 },
-          areaStyle: { color:'rgba(78,158,247,0.06)' }
+          areaStyle: { color: hexAlpha(chart.accent, 0.06) }
         },
         {
           name:'Ø Preis', type:'line',
           data: points.map(p => p.avgPrice > 0 ? +p.avgPrice.toFixed(2) : null),
           smooth:true, symbol:'none',
-          lineStyle: { color:'#4e9ef7', width:2 },
+          lineStyle: { color: chart.accent, width:2 },
           areaStyle: { color: { type:'linear', x:0, y:0, x2:0, y2:1,
-            colorStops: [{ offset:0, color:'rgba(78,158,247,0.28)' }, { offset:1, color:'rgba(78,158,247,0)' }] } }
+            colorStops: [{ offset:0, color: hexAlpha(chart.accent, 0.28) }, { offset:1, color: hexAlpha(chart.accent, 0) }] } }
         },
         {
           name:'Min', type:'line',
           data: points.map(p => p.minPrice > 0 ? +p.minPrice.toFixed(2) : null),
           smooth:true, symbol:'none',
-          lineStyle: { color:'rgba(148,163,184,0.35)', width:1, type:'dashed' }
+          lineStyle: { color: hexAlpha(chart.muted, 0.35), width:1, type:'dashed' }
         }
       ]
     })
@@ -168,19 +189,19 @@
     chartInstances.tx = echarts.init(chartTxEl, 'dark', { backgroundColor:'transparent' })
     chartInstances.tx.setOption({
       tooltip: {
-        trigger:'axis', backgroundColor:'#1e293b', borderColor:'#334155',
-        textStyle: { color:'#e2e8f0' },
+        trigger:'axis', backgroundColor: chart.surface, borderColor: chart.border,
+        textStyle: { color: chart.text },
         formatter: p => `<b>${p[0].axisValueLabel}</b><br>Transaktionen: <b>${fmtInt(p[0].value ?? 0)}</b>`
       },
       grid: GRID, xAxis,
-      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color:'#1e293b' } } },
+      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color: chart.grid } } },
       series: [{
         name:'Transaktionen', type:'line',
         data: points.map(p => p.transactions),
         smooth:true, symbol:'none',
-        lineStyle: { color:'#4e9ef7', width:2 },
+        lineStyle: { color: chart.accent, width:2 },
         areaStyle: { color: { type:'linear', x:0, y:0, x2:0, y2:1,
-          colorStops: [{ offset:0, color:'rgba(78,158,247,0.22)' }, { offset:1, color:'rgba(78,158,247,0)' }] } }
+          colorStops: [{ offset:0, color: hexAlpha(chart.accent, 0.22) }, { offset:1, color: hexAlpha(chart.accent, 0) }] } }
       }]
     })
 
@@ -188,18 +209,18 @@
     chartInstances.items = echarts.init(chartItemsEl, 'dark', { backgroundColor:'transparent' })
     chartInstances.items.setOption({
       tooltip: {
-        trigger:'axis', backgroundColor:'#1e293b', borderColor:'#334155',
-        textStyle: { color:'#e2e8f0' },
+        trigger:'axis', backgroundColor: chart.surface, borderColor: chart.border,
+        textStyle: { color: chart.text },
         formatter: p => `<b>${p[0].axisValueLabel}</b><br>Items: <b>${fmtInt(p[0].value ?? 0)}</b>`
       },
       grid: GRID, xAxis,
-      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color:'#1e293b' } } },
+      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color: chart.grid } } },
       series: [{
         name:'Items', type:'bar',
         data: points.map(p => p.items),
-        itemStyle: { color:'#e8b030' },
+        itemStyle: { color: chart.items },
         barMaxWidth: 24,
-        emphasis: { itemStyle: { color:'#f5c842' } }
+        emphasis: { itemStyle: { color: hexAlpha(chart.items, 0.85) } }
       }]
     })
   }
@@ -299,14 +320,13 @@
 
   <!-- ── Fehler ────────────────────────────────────────────────────────────── -->
   {#if error && !loading}
-    <div class="rounded p-3 mb-3 text-sm"
-         style="background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5"
+    <div class="vi-alert-error mb-3"
          transition:fade>{error}</div>
   {/if}
 
   <!-- ── Leerer Zustand ────────────────────────────────────────────────────── -->
   {#if !loading && !error && !history && !currentMaterial}
-    <div class="loading-overlay" style="color:var(--vi-text-muted)">
+    <div class="empty-state">
       <div class="text-center">
         <Icon icon="lucide:trending-up" width={48} class="mb-2 mx-auto block opacity-25" />
         <div>Material eingeben und <strong>Laden</strong> klicken</div>
@@ -393,7 +413,7 @@
     <div class="vi-card" transition:fade>
       <div class="vi-card-header">
         <span class="flex items-center gap-2">
-          <Icon icon="lucide:boxes" width={14} style="color:#fbbf24" />Gehandelte Items
+          <Icon icon="lucide:boxes" width={14} style="color:var(--vi-redcoin)" />Gehandelte Items
         </span>
       </div>
       <div class="vi-card-body">
