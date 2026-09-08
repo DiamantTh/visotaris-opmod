@@ -1,1 +1,1 @@
-import{T as e}from"./utils.js";import{t}from"./App.js";e(t,{target:document.getElementById(`app`),props:{currency:`opshards`}});
+import{v as e}from"./Navbar.js";import{t}from"./App.js";e(t,{target:document.getElementById(`app`),props:{currency:`opshards`}});

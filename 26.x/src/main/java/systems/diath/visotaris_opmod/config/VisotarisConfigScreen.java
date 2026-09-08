@@ -71,6 +71,8 @@ public final class VisotarisConfigScreen extends Screen {
     // Scroll-Zustand
     private int scrollOffset = 0;
     private int maxScroll    = 0;
+    /** Wird bei kleinen GUI-Auflösungen schmaler, ohne Klickflächen abzuschneiden. */
+    private int buttonWidth  = BTN_W;
 
     // API-Refresh-Status (null = kein Feedback; auto-hide nach 4 s)
     private String refreshStatus   = null;
@@ -96,9 +98,10 @@ public final class VisotarisConfigScreen extends Screen {
         scrollOffset = 0;
 
         int cx = this.width / 2;
-        int lx = cx - BTN_W - COL_GAP / 2;
+        buttonWidth = Math.min(BTN_W, Math.max(96, (this.width - COL_GAP * 3) / 2));
+        int lx = cx - buttonWidth - COL_GAP / 2;
         int rx = cx + COL_GAP / 2;
-        int fw = BTN_W * 2 + COL_GAP;  // Breite für volle-Breite-Buttons
+        int fw = buttonWidth * 2 + COL_GAP;  // Breite für volle-Breite-Buttons
         int y  = 4;
 
         // ── Modus ───────────────────────────────────────────────────────────
@@ -163,7 +166,7 @@ public final class VisotarisConfigScreen extends Screen {
         addContent(Button.builder(
                 Component.literal("Port & Proxy\u2026"),
                 b -> this.minecraft.gui.setScreen(new NetworkSettingsScreen(this))
-        ).bounds(rx, 0, BTN_W, BTN_H).build(), y);
+        ).bounds(rx, 0, buttonWidth, BTN_H).build(), y);
         y += BTN_H + BTN_GAP;
 
         // ── Scroll-Bereich berechnen ─────────────────────────────────────────
@@ -180,12 +183,12 @@ public final class VisotarisConfigScreen extends Screen {
                     VisotarisModClient.getInstance().applyWebUiConfig();
                     this.minecraft.gui.setScreen(parent);
                 }
-        ).bounds(cx - BTN_W - COL_GAP / 2, by, BTN_W, 20).build());
+        ).bounds(cx - buttonWidth - COL_GAP / 2, by, buttonWidth, 20).build());
 
         this.addRenderableWidget(Button.builder(
                 Component.literal("Abbrechen"),
                 b -> { configManager.load(); this.minecraft.gui.setScreen(parent); }
-        ).bounds(cx + COL_GAP / 2, by, BTN_W, 20).build());
+        ).bounds(cx + COL_GAP / 2, by, buttonWidth, 20).build());
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -376,7 +379,7 @@ public final class VisotarisConfigScreen extends Screen {
                         b.setMessage(makeToggleText(label, enabling));
                     }
                 }
-        ).bounds(x, 0, BTN_W, BTN_H).build();
+        ).bounds(x, 0, buttonWidth, BTN_H).build();
         addContent(btn, baseY);
     }
 
@@ -393,7 +396,7 @@ public final class VisotarisConfigScreen extends Screen {
                     setter.accept(REFRESH_PRESETS[idx[0]]);
                     b.setMessage(Component.literal(label + ": " + fmtMin(REFRESH_PRESETS[idx[0]])));
                 }
-        ).bounds(x, 0, BTN_W, BTN_H).build();
+        ).bounds(x, 0, buttonWidth, BTN_H).build();
         addContent(btn, baseY);
     }
 

@@ -218,15 +218,19 @@ public final class NetworkSettingsScreen extends Screen {
             webUiActionButton.setMessage(makeWebUiActionText());
         }
         renderWebInterfaceStatus(ctx, noteY, mouseX, mouseY);
-        ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
-            this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
-        ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77HTTPS-Proxy: TLS zum Proxy; Ziel-HTTPS via CONNECT."),
-            this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
-        ctx.drawCenteredString(this.font,
-            Component.literal("\u00a77Web-Interface: nur lokaler Port."),
-            this.width / 2, noteY + (this.font.lineHeight + 2) * 3, 0xFFFFFF);
+        // Bei der kleinsten Minecraft-GUI-Höhe belegen die Footer-Buttons den
+        // unteren Bereich. Zusätzliche Hinweise würden dort überlappen.
+        if (this.height >= 300) {
+            ctx.drawCenteredString(this.font,
+                Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
+                this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
+            ctx.drawCenteredString(this.font,
+                Component.literal("\u00a77HTTPS-Proxy: TLS zum Proxy; Ziel-HTTPS via CONNECT."),
+                this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
+            ctx.drawCenteredString(this.font,
+                Component.literal("\u00a77Web-Interface: nur lokaler Port."),
+                this.width / 2, noteY + (this.font.lineHeight + 2) * 3, 0xFFFFFF);
+        }
     }
 
     private Component makeWebUiActionText() {

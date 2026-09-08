@@ -23,6 +23,7 @@ export default defineConfig({
         shard:   resolve(__dirname, 'shard.html'),
         redcoins: resolve(__dirname, 'redcoins.html'),
         merchant: resolve(__dirname, 'merchant.html'),
+        system: resolve(__dirname, 'system.html'),
       },
       output: {
         entryFileNames: 'static/app/[name].js',

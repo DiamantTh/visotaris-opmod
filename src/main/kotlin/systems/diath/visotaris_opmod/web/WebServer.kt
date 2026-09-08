@@ -11,12 +11,14 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import net.minecraft.client.Minecraft
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.resources.Identifier
 import net.minecraft.server.packs.resources.ResourceManager
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
+import systems.diath.visotaris_opmod.config.ConfigManager
 import java.io.InputStream
 
 /**
@@ -31,6 +33,7 @@ import java.io.InputStream
  *  GET /shard         → shard.html (Shardkurse)
  *  GET /redcoins      → redcoins.html (Redcoin-Händlerkurse)
  *  GET /merchant      → merchant.html (alle Händlerwährungen)
+ *  GET /system        → system.html (lokaler Status und sichere Optionsübersicht)
  *  GET /static/...    → statische Dateien aus JAR-Classpath
  *  GET /api/market    → JSON: alle Marktpreise aus MarketCache
  *  GET /api/market/{material} → JSON: einzelner Marktpreis
@@ -40,12 +43,14 @@ import java.io.InputStream
  *  GET /api/merchant  → JSON: alle Merchant-Kurse, nach Zielwährung gruppiert
  *  GET /api/merchant/{target} → JSON: Kurse einer beliebigen Zielwährung
  *  GET /api/meta      → Zeitstempel und Frische der lokalen Caches
+ *  GET /api/system    → Java-/Systemdaten sowie nicht-sensitive Optionen
  */
 class WebServer(
     val port: Int,
     private val marketCache: MarketCache,
     private val shardCache: ShardCache,
-    private val historyCache: PriceHistoryCache
+    private val historyCache: PriceHistoryCache,
+    private val config: ConfigManager
 ) {
     private val gson = Gson()
     private val servers = mutableListOf<EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>>()
@@ -120,6 +125,7 @@ class WebServer(
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
             get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
             get("/merchant") { serveResource(call, "assets/webui/merchant.html", ContentType.Text.Html) }
+            get("/system") { serveResource(call, "assets/webui/system.html", ContentType.Text.Html) }
 
             // ── Statische Dateien ────────────────────────────────────────────────
             get("/static/{path...}") {
@@ -187,6 +193,9 @@ class WebServer(
                     "market" to cacheMeta(marketCache.getLastUpdatedMs(), marketCache.getAgeSeconds()),
                     "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds())
                 )), ContentType.Application.Json)
+            }
+            get("/api/system") {
+                call.respondText(gson.toJson(systemSnapshot()), ContentType.Application.Json)
             }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
@@ -257,6 +266,40 @@ class WebServer(
         "ageSeconds" to if (ageSeconds == Long.MAX_VALUE) null else ageSeconds,
         "stale" to (ageSeconds > 300)
     )
+
+    /** Keine Identifikatoren, Pfade, Proxy- oder Webhook-Daten an das Web-UI geben. */
+    private fun systemSnapshot(): Map<String, Any> {
+        val runtime = Runtime.getRuntime()
+        val cfg = config.config
+        val modVersion = FabricLoader.getInstance().getModContainer("visotaris_opmod")
+            .map { it.metadata.version.friendlyString }.orElse("?")
+        return mapOf(
+            "application" to mapOf("modVersion" to modVersion, "webUiPort" to port),
+            "runtime" to mapOf(
+                "os" to System.getProperty("os.name", "?"),
+                "osVersion" to System.getProperty("os.version", "?"),
+                "architecture" to System.getProperty("os.arch", "?"),
+                "java" to System.getProperty("java.version", "?"),
+                "javaVendor" to System.getProperty("java.vendor", "?"),
+                "processors" to runtime.availableProcessors(),
+                "heapMaxBytes" to runtime.maxMemory(),
+                "heapUsedBytes" to runtime.totalMemory() - runtime.freeMemory()
+            ),
+            "options" to mapOf(
+                "observerMode" to cfg.observerModeOnly,
+                "marketTooltips" to cfg.showMarketTooltips,
+                "hud" to cfg.showHud,
+                "containerOverlay" to cfg.showContainerOverlay,
+                "quickButtons" to cfg.showQuickButtons,
+                "jobTracker" to cfg.enableJobTracker,
+                "commandShortforms" to cfg.enableCommandShortforms,
+                "anvilNormalization" to cfg.enableAnvilNormalization,
+                "discordRpc" to cfg.enableDiscordRpc,
+                "marketRefreshSeconds" to cfg.marketRefreshIntervalSeconds,
+                "merchantRefreshSeconds" to cfg.merchantRefreshIntervalSeconds
+            )
+        )
+    }
 
     /** Versucht, das Icon-PNG für ein Item zu laden:
      *  1. textures/item/{key}.png

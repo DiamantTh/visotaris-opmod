@@ -1,6 +1,6 @@
 <script>
   import Icon from '@iconify/svelte'
-  /** @type {{ activePage: 'market' | 'shard' | 'redcoins' | 'merchant' | 'history' }} */
+  /** @type {{ activePage: 'market' | 'shard' | 'redcoins' | 'merchant' | 'history' | 'system' }} */
   let { activePage } = $props()
 </script>
 
@@ -23,6 +23,9 @@
     </a>
     <a href="/history" class:active={activePage === 'history'}>
       <Icon icon="lucide:trending-up" width={13} />Verlauf
+    </a>
+    <a href="/system" class:active={activePage === 'system'}>
+      <Icon icon="lucide:settings-2" width={13} />System
     </a>
   </div>
 </nav>

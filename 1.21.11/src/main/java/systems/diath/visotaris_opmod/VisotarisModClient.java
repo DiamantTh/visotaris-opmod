@@ -204,7 +204,7 @@ public class VisotarisModClient implements ClientModInitializer {
             if (webServer != null) {
                 webServer.stop();
             }
-            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, priceHistoryCache);
+            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, priceHistoryCache, configManager);
         }
         if (cfg.enableWebUi) {
             webServer.start();
