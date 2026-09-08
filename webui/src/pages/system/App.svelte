@@ -7,6 +7,12 @@
   let meta = $state(null)
   let loading = $state(false)
   let error = $state(null)
+  let configured = $state(null)
+  let password = $state('')
+  let confirmation = $state('')
+  let authenticating = $state(false)
+  let mcinfo = $state(null)
+  const mcInfoPage = window.location.pathname === '/system/mcinfo'
 
   const memoryPercent = $derived.by(() => {
     if (!system?.runtime?.heapMaxBytes) return 0
@@ -30,9 +36,14 @@
     error = null
     try {
       const [systemResponse, metaResponse] = await Promise.all([fetch('/api/system'), fetch('/api/meta')])
+      if (systemResponse.status === 401 || systemResponse.status === 428) return
       if (!systemResponse.ok) throw new Error('HTTP ' + systemResponse.status)
       system = await systemResponse.json()
       meta = metaResponse.ok ? await metaResponse.json() : null
+      if (mcInfoPage) {
+        const mcResponse = await fetch('/api/system/mcinfo')
+        mcinfo = mcResponse.ok ? await mcResponse.json() : null
+      }
     } catch (e) {
       error = 'Systemdaten konnten nicht geladen werden: ' + e.message
     } finally {
@@ -40,7 +51,30 @@
     }
   }
 
-  $effect.root(() => { loadData() })
+  async function loadStatus() {
+    const response = await fetch('/api/system/status')
+    configured = response.ok && (await response.json()).configured
+  }
+
+  async function authenticate() {
+    authenticating = true; error = null
+    try {
+      const endpoint = configured ? '/api/system/login' : '/api/system/setup'
+      const body = new URLSearchParams({ password, ...(configured ? {} : { confirmation }) })
+      const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+      if (!response.ok) throw new Error(await response.text())
+      password = ''; confirmation = ''
+      await loadData()
+    } catch (e) { error = e.message || 'Anmeldung fehlgeschlagen' }
+    finally { authenticating = false }
+  }
+
+  async function logout() {
+    await fetch('/api/system/logout', { method: 'POST' })
+    system = null; await loadStatus()
+  }
+
+  $effect.root(() => { loadStatus().then(loadData) })
 </script>
 
 <Navbar activePage="system" />
@@ -49,13 +83,36 @@
   <div class="flex items-center gap-3 mb-3 flex-wrap">
     <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base"><Icon icon="lucide:settings-2" width={15} style="color:var(--vi-accent)" />Optionen & System</h5>
     <span class={loading ? 'badge-secondary' : error ? 'badge-stale' : 'badge-fresh'}>{loading ? 'Laden…' : error ? 'Fehler' : 'Lokal'}</span>
+    {#if system}<button class="btn-icon" onclick={logout} title="Abmelden"><Icon icon="lucide:log-out" width={14} /></button>{/if}
     <button class="btn-icon ml-auto" onclick={loadData} title="Status aktualisieren"><Icon icon="lucide:refresh-cw" width={14} class={loading ? 'spin' : ''} /></button>
   </div>
 
-  <div class="system-note mb-3"><Icon icon="lucide:shield-check" width={15} />Diese Seite ist absichtlich schreibgeschützt. Optionen werden sicher im ModMenu oder über die Visotaris-Keybinds geändert.</div>
+  <div class="system-note mb-3"><Icon icon="lucide:shield-check" width={15} />Systemdaten, Proxy- und Webhookwerte werden erst nach lokaler Anmeldung angezeigt. Die Sitzung läuft nach 30 Minuten ab.</div>
   {#if error}<div class="vi-alert-error mb-3">{error}</div>{/if}
 
+  {#if configured !== null && !system}
+    <section class="vi-card system-card" transition:fade={{ duration: 150 }}>
+      <div class="vi-card-header"><span><Icon icon={configured ? 'lucide:lock-keyhole' : 'lucide:key-round'} width={14} /> {configured ? 'System anmelden' : 'Systempasswort einrichten'}</span><span class="system-muted">nur localhost</span></div>
+      <p class="system-muted">{configured ? 'Bitte das lokale Systempasswort eingeben.' : 'Einmalig ein Passwort mit mindestens 12 Zeichen festlegen. Gespeichert wird ausschließlich ein Argon2id-Hash in config/visotaris.toml.'}</p>
+      <form onsubmit={(event) => { event.preventDefault(); authenticate() }} class="system-login">
+        <input class="vi-input" type="password" autocomplete={configured ? 'current-password' : 'new-password'} bind:value={password} placeholder="Systempasswort" minlength="12" required />
+        {#if !configured}<input class="vi-input" type="password" autocomplete="new-password" bind:value={confirmation} placeholder="Passwort wiederholen" minlength="12" required />{/if}
+        <button class="vi-button" disabled={authenticating}>{authenticating ? 'Bitte warten…' : configured ? 'Anmelden' : 'Passwort speichern & anmelden'}</button>
+      </form>
+    </section>
+  {/if}
+
   {#if system}
+    {#if mcInfoPage}
+      <section class="vi-card system-card mb-3" transition:fade={{ duration: 150 }}>
+        <div class="vi-card-header"><span><Icon icon="lucide:crosshair" width={14} /> Minecraft / F3</span><span class="system-muted">Live-Client</span></div>
+        {#if mcinfo?.available}
+          <dl class="system-list"><div><dt>Spieler</dt><dd>{mcinfo.player}</dd></div><div><dt>Position</dt><dd>{mcinfo.coordinates.blockX} / {mcinfo.coordinates.blockY} / {mcinfo.coordinates.blockZ}</dd></div><div><dt>Dimension</dt><dd>{mcinfo.dimension}</dd></div><div><dt>Server</dt><dd>{mcinfo.singleplayer ? 'Einzelspieler' : mcinfo.server}</dd></div></dl>
+        {:else}<p class="system-muted">Noch keiner Welt beigetreten.</p>{/if}
+      </section>
+    {:else}
+      <a class="system-muted" href="/system/mcinfo">Minecraft- und F3-Informationen öffnen →</a>
+    {/if}
     <section class="system-grid" transition:fade={{ duration: 150 }}>
       <article class="vi-card system-card">
         <div class="vi-card-header"><span><Icon icon="lucide:server" width={14} /> Laufzeit</span><span class="system-muted">v{system.application.modVersion}</span></div>
@@ -81,3 +138,10 @@
     <div class="loading-overlay">Systemdaten werden geladen…</div>
   {/if}
 </main>
+
+<style>
+  .system-login { display:grid; gap:.65rem; max-width:30rem; margin-top:.9rem; }
+  .system-login input { background:var(--vi-bg-input); border:1px solid var(--vi-border); border-radius:.45rem; color:var(--vi-text); padding:.62rem .75rem; }
+  .system-login button { justify-self:start; border:0; border-radius:.45rem; background:var(--vi-accent); color:var(--vi-on-accent); font-weight:650; padding:.62rem .85rem; cursor:pointer; }
+  .system-login button:disabled { opacity:.65; cursor:wait; }
+</style>

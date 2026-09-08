@@ -101,6 +101,7 @@ public final class ConfigManager {
             c.proxyHost      = toml.getOrElse("netzwerk.proxyHost",      toml.getOrElse("proxyHost",      c.proxyHost));
             c.proxyPort      = getInt(toml, "netzwerk.proxyPort",        getInt(toml, "proxyPort",        c.proxyPort));
             c.customUserAgent = toml.getOrElse("netzwerk.customUserAgent", toml.getOrElse("customUserAgent", c.customUserAgent));
+            c.systemPasswordHash = toml.getOrElse("system.passwordHash", toml.getOrElse("systemPasswordHash", c.systemPasswordHash));
             config = c;
             VisotarisLogger.info("Konfiguration geladen von: {}", configPath);
         } catch (Exception e) {
@@ -162,6 +163,8 @@ public final class ConfigManager {
             toml.set("netzwerk.proxyHost",      c.proxyHost);
             toml.set("netzwerk.proxyPort",      c.proxyPort);
             toml.set("netzwerk.customUserAgent", c.customUserAgent);
+            toml.setComment("system", " Lokaler Systemzugang: nur Argon2id-Hash, nie ein Klartextpasswort");
+            toml.set("system.passwordHash", c.systemPasswordHash);
             toml.save();
         } catch (Exception e) {
             VisotarisLogger.error("Konfiguration konnte nicht gespeichert werden: {}", e.getMessage());

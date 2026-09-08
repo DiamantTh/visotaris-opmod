@@ -18,6 +18,7 @@ import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
 import systems.diath.visotaris_opmod.config.ConfigManager
+import java.util.Arrays
 
 /**
  * MC 26.x – Mojang-Klassen: Minecraft (statt MinecraftClient), Identifier für Ressourcenpfade.
@@ -34,6 +35,7 @@ class WebServer(
     private val config: ConfigManager
 ) {
     private val gson = Gson()
+    private val systemAccess = SystemAccessControl(config)
     private val servers = mutableListOf<EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>>()
     var lastFailureReason: String = ""
         private set
@@ -105,7 +107,12 @@ class WebServer(
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
             get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
             get("/merchant") { serveResource(call, "assets/webui/merchant.html", ContentType.Text.Html) }
+            // Statischer lokaler Einrichtungs-/Login-Dialog; die Datenrouten sind geschützt.
             get("/system") { serveResource(call, "assets/webui/system.html", ContentType.Text.Html) }
+            get("/system/mcinfo") {
+                if (!systemAccess.authenticated(call.request.cookies[SystemAccessControl.COOKIE])) { call.respondRedirect("/system"); return@get }
+                serveResource(call, "assets/webui/system.html", ContentType.Text.Html)
+            }
 
             // ── Statische Dateien ────────────────────────────────────────────────
             get("/static/{path...}") {
@@ -174,8 +181,36 @@ class WebServer(
                     "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds())
                 )), ContentType.Application.Json)
             }
+            post("/api/system/setup") {
+                if (systemAccess.configured()) { call.respond(HttpStatusCode.Conflict, "Passwort bereits eingerichtet"); return@post }
+                val form = call.receiveParameters()
+                val password = form["password"]?.toCharArray() ?: charArrayOf()
+                val confirmation = form["confirmation"]?.toCharArray() ?: charArrayOf()
+                try {
+                    if (!password.contentEquals(confirmation)) { call.respond(HttpStatusCode.BadRequest, "Passwörter stimmen nicht überein"); return@post }
+                    val token = systemAccess.setup(password); setSystemCookie(call, token)
+                    call.respondText("{}", ContentType.Application.Json)
+                } catch (e: IllegalArgumentException) { call.respond(HttpStatusCode.BadRequest, e.message ?: "Ungültiges Passwort") }
+                finally { Arrays.fill(password, '\u0000'); Arrays.fill(confirmation, '\u0000') }
+            }
+            post("/api/system/login") {
+                if (!systemAccess.configured()) { call.respond(HttpStatusCode(428, "Precondition Required"), "Systempasswort zuerst einrichten"); return@post }
+                val password = call.receiveParameters()["password"]?.toCharArray() ?: charArrayOf()
+                try {
+                    val token = systemAccess.login(password)
+                    if (token == null) call.respond(HttpStatusCode.Unauthorized, "Anmeldung fehlgeschlagen oder kurzzeitig gesperrt")
+                    else { setSystemCookie(call, token); call.respondText("{}", ContentType.Application.Json) }
+                } finally { Arrays.fill(password, '\u0000') }
+            }
+            post("/api/system/logout") { systemAccess.logout(call.request.cookies[SystemAccessControl.COOKIE]); clearSystemCookie(call); call.respond(HttpStatusCode.NoContent) }
+            get("/api/system/status") { call.respondText(gson.toJson(mapOf("configured" to systemAccess.configured())), ContentType.Application.Json) }
             get("/api/system") {
+                if (!requireSystemAccess(call)) return@get
                 call.respondText(gson.toJson(systemSnapshot()), ContentType.Application.Json)
+            }
+            get("/api/system/mcinfo") {
+                if (!requireSystemAccess(call)) return@get
+                call.respondText(gson.toJson(minecraftSnapshot()), ContentType.Application.Json)
             }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
@@ -246,6 +281,18 @@ class WebServer(
         "stale" to (ageSeconds > 300)
     )
 
+    private suspend fun requireSystemAccess(call: ApplicationCall): Boolean {
+        if (!systemAccess.configured()) { call.respond(HttpStatusCode(428, "Precondition Required"), "Systempasswort muss zuerst lokal eingerichtet werden"); return false }
+        if (!systemAccess.authenticated(call.request.cookies[SystemAccessControl.COOKIE])) { call.respond(HttpStatusCode.Unauthorized, "Systemanmeldung erforderlich"); return false }
+        return true
+    }
+    private fun setSystemCookie(call: ApplicationCall, token: String) {
+        call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, token, maxAge = SystemAccessControl.SESSION_SECONDS.toInt(), path = "/", httpOnly = true, extensions = mapOf("SameSite" to "Strict")))
+    }
+    private fun clearSystemCookie(call: ApplicationCall) {
+        call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, "", maxAge = 0, path = "/", httpOnly = true, extensions = mapOf("SameSite" to "Strict")))
+    }
+
     /** Keine Identifikatoren, Pfade, Proxy- oder Webhook-Daten an das Web-UI geben. */
     private fun systemSnapshot(): Map<String, Any> {
         val runtime = Runtime.getRuntime()
@@ -277,6 +324,22 @@ class WebServer(
                 "marketRefreshSeconds" to cfg.marketRefreshIntervalSeconds,
                 "merchantRefreshSeconds" to cfg.merchantRefreshIntervalSeconds
             )
+        )
+    }
+
+    /** F3-nahe Clientdaten, bewusst ausschließlich hinter der System-Sitzung. */
+    private fun minecraftSnapshot(): Map<String, Any?> {
+        val client = Minecraft.getInstance()
+        val player = client.player
+        val level = client.level
+        return mapOf(
+            "available" to (player != null && level != null),
+            "player" to player?.name?.string,
+            "coordinates" to if (player == null) null else mapOf("x" to player.x, "y" to player.y, "z" to player.z,
+                "blockX" to player.blockX, "blockY" to player.blockY, "blockZ" to player.blockZ),
+            "dimension" to level?.dimension()?.toString(),
+            "server" to client.currentServer?.ip,
+            "singleplayer" to client.hasSingleplayerServer()
         )
     }
 

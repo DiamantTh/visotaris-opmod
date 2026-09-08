@@ -64,6 +64,10 @@ public final class VisotarisConfig {
     public int     proxyPort      = 0;
     public String  customUserAgent = "";            // leer = auto "Visotaris-OPMod/<ver> (…)"
 
+    // ── Lokaler Systemzugang ─────────────────────────────────────────────────
+    /** Ausschließlich ein Argon2id-Hash, niemals ein Klartextpasswort. */
+    public String systemPasswordHash = "";
+
     /**
      * Convenience: liefert {@code true}, wenn Ingame-Eingriffe (Tooltips, HUD,
      * Mixins, Schutzlogik etc.) erlaubt sind. Im Observer-Modus deaktiviert.
