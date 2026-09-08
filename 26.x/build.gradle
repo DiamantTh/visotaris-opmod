@@ -2,7 +2,7 @@
 // Visotaris – Minecraft 26.x (ehemals 1.21.11+, neues Mojang-Versionsschema)
 // ─────────────────────────────────────────────────────────────────────────────────
 plugins {
-    id 'fabric-loom'                        version '1.16-SNAPSHOT'
+    id 'fabric-loom'                        version '1.17-SNAPSHOT'
     id 'org.jetbrains.kotlin.jvm'
     id 'com.gradleup.shadow'                version '9.4.1'
 }
@@ -42,7 +42,7 @@ dependencies {
     implementation "com.terraformersmc:modmenu:20.0.1"
 
     // Kotlin Runtime (fabric-language-kotlin stellt Stdlib + Coroutinen bereit)
-    implementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}"
+    implementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version_26}"
 
     // OkHttp 5 + Okio – im Mod-JAR eingebettet via shadowJar
     // Die Kotlin-Stdlib kommt von fabric-language-kotlin (FLK), daher exclude.
@@ -96,11 +96,10 @@ kotlin {
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-    // Kotlin 2.2.21 kennt JvmTarget.JVM_25 noch nicht → JVM_24 als Bytecode-Target.
-    // Java-Quellen und Dependencies bleiben auf Java 25; siehe 26.x/gradle.properties.
+    // MC 26.2 erfordert Java 25; Kotlin nutzt denselben Bytecode-Level.
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
-        freeCompilerArgs.add("-Xjvm-default=all")
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
+        freeCompilerArgs.add("-jvm-default=no-compatibility")
     }
 }
 

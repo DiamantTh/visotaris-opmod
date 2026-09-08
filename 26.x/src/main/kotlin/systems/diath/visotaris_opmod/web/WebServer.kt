@@ -225,8 +225,7 @@ class WebServer(
                     call.respond(HttpStatusCode.BadRequest); return@get
                 }
 
-                val rm = Minecraft.getInstance()?.resourceManager
-                    ?: run { call.respond(HttpStatusCode.ServiceUnavailable); return@get }
+                val rm = Minecraft.getInstance().resourceManager
 
                 // Zuerst versuchen mit Original-Key (auch Custom Items wie "paper#626")
                 var bytes = loadItemIconBytes(rm, rawKey)
