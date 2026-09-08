@@ -245,11 +245,11 @@
 
 <Navbar activePage="history" />
 
-<div class="w-full px-4 py-3">
+<div class="vi-page">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
   <div class="flex items-center gap-3 mb-3 flex-wrap">
-    <h5 class="m-0 flex items-center gap-2 font-semibold text-base">
+    <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon="lucide:trending-up" width={15} style="color:var(--vi-accent)" />Preisverlauf
     </h5>
     <div class="ml-auto flex gap-2 items-center">

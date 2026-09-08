@@ -108,11 +108,11 @@
 
 <Navbar activePage={isShard ? 'shard' : 'redcoins'} />
 
-<div class="w-full px-4 py-3">
+<div class="vi-page">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
   <div class="flex items-center gap-3 mb-3 flex-wrap">
-    <h5 class="m-0 flex items-center gap-2 font-semibold text-base">
+    <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon={isShard ? 'lucide:gem' : 'lucide:circle-dollar-sign'} width={15} style="color:{currencyAccent}" />{pageTitle}
     </h5>
     <span class={statusBadgeClass}>{statusText}</span>
@@ -129,6 +129,14 @@
       </button>
     </div>
   </div>
+
+  {#if items.length > 0}
+    <div class="vi-summary" transition:fade={{ duration: 150 }}>
+      <div class="vi-metric"><span class="vi-metric-label">Aktive Kurse</span><span class="vi-metric-value">{items.length}</span></div>
+      <div class="vi-metric"><span class="vi-metric-label">Währung</span><span class="vi-metric-value">{isShard ? 'OPS' : 'RDC'}</span></div>
+      <div class="vi-metric"><span class="vi-metric-label">Letzter Abruf</span><span class="vi-metric-value fresh">{lastFetch ?? '–'}</span></div>
+    </div>
+  {/if}
 
   <!-- ── Lade-Spinner ──────────────────────────────────────────────────────── -->
   {#if loading && items.length === 0}

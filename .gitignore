@@ -30,6 +30,9 @@ Thumbs.db
 # Svelte / Vite Web-UI
 webui/node_modules/
 webui/.vite/
+
+# Lokale, nicht veröffentlichte Design-Vorschauen
+.local-preview/
 # Vite Build-Output – diese Dateien werden von `npm run build` generiert
 # und sind im Repository für den Gradle-Build enthalten (kein npm-Install nötig für CI)
 # static/app/ wird also committed.

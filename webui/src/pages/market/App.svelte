@@ -17,7 +17,7 @@
   let sortDir   = $state('asc')
   let lastFetch = $state(null)
   let category  = $state('')        // '' = alle Kategorien
-  let viewMode  = $state('grid')    // 'list' | 'grid'
+  let viewMode  = $state('list')    // 'list' | 'grid'
 
   // Preise der vorherigen Ladung – für Flash-Erkennung
   let prevPrices = {}
@@ -42,6 +42,10 @@
     for (const i of items) if (i.category) set.add(i.category)
     return [...set].sort((a, b) => a.localeCompare(b, 'de'))
   })
+
+  const categoryEntries = $derived.by(() =>
+    categories.map(name => ({ name, count: items.filter(item => item.category === name).length }))
+  )
 
   const filteredItems = $derived.by(() => {
     let list = items
@@ -118,11 +122,11 @@
 
 <Navbar activePage="market" />
 
-<div class="w-full px-4 py-3">
+<div class="vi-page">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
   <div class="flex items-center gap-3 mb-3 flex-wrap">
-    <h5 class="m-0 flex items-center gap-2 font-semibold text-base">
+    <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon="lucide:table" width={15} style="color:var(--vi-accent)" />Marktpreise
     </h5>
     <span class={statusBadgeClass}>{statusText}</span>
@@ -148,19 +152,40 @@
     </div>
   </div>
 
-  <!-- ── Kategorie-Filter ──────────────────────────────────────────────────── -->
-  {#if categories.length > 0}
-    <div class="flex gap-2 mb-3 flex-wrap items-center" transition:fade>
-      <button class="chip" class:active={category === ''} onclick={() => category = ''}>
-        Alle
-      </button>
-      {#each categories as cat (cat)}
-        <button class="chip" class:active={category === cat} onclick={() => category = cat}>
-          {cat}
-        </button>
-      {/each}
+  {#if items.length > 0}
+    <div class="vi-summary" transition:fade={{ duration: 150 }}>
+      <div class="vi-metric"><span class="vi-metric-label">Aktive Marktpreise</span><span class="vi-metric-value">{fmtInt(items.length)}</span></div>
+      <div class="vi-metric"><span class="vi-metric-label">Kategorien</span><span class="vi-metric-value">{fmtInt(categories.length)}</span></div>
+      <div class="vi-metric"><span class="vi-metric-label">Letzter Abruf</span><span class="vi-metric-value fresh">{lastFetch ?? '–'}</span></div>
     </div>
   {/if}
+
+  <div class:vi-data-layout={categories.length > 0}>
+    {#if categories.length > 0}
+      <aside class="vi-category-rail" transition:fade={{ duration: 150 }}>
+        <div class="vi-category-rail-title"><span>Kategorien</span><span style="color:var(--vi-text-muted)">{categories.length}</span></div>
+        <div class="vi-category-list">
+          <button class="vi-category" class:active={category === ''} onclick={() => category = ''}>
+            <span>Alle Items</span><span class="vi-category-count">{fmtInt(items.length)}</span>
+          </button>
+          {#each categoryEntries as entry (entry.name)}
+            <button class="vi-category" class:active={category === entry.name} onclick={() => category = entry.name}>
+              <span>{entry.name}</span><span class="vi-category-count">{fmtInt(entry.count)}</span>
+            </button>
+          {/each}
+        </div>
+      </aside>
+    {/if}
+
+    <div>
+      {#if categories.length > 0}
+        <div class="vi-mobile-categories" transition:fade>
+          <button class="chip" class:active={category === ''} onclick={() => category = ''}>Alle</button>
+          {#each categories as cat (cat)}
+            <button class="chip" class:active={category === cat} onclick={() => category = cat}>{cat}</button>
+          {/each}
+        </div>
+      {/if}
 
   <!-- ── Lade-Spinner ──────────────────────────────────────────────────────── -->
   {#if loading && items.length === 0}
@@ -309,11 +334,17 @@
     </div>
   {/if}
 
+    </div>
+  </div>
 </div>
 
 <style>
   .tabular { font-variant-numeric: tabular-nums; }
+  .vi-mobile-categories { display: none; gap: 0.5rem; margin-bottom: 0.8rem; overflow-x: auto; }
   @media (max-width: 720px) {
     .hide-sm { display: none; }
+  }
+  @media (max-width: 800px) {
+    .vi-mobile-categories { display: flex; }
   }
 </style>

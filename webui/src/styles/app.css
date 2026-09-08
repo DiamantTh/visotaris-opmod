@@ -3,6 +3,13 @@
    Dark-Theme, OPSUCHT-inspiriert
    ───────────────────────────────────────────────────────────────────────────── */
 
+@font-face { font-family: 'Fira Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('@fontsource/fira-sans/files/fira-sans-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Fira Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('@fontsource/fira-sans/files/fira-sans-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Fira Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('@fontsource/fira-sans/files/fira-sans-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Fira Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('@fontsource/fira-sans/files/fira-sans-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap; src: url('@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2') format('woff2'); }
 @import 'tailwindcss';
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
@@ -25,6 +32,8 @@
   --vi-danger-bg: #450a0a;
   --vi-danger-border: #7f1d1d;
   --vi-danger-text: #fca5a5;
+  --vi-font-ui: 'Fira Sans', system-ui, sans-serif;
+  --vi-font-data: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 /* Tailwind-Tokens aus vi-Vars – ermöglicht bg-vi-accent, text-vi-muted etc. */
@@ -43,16 +52,65 @@
 }
 
 html, body {
-  background-color: var(--vi-bg);
+  background:
+    radial-gradient(900px 420px at 85% -15%, rgba(56, 189, 248, 0.12), transparent 62%),
+    linear-gradient(128deg, #0c1629, var(--vi-bg));
   color: var(--vi-text);
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--vi-font-ui);
   font-size: 0.9rem;
   margin: 0;
 }
 
+button, input { font-family: inherit; }
+
+/* ── Navigation ───────────────────────────────────────────────────────────── */
+.vi-navbar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 3.25rem;
+  padding: 0.4rem clamp(1rem, 2.4vw, 2.25rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--vi-border) 72%, transparent);
+  background: color-mix(in srgb, var(--vi-bg-card) 86%, transparent);
+  backdrop-filter: blur(14px);
+}
+.vi-navbar-brand { display: flex; align-items: center; gap: 0.45rem; color: var(--vi-text); font-weight: 700; letter-spacing: -0.025em; text-decoration: none; }
+.vi-navbar-mark { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid color-mix(in srgb, var(--vi-accent) 65%, var(--vi-border)); border-radius: 0.35rem; color: var(--vi-accent); }
+.vi-navbar-links { display: flex; gap: 0.15rem; overflow-x: auto; }
+.vi-navbar-links a { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.55rem; border-radius: 0.3rem; color: var(--vi-text-muted); font-size: 0.78rem; text-decoration: none; white-space: nowrap; transition: color 0.15s, background-color 0.15s; }
+.vi-navbar-links a:hover { color: var(--vi-text); background: var(--vi-hover); }
+.vi-navbar-links a.active { color: var(--vi-text); background: color-mix(in srgb, var(--vi-accent) 10%, var(--vi-bg-card)); }
+
+/* ── Gemeinsame Datenansicht ──────────────────────────────────────────────── */
+.vi-page { max-width: 1540px; margin: 0 auto; padding: 1.5rem clamp(1rem, 2.4vw, 2.25rem) 3rem; }
+.vi-page-heading { letter-spacing: -0.025em; }
+.vi-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--vi-border);
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--vi-bg-card) 90%, transparent);
+}
+.vi-metric { min-width: 0; padding: 0.65rem 0.9rem; border-right: 1px solid var(--vi-border); }
+.vi-metric:last-child { border-right: 0; }
+.vi-metric-label { display: block; color: var(--vi-text-muted); font-size: 0.7rem; }
+.vi-metric-value { display: block; margin-top: 0.1rem; color: var(--vi-accent); font-family: var(--vi-font-data); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vi-metric-value.fresh { color: var(--vi-buy); }
+.vi-data-layout { display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: 0.85rem; }
+.vi-category-rail { align-self: start; border: 1px solid var(--vi-border); border-radius: 0.6rem; background: color-mix(in srgb, var(--vi-bg-card) 90%, transparent); overflow: hidden; }
+.vi-category-rail-title { display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--vi-border); font-size: 0.8rem; font-weight: 600; }
+.vi-category-list { padding: 0.35rem; }
+.vi-category { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.45rem 0.5rem; border: 1px solid transparent; border-radius: 0.35rem; color: var(--vi-text-muted); background: transparent; cursor: pointer; font-size: 0.78rem; text-align: left; }
+.vi-category:hover { color: var(--vi-text); background: var(--vi-hover); }
+.vi-category.active { color: var(--vi-text); border-color: color-mix(in srgb, var(--vi-accent) 42%, var(--vi-border)); background: color-mix(in srgb, var(--vi-accent) 10%, var(--vi-bg-card)); }
+.vi-category-count { color: var(--vi-text-muted); font-family: var(--vi-font-data); font-size: 0.68rem; }
+.vi-category.active .vi-category-count { color: var(--vi-accent); }
+
 /* ── Cards / Panels ─────────────────────────────────────────────────────────── */
 .vi-card {
-  background-color: var(--vi-bg-card);
+  background-color: color-mix(in srgb, var(--vi-bg-card) 93%, transparent);
   border: 1px solid var(--vi-border);
   border-radius: 0.5rem;
   overflow: hidden;
@@ -95,6 +153,10 @@ html, body {
   border-bottom: 1px solid var(--vi-border);
   vertical-align: middle;
   padding: 0.4rem 0.75rem;
+}
+.vi-table td:not(:first-child), .vi-table th:not(:first-child), .tabular,
+.price-buy, .price-sell, .price-redcoin, .spread-low, .spread-mid, .spread-high {
+  font-family: var(--vi-font-data);
 }
 .vi-table tbody tr:hover { background-color: var(--vi-hover); }
 
@@ -390,13 +452,24 @@ tbody tr { will-change: transform; }
   border: 1px solid var(--vi-border);
   border-radius: 0.5rem;
   padding: 0.8rem 0.6rem;
-  text-align: center;
+  text-align: left;
 }
 .stat-card .stat-value {
+  font-family: var(--vi-font-data);
   font-size: 1.35rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--vi-accent);
+}
+
+@media (max-width: 800px) {
+  .vi-page { padding: 1rem 0.9rem 2rem; }
+  .vi-data-layout { grid-template-columns: 1fr; }
+  .vi-category-rail { display: none; }
+  .vi-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vi-metric { padding: 0.55rem 0.6rem; }
+  .vi-navbar { gap: 0.7rem; padding-inline: 0.9rem; }
+  .vi-navbar-links a { padding-inline: 0.45rem; }
 }
 .stat-card .stat-label {
   font-size: 0.75rem;
