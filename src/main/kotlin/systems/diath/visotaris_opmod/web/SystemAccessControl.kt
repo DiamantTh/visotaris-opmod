@@ -14,6 +14,7 @@ class SystemAccessControl(private val config: ConfigManager) {
     }
 
     private val random = SecureRandom()
+    private val passwordBackup = SystemPasswordBackup(config)
     private val sessions = ConcurrentHashMap<String, Long>()
     private var failedAttempts = 0
     private var blockedUntil = 0L
@@ -22,12 +23,14 @@ class SystemAccessControl(private val config: ConfigManager) {
         if (configured()) throw IllegalStateException("Das Systempasswort ist bereits eingerichtet.")
         config.config.systemPasswordHash = SystemPasswordService.hash(password)
         config.save()
+        passwordBackup.persist(config.config.systemPasswordHash)
         return createSession()
     }
 
     @Synchronized fun login(password: CharArray): String? {
-        if (!configured() || System.currentTimeMillis() < blockedUntil) return null
-        if (!SystemPasswordService.verify(password, config.config.systemPasswordHash)) {
+        val hash = passwordBackup.activeHash()
+        if (!SystemPasswordService.isConfigured(hash) || System.currentTimeMillis() < blockedUntil) return null
+        if (!SystemPasswordService.verify(password, hash)) {
             failedAttempts++
             if (failedAttempts >= 5) { blockedUntil = System.currentTimeMillis() + 5 * 60_000L; failedAttempts = 0 }
             return null
@@ -36,7 +39,7 @@ class SystemAccessControl(private val config: ConfigManager) {
         return createSession()
     }
 
-    fun configured() = SystemPasswordService.isConfigured(config.config.systemPasswordHash)
+    fun configured() = SystemPasswordService.isConfigured(passwordBackup.activeHash())
     fun authenticated(token: String?): Boolean {
         if (token.isNullOrBlank()) return false
         val expires = sessions[token] ?: return false

@@ -93,7 +93,7 @@
   {#if configured !== null && !system}
     <section class="vi-card system-card" transition:fade={{ duration: 150 }}>
       <div class="vi-card-header"><span><Icon icon={configured ? 'lucide:lock-keyhole' : 'lucide:key-round'} width={14} /> {configured ? 'System anmelden' : 'Systempasswort einrichten'}</span><span class="system-muted">nur localhost</span></div>
-      <p class="system-muted">{configured ? 'Bitte das lokale Systempasswort eingeben.' : 'Einmalig ein Passwort mit mindestens 12 Zeichen festlegen. Gespeichert wird ausschließlich ein Argon2id-Hash in config/visotaris.toml.'}</p>
+      <p class="system-muted">{configured ? 'Bitte das lokale Systempasswort eingeben.' : 'Einmalig ein Passwort mit mindestens 12 Zeichen festlegen. Gespeichert wird ausschließlich ein Argon2id-Hash in config/visotaris.toml sowie einer lokalen, zugriffsbeschränkten Sicherung.'}</p>
       <form onsubmit={(event) => { event.preventDefault(); authenticate() }} class="system-login">
         <input class="vi-input" type="password" autocomplete={configured ? 'current-password' : 'new-password'} bind:value={password} placeholder="Systempasswort" minlength="12" required />
         {#if !configured}<input class="vi-input" type="password" autocomplete="new-password" bind:value={confirmation} placeholder="Passwort wiederholen" minlength="12" required />{/if}

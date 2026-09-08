@@ -187,6 +187,11 @@ public final class ConfigManager {
         return config;
     }
 
+    /** Pfad der zentralen TOML-Konfiguration; für die lokale Auth-Sicherung. */
+    public Path getConfigPath() {
+        return configPath;
+    }
+
     /**
      * Liest einen Integer-Wert aus der TOML-Map.
      * night-config parst TOML-Integers intern als {@code Long} – ein direktes
