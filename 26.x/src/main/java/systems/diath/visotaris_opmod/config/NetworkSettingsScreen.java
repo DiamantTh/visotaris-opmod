@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Util;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 
 /**
@@ -158,6 +159,21 @@ public final class NetworkSettingsScreen extends Screen {
             }
         ).bounds(this.width / 2 - (bw * 2 + gap) / 2, by - 24, bw * 2 + gap, bh).build();
         this.addRenderableWidget(webUiActionButton);
+
+        this.addRenderableWidget(Button.builder(
+            Component.literal("Web-Interface öffnen"),
+            b -> {
+                Integer webUiPort = parsePort(fieldWebUiPort.getValue());
+                if (webUiPort != null) cfg.webUiPort = webUiPort;
+                if (!isWebUiRunning()) {
+                    cfg.enableWebUi = true;
+                    configManager.save();
+                    VisotarisModClient.getInstance().applyWebUiConfig();
+                }
+                // Hostname statt Legacy-IPv4: funktioniert mit IPv4/IPv6-Loopback.
+                Util.getPlatform().openUri("http://localhost:" + cfg.webUiPort + "/");
+            }
+        ).bounds(this.width / 2 - (bw * 2 + gap) / 2, by - 48, bw * 2 + gap, bh).build());
 
         this.addRenderableWidget(Button.builder(
             Component.literal("Speichern & Schlie\u00dfen"),
