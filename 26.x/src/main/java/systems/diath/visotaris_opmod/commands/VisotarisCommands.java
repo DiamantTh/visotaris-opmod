@@ -4,9 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import systems.diath.visotaris_opmod.VisotarisModClient;
 import systems.diath.visotaris_opmod.model.PendingAction;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 
@@ -21,11 +19,9 @@ import systems.diath.visotaris_opmod.services.PendingConfirmationService;
  *   /.confirmRename  /.cancelRename
  *   /.confirmSign    /.cancelSign
  *
- * Sonstige Commands:
- *   /visotaris refresh   – Markt & Shard-Daten sofort neu laden
- *   /visotaris tracker   – aktuellen Job-Snapshot ausgeben
- *   /visotaris status    – Mod-Status anzeigen
- *   /visotaris settings  – Config-Screen öffnen
+ * Bedienung erfolgt über ModMenu und Keybinds, nicht über öffentliche oder
+ * serverseitige /visotaris-Commands. Nur die lokalen Bestätigungsrouten
+ * bleiben für anklickbare Chat-Komponenten notwendig.
  */
 public final class VisotarisCommands {
 
@@ -70,47 +66,6 @@ public final class VisotarisCommands {
             })
         );
 
-        // ── Verwaltungs-Commands ───────────────────────────────────────────────
-        d.register(ClientCommands.literal("visotaris")
-            .then(ClientCommands.literal("refresh")
-                .executes(ctx -> {
-                    VisotarisModClient mod = VisotarisModClient.getInstance();
-                    mod.getMarketSyncService().refresh();
-                    mod.getMerchantSyncService().refresh();
-                    send(ctx.getSource(), "§aMarkt & Shard-Daten werden neu geladen...");
-                    return 1;
-                })
-            )
-            .then(ClientCommands.literal("tracker")
-                .executes(ctx -> {
-                    var snap = VisotarisModClient.getInstance().getJobTrackerService().getSnapshot();
-                    send(ctx.getSource(), "§eJob: §f" + snap.getJobName()
-                        + " §eLevel: §f" + snap.getLevel()
-                        + " §eXP/h: §f" + String.format("%.0f", snap.getXpPerHour())
-                        + " §e$/h: §f" + String.format("%.0f", snap.getMoneyPerHour())
-                    );
-                    return 1;
-                })
-            )
-            .then(ClientCommands.literal("status")
-                .executes(ctx -> {
-                    VisotarisModClient mod = VisotarisModClient.getInstance();
-                    send(ctx.getSource(), "§b[Visotaris] Status");
-                    send(ctx.getSource(), "  Marktpreise: §f" +
-                        (mod.getMarketCache().isEmpty() ? "§cnicht geladen" : "§ageladen"));
-                    send(ctx.getSource(), "  Shardkurse:  §f" +
-                        (mod.getShardCache().isEmpty() ? "§cnicht geladen" : "§ageladen"));
-                    return 1;
-                })
-            )
-            .then(ClientCommands.literal("settings")
-                .executes(ctx -> {
-                    Minecraft mc = Minecraft.getInstance();
-                    mc.gui.setScreen(new systems.diath.visotaris_opmod.config.VisotarisConfigScreen(mc.gui.screen()));
-                    return 1;
-                })
-            )
-        );
     }
 
     @SuppressWarnings("null")

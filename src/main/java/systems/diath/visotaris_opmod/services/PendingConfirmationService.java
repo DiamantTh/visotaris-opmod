@@ -70,7 +70,13 @@ public final class PendingConfirmationService {
         Minecraft mc = Minecraft.getInstance();
         var player = mc.player;
         if (player != null) {
-            player.connection.sendCommand(action.getCommand());
+            // Explizit das Command-Paket nutzen: nie als öffentliche
+            // Chatnachricht senden. Fabric liefert den abgefangenen Befehl
+            // ohne Slash, die Normalisierung hält den Weg auch bei manuellen
+            // Aufrufen korrekt.
+            String command = action.getCommand().strip();
+            if (command.startsWith("/")) command = command.substring(1);
+            if (!command.isEmpty()) player.connection.sendCommand(command);
         }
         return true;
     }
