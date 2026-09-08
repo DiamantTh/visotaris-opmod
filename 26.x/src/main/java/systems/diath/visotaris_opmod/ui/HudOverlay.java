@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.DeltaTracker;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.JobSnapshot;
+import systems.diath.visotaris_opmod.model.InventoryValuation;
 import systems.diath.visotaris_opmod.services.InventoryValuationService;
 import systems.diath.visotaris_opmod.services.JobTrackerService;
 
@@ -31,13 +32,14 @@ public final class HudOverlay implements HudElement {
     private static final int COLOR_JOB   = 0xFFFFD700;
 
     private final JobTrackerService          jobTracker;
-    @SuppressWarnings("unused") // TODO: Inventarwert im HUD anzeigen
     private final InventoryValuationService  valuation;
     private final ConfigManager              config;
 
     /** Standard-Position oben links (offset). */
     private int posX = 4;
     private int posY = 4;
+    private InventoryValuation cachedInventoryValue = InventoryValuation.empty();
+    private long lastInventoryEvaluationMs = 0L;
 
     public HudOverlay(JobTrackerService jobTracker,
                       InventoryValuationService valuation,
@@ -57,15 +59,16 @@ public final class HudOverlay implements HudElement {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.gui.hud.isHidden()) return;
 
-        renderJobInfo(ctx, mc);
+        int nextY = renderJobInfo(ctx, mc);
+        renderInventoryValue(ctx, mc, nextY);
         if (cfg.enableInventoryWarning) renderInventoryWarning(ctx, mc);
     }
 
     // ── Job-Info ────────────────────────────────────────────────────────────
 
-    private void renderJobInfo(GuiGraphicsExtractor ctx, Minecraft mc) {
+    private int renderJobInfo(GuiGraphicsExtractor ctx, Minecraft mc) {
         JobSnapshot snap = jobTracker.getSnapshot();
-        if (snap.getJobName().isBlank()) return;
+        if (snap.getJobName().isBlank()) return posY;
 
         var font = mc.font;
         int x = posX;
@@ -81,6 +84,26 @@ public final class HudOverlay implements HudElement {
         ctx.text(font, "XP/h: §f" + formatShort(snap.getXpPerHour()),  x, y, COLOR_LABEL, true);
         y += lineH;
         ctx.text(font, "$/h: §f"  + formatShort(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
+        return y + lineH + 1;
+    }
+
+    /** Zeigt den Markt-/Händlerwert des Spielerinventars, höchstens zweimal pro Sekunde neu berechnet. */
+    private void renderInventoryValue(GuiGraphicsExtractor ctx, Minecraft mc, int y) {
+        long now = System.currentTimeMillis();
+        if (now - lastInventoryEvaluationMs >= 500L) {
+            cachedInventoryValue = valuation.evaluatePlayerInventory();
+            lastInventoryEvaluationMs = now;
+        }
+        InventoryValuation value = cachedInventoryValue;
+        if (value.getBuyTotal() <= 0 && value.getSellTotal() <= 0
+                && !value.hasShards() && !value.hasRedcoins()) return;
+
+        StringBuilder line = new StringBuilder("§7Inv:");
+        if (value.getSellTotal() > 0) line.append(" §fV ").append(formatShort(value.getSellTotal()));
+        if (value.getBuyTotal() > 0) line.append(" §aK ").append(formatShort(value.getBuyTotal()));
+        if (value.hasShards()) line.append(" §bS ").append(formatShort(value.getShardTotal()));
+        if (value.hasRedcoins()) line.append(" §6R ").append(formatShort(value.getRedcoinTotal()));
+        ctx.text(mc.font, line.toString(), posX, y, COLOR_LABEL, true);
     }
 
     // ── Inventar-voll-Warnung ───────────────────────────────────────────────

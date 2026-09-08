@@ -24,7 +24,7 @@ public final class MerchantSyncService {
 
     private final ShardCache              cache;
     private final ConfigManager           config;
-    private final MerchantApiClient       client;
+    private volatile MerchantApiClient     client;
     private final ScheduledExecutorService scheduler =
         Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "visotaris-merchant-sync");
@@ -47,15 +47,22 @@ public final class MerchantSyncService {
     public void start() {
         diskFile = new File(VisotarisConst.getCacheDir("json"), "shard.json");
         cache.loadFromDisk(diskFile);
-
-        int intervalSec = config.getConfig().merchantRefreshIntervalSeconds;
-        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
-        VisotarisLogger.info("MerchantSyncService gestartet (Intervall: {}s).", intervalSec);
+        applyConfig();
+        VisotarisLogger.info("MerchantSyncService gestartet.");
     }
 
     public void stop() {
         if (task != null) task.cancel(false);
         scheduler.shutdown();
+    }
+
+    /** Übernimmt Intervall, Proxy und User-Agent direkt aus dem Einstellungsmenü. */
+    public synchronized void applyConfig() {
+        client = new MerchantApiClient(config);
+        if (task != null) task.cancel(false);
+        int intervalSec = Math.max(60, config.getConfig().merchantRefreshIntervalSeconds);
+        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
+        VisotarisLogger.info("MerchantSyncService konfiguriert (Intervall: {}s).", intervalSec);
     }
 
     public void refresh() {

@@ -14,10 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 import systems.diath.visotaris_opmod.util.HandledScreenButtons;
 
-/**
- * Version-spezifisches Mixin für MC 1.21.11:
- * mouseClicked hat seit dem GUI-Input-Refactoring die Signatur (MouseButtonEvent, boolean).
- */
+/** Klick-Handler für die im Container gerenderten Schnellzugriff-Buttons. */
 @Environment(EnvType.CLIENT)
 @Mixin(AbstractContainerScreen.class)
 public abstract class HandledScreenClickMixin<T extends AbstractContainerMenu> {
@@ -43,21 +40,19 @@ public abstract class HandledScreenClickMixin<T extends AbstractContainerMenu> {
     }
 
     private boolean handleButtonClick(double mouseX, double mouseY) {
-        int total  = HandledScreenButtons.BTN_LABELS.length * HandledScreenButtons.BTN_W
-                   + (HandledScreenButtons.BTN_LABELS.length - 1) * HandledScreenButtons.BTN_GAP;
+        int total = HandledScreenButtons.BTN_LABELS.length * HandledScreenButtons.BTN_W
+            + (HandledScreenButtons.BTN_LABELS.length - 1) * HandledScreenButtons.BTN_GAP;
         int startX = leftPos + (imageWidth - total) / 2;
-        int rowY   = topPos + imageHeight + 4;
+        int rowY = topPos + imageHeight + 4;
 
         for (int i = 0; i < HandledScreenButtons.BTN_LABELS.length; i++) {
             int bx = startX + i * (HandledScreenButtons.BTN_W + HandledScreenButtons.BTN_GAP);
             if (mouseX >= bx && mouseX < bx + HandledScreenButtons.BTN_W
                     && mouseY >= rowY && mouseY < rowY + HandledScreenButtons.BTN_H) {
                 Minecraft mc = Minecraft.getInstance();
-                var player = mc.player;
-                if (player != null) {
-                    // sendChatCommand ohne führendes '/' – schickt Command-Packet, nicht Chat
-                    String cmd = HandledScreenButtons.BTN_LABELS[i];
-                    player.connection.sendCommand(cmd.startsWith("/") ? cmd.substring(1) : cmd);
+                if (mc.player != null) {
+                    String command = HandledScreenButtons.BTN_LABELS[i];
+                    mc.player.connection.sendCommand(command.substring(1));
                 }
                 return true;
             }

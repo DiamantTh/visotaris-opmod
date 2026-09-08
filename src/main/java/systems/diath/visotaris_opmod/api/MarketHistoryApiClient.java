@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import okhttp3.CacheControl;
+import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -41,6 +42,15 @@ public final class MarketHistoryApiClient {
     public MarketHistoryApiClient(ConfigManager configManager) {
         this.httpClient = VisotarisConst.buildOkHttpClient(configManager.getConfig())
             .newBuilder()
+            // Der Fallback unten verwendet FORCE_CACHE. Ohne einen expliziten
+            // OkHttp-Disk-Cache wäre dieser Pfad stets ein 504.
+            .cache(new Cache(VisotarisConst.getCacheDir("history"), 10L * 1024 * 1024))
+            .addNetworkInterceptor(chain -> {
+                Response response = chain.proceed(chain.request());
+                return response.newBuilder()
+                    .header("Cache-Control", "public, max-age=3600")
+                    .build();
+            })
             .build();
     }
 
@@ -133,4 +143,3 @@ public final class MarketHistoryApiClient {
         return (el != null && el.isJsonPrimitive()) ? el.getAsInt() : 0;
     }
 }
-

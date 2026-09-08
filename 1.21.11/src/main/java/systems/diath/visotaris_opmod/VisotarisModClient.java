@@ -141,7 +141,11 @@ public class VisotarisModClient implements ClientModInitializer {
 
         // 9. Keybinds registrieren
         keybindService.registerTick();
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> discordScreenshotService.shutdown());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            marketSyncService.stop();
+            merchantSyncService.stop();
+            discordScreenshotService.shutdown();
+        });
 
         // 10. Offhand-Blocker: Tastendrücke für F-Taste vor handleInputEvents() schlucken
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
@@ -194,6 +198,8 @@ public class VisotarisModClient implements ClientModInitializer {
 
     public void applyWebUiConfig() {
         var cfg = configManager.getConfig();
+        marketSyncService.applyConfig();
+        merchantSyncService.applyConfig();
         if (webServer == null || webServer.getPort() != cfg.webUiPort) {
             if (webServer != null) {
                 webServer.stop();

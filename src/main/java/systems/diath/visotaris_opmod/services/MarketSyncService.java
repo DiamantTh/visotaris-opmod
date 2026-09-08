@@ -26,7 +26,7 @@ public final class MarketSyncService {
 
     private final MarketCache             cache;
     private final ConfigManager           config;
-    private final MarketApiClient         client;
+    private volatile MarketApiClient       client;
     private final ScheduledExecutorService scheduler =
         Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "visotaris-market-sync");
@@ -54,15 +54,24 @@ public final class MarketSyncService {
     public void start() {
         diskFile = new File(VisotarisConst.getCacheDir("json"), "market.json");
         cache.loadFromDisk(diskFile);
-
-        int intervalSec = config.getConfig().marketRefreshIntervalSeconds;
-        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
-        VisotarisLogger.info("MarketSyncService gestartet (Intervall: {}s).", intervalSec);
+        applyConfig();
+        VisotarisLogger.info("MarketSyncService gestartet.");
     }
 
     public void stop() {
         if (task != null) task.cancel(false);
         scheduler.shutdown();
+    }
+
+    /** Übernimmt Änderungen aus dem Einstellungsmenü ohne Client-Neustart. */
+    public synchronized void applyConfig() {
+        // Proxy und User-Agent gehören zum OkHttp-Client und müssen bei einer
+        // Konfigurationsänderung ebenfalls neu aufgebaut werden.
+        client = new MarketApiClient(config);
+        if (task != null) task.cancel(false);
+        int intervalSec = Math.max(60, config.getConfig().marketRefreshIntervalSeconds);
+        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
+        VisotarisLogger.info("MarketSyncService konfiguriert (Intervall: {}s).", intervalSec);
     }
 
     /** Direkt-Fetch (z.B. per Client-Command oder Button auslösbar).

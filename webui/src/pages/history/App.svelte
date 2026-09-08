@@ -81,7 +81,7 @@
   })
 
   // ── Daten laden ─────────────────────────────────────────────────────────────
-  async function loadHistory() {
+  async function loadHistory(forceRefresh = false) {
     const mat = materialInput.trim().toLowerCase()
     if (!mat) return
     loading         = true
@@ -92,7 +92,7 @@
     destroyCharts()
     try {
       const [histRes, liveRes] = await Promise.all([
-        fetch('/api/history/' + encodeURIComponent(mat)),
+        fetch('/api/history/' + encodeURIComponent(mat) + (forceRefresh ? '?refresh=true' : '')),
         fetch('/api/market/' + encodeURIComponent(mat))
       ])
       if (!histRes.ok) throw new Error('HTTP ' + histRes.status)
@@ -302,6 +302,9 @@
           <a href="/" class="btn-outline" style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.78rem;white-space:nowrap">
             <Icon icon="lucide:arrow-left" width={12} />Zum Markt
           </a>
+          <button class="btn-outline" onclick={() => loadHistory(true)} disabled={loading} title="Verlauf direkt von der API neu laden">
+            <Icon icon="lucide:refresh-cw" width={12} />Neu laden
+          </button>
         </div>
       </div>
     </div>

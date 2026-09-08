@@ -26,6 +26,7 @@ Thumbs.db
 
 # Secrets / Logs
 *.log
+*.log.gz
 
 # Svelte / Vite Web-UI
 webui/node_modules/

@@ -101,6 +101,7 @@ class WebServer(
             get("/history") { serveResource(call, "assets/webui/history.html", ContentType.Text.Html) }
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
             get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
+            get("/merchant") { serveResource(call, "assets/webui/merchant.html", ContentType.Text.Html) }
 
             // ── Statische Dateien ────────────────────────────────────────────────
             get("/static/{path...}") {
@@ -139,7 +140,11 @@ class WebServer(
                 val key = call.parameters["material"]?.lowercase() ?: run {
                     call.respond(HttpStatusCode.BadRequest, "material fehlt"); return@get
                 }
-                val history = historyCache.get(key)
+                val history = if (call.request.queryParameters["refresh"] == "true") {
+                    historyCache.refresh(key)
+                } else {
+                    historyCache.get(key)
+                }
                 call.respondText(gson.toJson(history), ContentType.Application.Json)
             }
             get("/api/shard") {
@@ -158,6 +163,12 @@ class WebServer(
                     return@get
                 }
                 call.respondText(gson.toJson(merchantRatesFor(target)), ContentType.Application.Json)
+            }
+            get("/api/meta") {
+                call.respondText(gson.toJson(mapOf(
+                    "market" to cacheMeta(marketCache.getLastUpdatedMs(), marketCache.getAgeSeconds()),
+                    "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds())
+                )), ContentType.Application.Json)
             }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
@@ -221,6 +232,12 @@ class WebServer(
         .groupBy { it.target?.lowercase() ?: "unknown" }
         .toSortedMap()
         .mapValues { (_, rates) -> rates.sortedBy { it.source } }
+
+    private fun cacheMeta(updatedAtMs: Long, ageSeconds: Long) = mapOf(
+        "updatedAtMs" to updatedAtMs,
+        "ageSeconds" to if (ageSeconds == Long.MAX_VALUE) null else ageSeconds,
+        "stale" to (ageSeconds > 300)
+    )
 
     /** Versucht, das Icon-PNG für ein Item zu laden.
      *  MC 26.x: ResourceManager.getResource(Identifier) → Optional<Resource> → Resource.open()

@@ -47,7 +47,12 @@ public final class PendingConfirmationService {
         PendingAction action = new PendingAction(
             type, command, text, fingerprint, slot, DEFAULT_TIMEOUT_MS
         );
-        pending.set(action);
+        // Eine bereits angezeigte Bestätigung darf nicht durch einen zweiten
+        // abgefangenen Befehl ersetzt werden. Sonst könnte der Spieler einen
+        // anderen Text bestätigen als den, den er gerade geprüft hat.
+        if (!pending.compareAndSet(null, action)) {
+            return false;
+        }
         VisotarisLogger.debug("PendingAction gespeichert: {} slot={}", type, slot);
         return true;
     }

@@ -95,56 +95,59 @@ public final class MarketApiClient {
         try (InputStream is = body.byteStream();
              InputStreamReader reader = new InputStreamReader(is, StandardCharsets.UTF_8)) {
             JsonElement rootEl = GSON.fromJson(reader, JsonElement.class);
+            return parsePrices(rootEl);
+        }
+    }
 
-            if (!rootEl.isJsonObject()) {
-                VisotarisLogger.warn("Markt-API: unerwartetes Root-Element (kein Object).");
-                return Collections.emptyList();
-            }
+    /** Paket-sichtbar für den Contract-Test der Markt-API. */
+    static List<MarketPrice> parsePrices(JsonElement rootEl) {
+        if (rootEl == null || !rootEl.isJsonObject()) {
+            VisotarisLogger.warn("Markt-API: unerwartetes Root-Element (kein Object).");
+            return Collections.emptyList();
+        }
 
-            JsonObject root = rootEl.getAsJsonObject();
-            List<MarketPrice> result = new ArrayList<>(512);
+        JsonObject root = rootEl.getAsJsonObject();
+        List<MarketPrice> result = new ArrayList<>(512);
 
-            for (Map.Entry<String, JsonElement> catEntry : root.entrySet()) {
-                if (!catEntry.getValue().isJsonObject()) continue;
-                String     categoryName = catEntry.getKey();
-                JsonObject category     = catEntry.getValue().getAsJsonObject();
+        for (Map.Entry<String, JsonElement> catEntry : root.entrySet()) {
+            if (!catEntry.getValue().isJsonObject()) continue;
+            String     categoryName = catEntry.getKey();
+            JsonObject category     = catEntry.getValue().getAsJsonObject();
 
-                for (Map.Entry<String, JsonElement> itemEntry : category.entrySet()) {
-                    String itemKey = itemEntry.getKey().toLowerCase();
-                    if (!itemEntry.getValue().isJsonArray()) continue;
-                    JsonArray orders = itemEntry.getValue().getAsJsonArray();
+            for (Map.Entry<String, JsonElement> itemEntry : category.entrySet()) {
+                String itemKey = itemEntry.getKey().toLowerCase();
+                if (!itemEntry.getValue().isJsonArray()) continue;
+                JsonArray orders = itemEntry.getValue().getAsJsonArray();
 
-                    double buyPrice   = 0;
-                    double sellPrice  = 0;
-                    int    buyOrders  = 0;
-                    int    sellOrders = 0;
+                double buyPrice   = 0;
+                double sellPrice  = 0;
+                int    buyOrders  = 0;
+                int    sellOrders = 0;
 
-                    for (JsonElement orderEl : orders) {
-                        if (!orderEl.isJsonObject()) continue;
-                        JsonObject order = orderEl.getAsJsonObject();
-                        String side   = getStringOrNull(order, "orderSide");
-                        double price  = getDouble(order, "price");
-                        int    active = (int) getDouble(order, "activeOrders");
+                for (JsonElement orderEl : orders) {
+                    if (!orderEl.isJsonObject()) continue;
+                    JsonObject order = orderEl.getAsJsonObject();
+                    String side   = getStringOrNull(order, "orderSide");
+                    double price  = getDouble(order, "price");
+                    int    active = (int) getDouble(order, "activeOrders");
 
-                        if ("BUY".equalsIgnoreCase(side)) {
-                            buyPrice  = price;
-                            buyOrders = active;
-                        } else if ("SELL".equalsIgnoreCase(side)) {
-                            sellPrice  = price;
-                            sellOrders = active;
-                        }
-                    }
-
-                    if (buyPrice > 0 || sellPrice > 0) {
-                        result.add(new MarketPrice(itemKey, buyPrice, sellPrice,
-                            buyOrders, sellOrders, categoryName));
+                    if ("BUY".equalsIgnoreCase(side)) {
+                        buyPrice  = price;
+                        buyOrders = active;
+                    } else if ("SELL".equalsIgnoreCase(side)) {
+                        sellPrice  = price;
+                        sellOrders = active;
                     }
                 }
-            }
 
-            VisotarisLogger.debug("Markt-API: {} Preiseinträge geladen.", result.size());
-            return result;
+                if (buyPrice > 0 || sellPrice > 0) {
+                    result.add(new MarketPrice(itemKey, buyPrice, sellPrice,
+                        buyOrders, sellOrders, categoryName));
+                }
+            }
         }
+        VisotarisLogger.debug("Markt-API: {} Preiseinträge geladen.", result.size());
+        return result;
     }
 
     private static String getStringOrNull(JsonObject obj, String key) {

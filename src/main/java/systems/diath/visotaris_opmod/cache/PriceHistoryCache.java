@@ -7,6 +7,7 @@ import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.model.PriceHistory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * In-Memory-Cache für Preisverlauf-Daten pro Material.
@@ -24,6 +25,9 @@ public final class PriceHistoryCache {
         this.apiClient = apiClient;
         this.cache = Caffeine.newBuilder()
             .maximumSize(200)
+            // Besonders die stündliche Reihe verändert sich. Ein Verlauf darf
+            // nicht bis zum Client-Neustart eingefroren bleiben.
+            .expireAfterWrite(5, TimeUnit.MINUTES)
             .build();
     }
 
@@ -56,5 +60,11 @@ public final class PriceHistoryCache {
     /** Entfernt alle Einträge aus dem Cache. */
     public void invalidateAll() {
         cache.invalidateAll();
+    }
+
+    /** Lädt den Verlauf bewusst neu und ersetzt einen ggf. noch frischen Eintrag. */
+    public PriceHistory refresh(String materialKey) {
+        invalidate(materialKey);
+        return get(materialKey);
     }
 }

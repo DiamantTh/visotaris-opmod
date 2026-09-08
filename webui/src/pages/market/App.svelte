@@ -15,7 +15,7 @@
   let search    = $state('')
   let sortKey   = $state('item')
   let sortDir   = $state('asc')
-  let lastFetch = $state(null)
+  let lastDataUpdate = $state(null)
   let category  = $state('')        // '' = alle Kategorien
   let viewMode  = $state('list')    // 'list' | 'grid'
 
@@ -81,7 +81,7 @@
     loading = true
     error   = null
     try {
-      const res = await fetch('/api/market')
+      const [res, metaRes] = await Promise.all([fetch('/api/market'), fetch('/api/meta')])
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const data     = await res.json()
       const newItems = Array.isArray(data) ? data : Object.values(data)
@@ -105,7 +105,7 @@
       prevPrices = pp
 
       items     = newItems
-      lastFetch = new Date().toLocaleTimeString('de-DE')
+      if (metaRes.ok) lastDataUpdate = (await metaRes.json())?.market?.updatedAtMs ?? null
     } catch (e) {
       error = 'Fehler beim Laden: ' + e.message
     } finally {
@@ -156,7 +156,7 @@
     <div class="vi-summary" transition:fade={{ duration: 150 }}>
       <div class="vi-metric"><span class="vi-metric-label">Aktive Marktpreise</span><span class="vi-metric-value">{fmtInt(items.length)}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">Kategorien</span><span class="vi-metric-value">{fmtInt(categories.length)}</span></div>
-      <div class="vi-metric"><span class="vi-metric-label">Letzter Abruf</span><span class="vi-metric-value fresh">{lastFetch ?? '–'}</span></div>
+      <div class="vi-metric"><span class="vi-metric-label">API-Stand</span><span class="vi-metric-value fresh">{lastDataUpdate ? new Date(lastDataUpdate).toLocaleTimeString('de-DE') : '–'}</span></div>
     </div>
   {/if}
 
@@ -252,7 +252,7 @@
     <div class="vi-card-footer flex justify-between rounded"
          style="border:1px solid var(--vi-border); background:var(--vi-bg-card)">
       <span>{filteredItems.length} / {items.length} Einträge</span>
-      {#if lastFetch}<span>Stand: {lastFetch}</span>{/if}
+      {#if lastDataUpdate}<span>API-Stand: {new Date(lastDataUpdate).toLocaleString('de-DE')}</span>{/if}
     </div>
   {/if}
 
@@ -329,7 +329,7 @@
       {/if}
       <div class="vi-card-footer flex justify-between">
         <span>{filteredItems.length} / {items.length} Einträge</span>
-        {#if lastFetch}<span>Stand: {lastFetch}</span>{/if}
+        {#if lastDataUpdate}<span>API-Stand: {new Date(lastDataUpdate).toLocaleString('de-DE')}</span>{/if}
       </div>
     </div>
   {/if}

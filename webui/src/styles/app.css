@@ -369,6 +369,8 @@ tbody tr { will-change: transform; }
   border-color: var(--vi-accent);
   font-weight: 600;
 }
+.merchant-targets { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; overflow-x: auto; }
+.merchant-target { color: var(--vi-accent); font-family: var(--vi-font-data); font-size: 0.78rem; }
 
 /* ── Markt-Grid (Karten-Ansicht) ─────────────────────────────────────────────── */
 .market-grid {

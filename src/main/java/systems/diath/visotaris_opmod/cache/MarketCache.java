@@ -68,6 +68,11 @@ public final class MarketCache {
         return (System.currentTimeMillis() - last) / 1000L;
     }
 
+    /** Unix-Zeitpunkt (ms) des letzten erfolgreichen API-Updates, 0 wenn nie. */
+    public long getLastUpdatedMs() {
+        return lastUpdatedMs.get();
+    }
+
     /** {@code true} wenn Daten älter als {@code maxAgeSeconds} Sekunden oder noch nie geladen. */
     public boolean isStale(long maxAgeSeconds) {
         return getAgeSeconds() > maxAgeSeconds;
