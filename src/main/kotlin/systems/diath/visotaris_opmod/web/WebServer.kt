@@ -157,6 +157,9 @@ class WebServer(
             get("/api/market") {
                 call.respondText(gson.toJson(marketCache.snapshot()), ContentType.Application.Json)
             }
+            get("/api/market/top") {
+                call.respondText(gson.toJson(topMarketActivity()), ContentType.Application.Json)
+            }
             get("/api/market/{material}") {
                 val key = call.parameters["material"]?.lowercase() ?: run {
                     call.respond(HttpStatusCode.BadRequest, "material fehlt"); return@get
@@ -307,6 +310,38 @@ class WebServer(
         "ageSeconds" to if (ageSeconds == Long.MAX_VALUE) null else ageSeconds,
         "stale" to (ageSeconds > 300)
     )
+
+    /**
+     * Schlanke Top-10 für die Marktübersicht. Das Ranking nutzt ausschließlich
+     * aktuelle offene Aufträge; Preisverläufe werden danach begrenzt und im
+     * Hintergrund nachgeladen, damit die große Tabelle keinen Request-Sturm auslöst.
+     */
+    private fun topMarketActivity(): Map<String, Any> {
+        val top = marketCache.snapshot().values
+            .sortedWith(compareByDescending<systems.diath.visotaris_opmod.model.MarketPrice> {
+                it.buyOrders + it.sellOrders
+            }.thenBy { it.itemKey })
+            .take(10)
+        var warming = 0
+        val cards = top.map { price ->
+            val history = historyCache.getCached(price.itemKey)
+            val points = history.DAILY.takeLast(7)
+            if (points.isEmpty()) { historyCache.warm(price.itemKey); warming++ }
+            mapOf(
+                "itemKey" to price.itemKey,
+                "buy" to price.buy,
+                "sell" to price.sell,
+                "buyOrders" to price.buyOrders,
+                "sellOrders" to price.sellOrders,
+                "activity" to (price.buyOrders + price.sellOrders),
+                "sparkline" to points.map { it.avgPrice },
+                "weeklyTransactions" to points.sumOf { it.transactions },
+                "weeklyItems" to points.sumOf { it.items },
+                "historyReady" to points.isNotEmpty()
+            )
+        }
+        return mapOf("items" to cards, "warming" to warming)
+    }
 
     private suspend fun requireSystemAccess(call: ApplicationCall): Boolean {
         if (!systemAccess.configured()) {

@@ -18,6 +18,9 @@
   let lastDataUpdate = $state(null)
   let category  = $state('')        // '' = alle Kategorien
   let viewMode  = $state('list')    // 'list' | 'grid'
+  let topItems  = $state([])
+  let topWarming = $state(0)
+  let topRetries = 0
 
   // Preise der vorherigen Ladung – für Flash-Erkennung
   let prevPrices = {}
@@ -76,6 +79,24 @@
     try { localStorage.setItem(LS_VIEW, mode) } catch(_) {}
   }
 
+  function sparkline(points) {
+    if (!points || points.length < 2) return ''
+    const min = Math.min(...points), max = Math.max(...points), range = max - min || 1
+    return points.map((value, index) => `${(index / (points.length - 1) * 100).toFixed(1)},${(27 - ((value - min) / range * 23)).toFixed(1)}`).join(' ')
+  }
+
+  async function loadTopActivity(reset = false) {
+    if (reset) topRetries = 0
+    try {
+      const response = await fetch('/api/market/top')
+      if (!response.ok) return
+      const data = await response.json()
+      topItems = data.items ?? []
+      topWarming = data.warming ?? 0
+      if (topWarming > 0 && topRetries++ < 6) setTimeout(() => loadTopActivity(), 1200)
+    } catch (_) { /* Die Markt-Tabelle bleibt bei optionaler Top-Analyse voll nutzbar. */ }
+  }
+
   // ── Daten laden ─────────────────────────────────────────────────────────────
   async function loadData() {
     loading = true
@@ -106,6 +127,7 @@
 
       items     = newItems
       if (metaRes.ok) lastDataUpdate = (await metaRes.json())?.market?.updatedAtMs ?? null
+      loadTopActivity(true)
     } catch (e) {
       error = 'Fehler beim Laden: ' + e.message
     } finally {
@@ -158,6 +180,30 @@
       <div class="vi-metric"><span class="vi-metric-label">Kategorien</span><span class="vi-metric-value">{fmtInt(categories.length)}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">API-Stand</span><span class="vi-metric-value fresh">{lastDataUpdate ? new Date(lastDataUpdate).toLocaleTimeString('de-DE') : '–'}</span></div>
     </div>
+  {/if}
+
+  {#if topItems.length > 0}
+    <section class="market-top" transition:fade={{ duration: 150 }} aria-label="Marktaktivität Top 10">
+      <div class="market-top-heading">
+        <span><Icon icon="lucide:flame" width={14} /> Marktaktivität · Top 10</span>
+        <small>{topWarming > 0 ? `Verläufe werden geladen (${topWarming})…` : 'nach aktiven Aufträgen'}</small>
+      </div>
+      <div class="market-top-grid">
+        {#each topItems as item (item.itemKey)}
+          <a class="market-top-card" href="/history?m={encodeURIComponent(item.itemKey)}" title="{fmtItem(item.itemKey)} analysieren">
+            <div class="market-top-item"><img src={itemIcon(item.itemKey)} class="item-icon" alt="" loading="lazy" onerror={hideOnError}><strong>{fmtItem(item.itemKey)}</strong></div>
+            {#if item.historyReady && item.sparkline.length > 1}
+              <svg class="market-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="Preisverlauf der letzten sieben Tage"><polyline points={sparkline(item.sparkline)} /></svg>
+            {:else}
+              <div class="market-sparkline pending">Verlauf…</div>
+            {/if}
+            <div class="market-top-prices"><span class="price-buy">{fmt(item.buy)}</span><span class="price-sell">{fmt(item.sell)}</span></div>
+            <div class="market-top-orders"><span class="price-buy">↓ {fmtInt(item.buyOrders)}</span><span class="price-sell">↑ {fmtInt(item.sellOrders)}</span></div>
+            {#if item.historyReady}<small>{fmtInt(item.weeklyTransactions)} Trades · {fmtInt(item.weeklyItems)} Items</small>{/if}
+          </a>
+        {/each}
+      </div>
+    </section>
   {/if}
 
   <div class:vi-data-layout={categories.length > 0}>

@@ -8,6 +8,9 @@ import systems.diath.visotaris_opmod.model.PriceHistory;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * In-Memory-Cache für Preisverlauf-Daten pro Material.
@@ -20,6 +23,12 @@ public final class PriceHistoryCache {
 
     private final Cache<String, PriceHistory> cache;
     private final MarketHistoryApiClient apiClient;
+    private final ConcurrentHashMap<String, Boolean> warming = new ConcurrentHashMap<>();
+    private final ExecutorService warmupExecutor = Executors.newFixedThreadPool(2, runnable -> {
+        Thread thread = new Thread(runnable, "visotaris-history-warmup");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public PriceHistoryCache(MarketHistoryApiClient apiClient) {
         this.apiClient = apiClient;
@@ -66,5 +75,23 @@ public final class PriceHistoryCache {
     public PriceHistory refresh(String materialKey) {
         invalidate(materialKey);
         return get(materialKey);
+    }
+
+    /** Liefert ausschließlich bereits bekannte Daten – ohne Netzwerkzugriff. */
+    public PriceHistory getCached(String materialKey) {
+        PriceHistory cached = cache.getIfPresent(materialKey);
+        return cached != null ? cached : PriceHistory.empty();
+    }
+
+    /**
+     * Wärmt einen Verlauf im Hintergrund vor. Höchstens zwei Abrufe laufen
+     * parallel; mehrfache UI-Polls starten für dasselbe Item keinen zweiten Abruf.
+     */
+    public void warm(String materialKey) {
+        if (cache.getIfPresent(materialKey) != null || warming.putIfAbsent(materialKey, Boolean.TRUE) != null) return;
+        warmupExecutor.execute(() -> {
+            try { get(materialKey); }
+            finally { warming.remove(materialKey); }
+        });
     }
 }
