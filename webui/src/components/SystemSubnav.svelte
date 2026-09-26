@@ -1,7 +1,7 @@
 <script>
   import Icon from '@iconify/svelte'
 
-  /** @type {{ activePage: 'overview' | 'mcinfo' | 'settings' }} */
+  /** @type {{ activePage: 'overview' | 'mcinfo' | 'alerts' | 'settings' }} */
   let { activePage } = $props()
 </script>
 
@@ -12,8 +12,11 @@
   <a href="/system/mcinfo" aria-current={activePage === 'mcinfo' ? 'page' : undefined} class:active={activePage === 'mcinfo'}>
     <Icon icon="lucide:cpu" width={14} />Minecraft & F3
   </a>
+  <a href="/system/price-alerts" aria-current={activePage === 'alerts' ? 'page' : undefined} class:active={activePage === 'alerts'}>
+    <Icon icon="lucide:bell" width={14} />Preisalarme
+  </a>
   <a href="/system/settings" aria-current={activePage === 'settings' ? 'page' : undefined} class:active={activePage === 'settings'}>
-    <Icon icon="lucide:bell" width={14} />Alarme & Tooltips
+    <Icon icon="lucide:sliders-horizontal" width={14} />Einstellungen
   </a>
 </nav>
 

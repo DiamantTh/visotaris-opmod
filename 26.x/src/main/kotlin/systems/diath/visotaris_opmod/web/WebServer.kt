@@ -114,6 +114,7 @@ class WebServer(
             get("/merchant") { serveResource(call, "assets/webui/merchant.html", ContentType.Text.Html) }
             get("/settings") { call.respondRedirect("/system/settings") }
             get("/system/settings") { serveResource(call, "assets/webui/settings.html", ContentType.Text.Html) }
+            get("/system/price-alerts") { serveResource(call, "assets/webui/settings.html", ContentType.Text.Html) }
             // Statischer lokaler Einrichtungs-/Login-Dialog; die Datenrouten sind geschützt.
             get("/system") { serveResource(call, "assets/webui/system.html", ContentType.Text.Html) }
             get("/system/mcinfo") {

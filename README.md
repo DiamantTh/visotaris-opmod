@@ -30,7 +30,8 @@ die speziell auf die Spielmechaniken von OPSUCHT ausgelegt sind.
 | **Config + ModMenu** | Alle Funktionen einzeln ein-/ausschaltbar über eine Einstellungsseite (ModMenu-kompatibel) |
 | **Discord RPC** | Optionaler Discord-Rich-Presence-Service (standardmäßig deaktiviert) |
 | **Preisalarme** | Clientseitige Schwellenalarme für Kauf-, Verkaufs- und Spannenpreise aus dem synchronisierten Markt-Cache |
-| **Web-UX: Alarme & Tooltips** | Geschützter Bereich für Alarmregeln sowie Tooltip-Gruppen, Frischegrenze und Anzeige veralteter Cache-Daten |
+| **Web-UX: Preisalarme** | Geschützter Bereich zum Verwalten und Beobachten einzelner Alarmregeln |
+| **Web-UX: Einstellungen** | Geschützter Bereich für Tooltip-Gruppen, Frischegrenze und Anzeige veralteter Cache-Daten |
 
 ---
 
@@ -82,14 +83,17 @@ Das vollständige technische Analysedokument liegt unter
 
 ### Preisalarme und Tooltip-Einstellungen
 
-Die lokale Web-UX enthält unter `/system/settings` einen eigenen Bereich für Preisalarme
-und Minecraft-Tooltip-Optionen. Der Bereich verwendet dieselbe lokale Systemanmeldung
+Die lokale Web-UX enthält unter `/system/price-alerts` die Preisalarmverwaltung und
+unter `/system/settings` die Minecraft-Tooltip-Einstellungen. Beide Bereiche verwenden dieselbe lokale Systemanmeldung
 wie `/system`. Alarmregeln werden ausschließlich nach einem erfolgreichen Update des
 bereits vorhandenen Markt-Caches ausgewertet. Kaufpreis, Verkaufspreis und Spanne
 (`buy - sell`) können jeweils über oder unter einem Schwellenwert beobachtet werden.
 Regeln unterstützen einmalige oder wiederholte Meldungen, Cooldown, erneutes Auslösen
 nach Verlassen des Schwellenbereichs sowie Minecraft-Chat, Web-UI oder beide Kanäle.
 Sie führen keine Käufe, Verkäufe, Befehle oder zusätzlichen Markt-/Minecraft-Abfragen aus.
+In den Minecraft-Einstellungen lässt sich die Alarmfunktion global an- und ausschalten;
+von dort führt ein Button zur Regelverwaltung im lokalen Webinterface. Falls das
+Webinterface noch nicht läuft, öffnet der Button zunächst dessen Einrichtung.
 
 Tooltips lesen weiterhin nur die lokalen Markt- und Händler-Caches. In der Web-UX sind
 Kauf-/Verkaufspreis, Händlerwerte, Datenalter und der Umgang mit veralteten Daten

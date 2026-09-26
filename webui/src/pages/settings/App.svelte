@@ -3,6 +3,7 @@
   import Navbar from '../../components/Navbar.svelte'
   import SystemSubnav from '../../components/SystemSubnav.svelte'
   import { fmtItem } from '../../lib/utils.js'
+  const alertPage = window.location.pathname === '/system/price-alerts'
 
   let configured = $state(null)
   let authenticated = $state(false)
@@ -38,17 +39,23 @@
   async function load() {
     error = ''
     try {
-      const [a, t, ev] = await Promise.all([request('/api/system/price-alerts'), request('/api/system/tooltips'), request('/api/system/price-alerts/events')])
-      if (!a || !t || !ev) return
-      authenticated = true; enabled = a.enabled; alerts = a.rules; tooltip = t; events = ev
-      if (!itemsLoaded) {
-        const response = await fetch('/api/market')
-        const market = response.ok ? await response.json() : {}
-        items = Object.keys(market).sort((x, y) => fmtItem(x).localeCompare(fmtItem(y), 'de'))
-        itemsLoaded = true
+      if (alertPage) {
+        const [a, ev] = await Promise.all([request('/api/system/price-alerts'), request('/api/system/price-alerts/events')])
+        if (!a || !ev) return
+        authenticated = true; enabled = a.enabled; alerts = a.rules; events = ev
+        if (!itemsLoaded) {
+          const response = await fetch('/api/market')
+          const market = response.ok ? await response.json() : {}
+          items = Object.keys(market).sort((x, y) => fmtItem(x).localeCompare(fmtItem(y), 'de'))
+          itemsLoaded = true
+        }
+        if (!form.itemKey && items.length) form.itemKey = items[0]
+        clearInterval(timer); timer = setInterval(refreshLive, 5000)
+      } else {
+        const t = await request('/api/system/tooltips')
+        if (!t) return
+        authenticated = true; tooltip = t
       }
-      if (!form.itemKey && items.length) form.itemKey = items[0]
-      clearInterval(timer); timer = setInterval(refreshLive, 5000)
     } catch (e) { error = e.message }
   }
   async function refreshLive() {
@@ -98,18 +105,29 @@
     try { await request('/api/system/price-alerts/global', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) }); await load() }
     catch (e) { enabled = !enabled; error = e.message }
   }
-  async function toggle(row) { edit(row); form.enabled = !row.rule.enabled; await saveAlert(new Event('submit')); }
+  async function toggle(row) {
+    busy = true; error = ''; notice = ''
+    try {
+      await request(`/api/system/price-alerts/${encodeURIComponent(row.rule.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...row.rule, enabled: !row.rule.enabled }) })
+      notice = row.rule.enabled ? 'Alarmregel pausiert.' : 'Alarmregel aktiviert.'
+      await load()
+    } catch (e) { error = e.message } finally { busy = false }
+  }
   async function remove(row) {
     if (!confirm(`Alarm für ${fmtItem(row.rule.itemKey)} löschen?`)) return
     try { await request(`/api/system/price-alerts/${encodeURIComponent(row.rule.id)}`, { method: 'DELETE' }); notice = 'Alarmregel gelöscht.'; await load() } catch (e) { error = e.message }
   }
-  onMount(() => { loadAuth().then(load); return () => clearInterval(timer) })
+  onMount(() => {
+    document.title = alertPage ? 'Visotaris – Preisalarme' : 'Visotaris – Einstellungen'
+    loadAuth().then(load)
+    return () => clearInterval(timer)
+  })
 </script>
 
 <Navbar activePage="system" />
-<SystemSubnav activePage="settings" />
+<SystemSubnav activePage={alertPage ? 'alerts' : 'settings'} />
 <main class="vi-page settings-page">
-  <header class="settings-heading"><div><p class="settings-kicker">LOKALE MARKTBEOBACHTUNG</p><h1>Alarme & Tooltips</h1><p>Regeln werten ausschließlich synchronisierte Cache-Daten aus. Kein Kauf, Verkauf oder Minecraft-Serveraufruf.</p></div></header>
+  <header class="settings-heading"><div><p class="settings-kicker">{alertPage ? 'LOKALE MARKTBEOBACHTUNG' : 'SYSTEM · CLIENT-OPTIONEN'}</p><h1>{alertPage ? 'Preisalarme' : 'Einstellungen'}</h1><p>{alertPage ? 'Regeln werten ausschließlich synchronisierte Cache-Daten aus. Kein Kauf, Verkauf oder Minecraft-Serveraufruf.' : 'Lege fest, welche Informationen in Minecraft-Item-Tooltips erscheinen und wann Cache-Daten als veraltet gelten.'}</p></div></header>
 
   {#if error}<div class="vi-alert-error" role="alert">{error}</div>{/if}
   {#if notice}<div class="settings-notice" role="status">{notice}</div>{/if}
@@ -123,6 +141,7 @@
       <small>Die Konfiguration ist nur über den lokalen Systemzugang erreichbar. Falls bereits angemeldet: Seite neu laden.</small>
     </div></section>
   {:else}
+    {#if alertPage}
     <section class="settings-section" aria-labelledby="alerts-title">
       <div class="settings-section-head"><div><p class="settings-kicker">MARKT-CACHE · KEINE EXTRA-ABFRAGEN</p><h2 id="alerts-title">Preisalarme</h2></div><label class="settings-toggle"><input type="checkbox" checked={enabled} onchange={toggleGlobal} />Alle Alarme aktiv</label></div>
       {#if alerts.length}
@@ -154,7 +173,7 @@
       </form>
       {#if events.length}<div class="settings-events"><h3>Zuletzt ausgelöst</h3>{#each events.slice(0, 8) as event}<p><time>{new Date(event.timestampMs).toLocaleTimeString('de-DE')}</time> · {fmtItem(event.itemKey)} — {labels[event.condition]} {numberText(event.currentValue)}</p>{/each}</div>{/if}
     </section>
-
+    {:else}
     <section class="settings-section" aria-labelledby="tooltip-title">
       <div class="settings-section-head"><div><p class="settings-kicker">CLIENT-SEITIG · CACHE-ONLY</p><h2 id="tooltip-title">Item-Tooltips</h2></div><button class="btn-primary" onclick={saveTooltip} disabled={busy}>Einstellungen speichern</button></div>
       <div class="vi-card tooltip-options">
@@ -171,6 +190,7 @@
         <p class="settings-help">Tooltip-Aufrufe lesen nur lokale Caches. Das Datenalter bezieht sich auf die letzte erfolgreiche Synchronisierung; es werden dabei weder Netzwerkabfragen noch Spielbefehle ausgelöst.</p>
       </div>
     </section>
+    {/if}
   {/if}
 </main>
 
