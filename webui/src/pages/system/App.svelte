@@ -2,6 +2,7 @@
   import { fade } from 'svelte/transition'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
+  import SystemSubnav from '../../components/SystemSubnav.svelte'
 
   let system = $state(null)
   let meta = $state(null)
@@ -78,6 +79,7 @@
 </script>
 
 <Navbar activePage="system" />
+<SystemSubnav activePage={mcInfoPage ? 'mcinfo' : 'overview'} />
 
 <main class="vi-page">
   <div class="flex items-center gap-3 mb-3 flex-wrap">

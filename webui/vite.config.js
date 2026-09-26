@@ -24,6 +24,7 @@ export default defineConfig({
         redcoins: resolve(__dirname, 'redcoins.html'),
         merchant: resolve(__dirname, 'merchant.html'),
         system: resolve(__dirname, 'system.html'),
+        settings: resolve(__dirname, 'settings.html'),
       },
       output: {
         entryFileNames: 'static/app/[name].js',

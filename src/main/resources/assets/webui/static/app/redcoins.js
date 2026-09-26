@@ -1,1 +1,1 @@
-import{v as e}from"./Navbar.js";import{t}from"./App.js";e(t,{target:document.getElementById(`app`),props:{currency:`redcoins`}});
+import{S as e}from"./Navbar.js";import{t}from"./App.js";e(t,{target:document.getElementById(`app`),props:{currency:`redcoins`}});

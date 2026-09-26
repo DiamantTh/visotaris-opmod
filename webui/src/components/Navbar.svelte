@@ -1,6 +1,6 @@
 <script>
   import Icon from '@iconify/svelte'
-  /** @type {{ activePage: 'market' | 'shard' | 'redcoins' | 'merchant' | 'history' | 'system' }} */
+/** @type {{ activePage: 'market' | 'shard' | 'redcoins' | 'merchant' | 'history' | 'system' }} */
   let { activePage } = $props()
 </script>
 
