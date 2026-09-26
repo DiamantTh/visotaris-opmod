@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Util;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 
 import java.util.ArrayList;
@@ -115,6 +116,25 @@ public final class VisotarisConfigScreen extends Screen {
         addToggle(rx, y, "Schnellzugriff-Buttons", cfg.showQuickButtons,     v -> cfg.showQuickButtons = v);
         y += BTN_H + BTN_GAP;
         addToggle(lx, y, "Shulker-Rekursion",      cfg.shulkerRecursion,     v -> cfg.shulkerRecursion = v);
+        y += BTN_H + BTN_GAP + SEC_GAP;
+
+        // ── Preisalarme ────────────────────────────────────────────────────
+        addLabel("Preisalarme", y);                         y += CAT_H + CAT_GAP;
+        addToggle(lx, y, "Alarme aktiv", cfg.priceAlertsEnabled, v -> cfg.priceAlertsEnabled = v);
+        var alertWebServer = VisotarisModClient.getInstance().getWebServer();
+        boolean alertWebRunning = alertWebServer != null && alertWebServer.isRunning();
+        Button alertRulesButton = Button.builder(
+                Component.literal(alertWebRunning ? "Regeln (" + cfg.priceAlertRules.size() + ") öffnen" : "Web-UX einrichten"),
+                b -> {
+                    var server = VisotarisModClient.getInstance().getWebServer();
+                    if (server != null && server.isRunning()) {
+                        Util.getPlatform().openUri("http://localhost:" + server.getPort() + "/system/price-alerts");
+                    } else {
+                        this.minecraft.setScreen(new NetworkSettingsScreen(this));
+                    }
+                }
+        ).bounds(rx, 0, buttonWidth, BTN_H).build();
+        addContent(alertRulesButton, y);
         y += BTN_H + BTN_GAP + SEC_GAP;
 
         // ── Ingame-Schutz ──────────────────────────────────────────────────
