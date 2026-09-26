@@ -39,4 +39,34 @@ class ConfigMigrationTest {
         assertEquals("WEB", reloaded.getConfig().priceAlertRules.getFirst().notification);
         assertEquals(330, reloaded.getConfig().marketRefreshIntervalSeconds);
     }
+
+    @Test void migratesLegacyChatChannelsWithoutLosingAlertState() throws Exception {
+        Path file = directory.resolve("alerts.toml");
+        PriceAlertRule chat = new PriceAlertRule("diamond", "BUY_ABOVE", 250);
+        chat.id = "legacy-chat"; chat.notification = "CHAT"; chat.repeat = true;
+        chat.cooldownSeconds = 720; chat.lastTriggeredAtMs = 123456L;
+        chat.triggered = true; chat.latched = true;
+        PriceAlertRule both = new PriceAlertRule("sand", "SELL_BELOW", 12);
+        both.id = "legacy-both"; both.notification = "BOTH"; both.enabled = false;
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String chatJson = gson.toJson(chat.toMap()).replace("HUD", "CHAT");
+        String bothJson = gson.toJson(both.toMap()).replace("HUD_WEB", "BOTH");
+        Files.writeString(file, "[priceAlerts]\nenabled = true\nrules = [\"" + chatJson.replace("\\", "\\\\").replace("\"", "\\\"") + "\", \"" + bothJson.replace("\\", "\\\\").replace("\"", "\\\"") + "\"]\n");
+        ConfigManager manager = new ConfigManager(file);
+        manager.load();
+        assertEquals(2, manager.getConfig().priceAlertRules.size());
+        PriceAlertRule migratedChat = manager.getConfig().priceAlertRules.get(0);
+        assertEquals("legacy-chat", migratedChat.id);
+        assertEquals("HUD", migratedChat.notification);
+        assertEquals(250, migratedChat.threshold);
+        assertEquals(720, migratedChat.cooldownSeconds);
+        assertEquals(123456L, migratedChat.lastTriggeredAtMs);
+        assertTrue(migratedChat.triggered);
+        assertTrue(migratedChat.latched);
+        assertEquals("HUD_WEB", manager.getConfig().priceAlertRules.get(1).notification);
+        assertFalse(manager.getConfig().priceAlertRules.get(1).enabled);
+        String rewritten = Files.readString(file);
+        assertFalse(rewritten.contains("\\\"CHAT\\\""), rewritten);
+        assertFalse(rewritten.contains("\\\"BOTH\\\""), rewritten);
+    }
 }

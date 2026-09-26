@@ -490,7 +490,7 @@ class WebServer(
         if (body.has("cooldownSeconds") && cooldownElement == null) return null
         val cooldownDouble = cooldownElement?.asDouble ?: 300.0
         if (cooldownDouble % 1.0 != 0.0) return null
-        val notification = string("notification", "CHAT") ?: return null
+        val notification = string("notification", "HUD") ?: return null
         PriceAlertInputValidator.create(itemKey, condition, threshold, flag("enabled", true) ?: return null,
             flag("repeat", false) ?: return null, cooldownDouble.toInt(), flag("rearmOnExit", true) ?: return null, notification)
     }.getOrNull()

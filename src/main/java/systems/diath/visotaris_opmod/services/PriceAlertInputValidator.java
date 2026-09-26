@@ -14,10 +14,11 @@ public final class PriceAlertInputValidator {
         if (condition == null || !PriceAlertEngine.CONDITIONS.contains(condition.toUpperCase(Locale.ROOT))) return null;
         if (!Double.isFinite(threshold) || Math.abs(threshold) > 1.0e15) return null;
         if (cooldownSeconds < 10 || cooldownSeconds > 86400) return null;
-        if (notification == null || !java.util.Set.of("CHAT", "WEB", "BOTH").contains(notification.toUpperCase(Locale.ROOT))) return null;
+        String channel = PriceAlertRule.normalizeNotification(notification);
+        if (channel == null) return null;
         PriceAlertRule rule = new PriceAlertRule(itemKey.toLowerCase(Locale.ROOT), condition.toUpperCase(Locale.ROOT), threshold);
         rule.enabled = enabled; rule.repeat = repeat; rule.cooldownSeconds = cooldownSeconds;
-        rule.rearmOnExit = rearmOnExit; rule.notification = notification.toUpperCase(Locale.ROOT);
+        rule.rearmOnExit = rearmOnExit; rule.notification = channel;
         return rule;
     }
 }

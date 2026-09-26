@@ -19,7 +19,7 @@
   let error = $state('')
   let notice = $state('')
   let editingId = $state('')
-  let form = $state({ itemKey: '', condition: 'BUY_ABOVE', threshold: '', enabled: true, repeat: false, cooldownSeconds: 300, rearmOnExit: true, notification: 'CHAT' })
+  let form = $state({ itemKey: '', condition: 'BUY_ABOVE', threshold: '', enabled: true, repeat: false, cooldownSeconds: 300, rearmOnExit: true, notification: 'HUD' })
   const conditions = [
     ['BUY_ABOVE', 'Kaufpreis steigt über'], ['BUY_BELOW', 'Kaufpreis fällt unter'],
     ['SELL_ABOVE', 'Verkaufspreis steigt über'], ['SELL_BELOW', 'Verkaufspreis fällt unter'],
@@ -28,6 +28,7 @@
   const labels = Object.fromEntries(conditions)
   const numberText = value => value == null || !Number.isFinite(value) ? '–' : new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
   const stateLabel = { watching: 'Beobachtet', paused: 'Pausiert', globally_paused: 'Global pausiert', waiting_for_data: 'Wartet auf Marktdaten', triggered: 'Ausgelöst', rearm_pending: 'Wartet auf Rückkehr', cooldown: 'Cooldown' }
+  const channelLabel = { HUD: 'Minecraft-HUD', WEB: 'Web-UI (solange offen)', HUD_WEB: 'Minecraft-HUD und Web-UI' }
   let timer
 
   async function request(url, options = {}) {
@@ -85,10 +86,10 @@
   }
   function edit(row) {
     const r = row.rule; editingId = r.id
-    form = { itemKey: r.itemKey, condition: r.condition, threshold: r.threshold, enabled: r.enabled, repeat: r.repeat, cooldownSeconds: r.cooldownSeconds, rearmOnExit: r.rearmOnExit, notification: r.notification }
+    form = { itemKey: r.itemKey, condition: r.condition, threshold: r.threshold, enabled: r.enabled, repeat: r.repeat, cooldownSeconds: r.cooldownSeconds, rearmOnExit: r.rearmOnExit, notification: r.notification === 'CHAT' ? 'HUD' : r.notification === 'BOTH' ? 'HUD_WEB' : r.notification }
     document.getElementById('alert-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
-  function resetForm() { editingId = ''; form = { itemKey: items[0] || '', condition: 'BUY_ABOVE', threshold: '', enabled: true, repeat: false, cooldownSeconds: 300, rearmOnExit: true, notification: 'CHAT' } }
+  function resetForm() { editingId = ''; form = { itemKey: items[0] || '', condition: 'BUY_ABOVE', threshold: '', enabled: true, repeat: false, cooldownSeconds: 300, rearmOnExit: true, notification: 'HUD' } }
   async function saveAlert(event) {
     event.preventDefault(); error = ''; notice = ''
     const threshold = Number(form.threshold)
@@ -149,7 +150,7 @@
           {#each alerts as row (row.rule.id)}
             <article class="vi-card alert-card">
               <div class="alert-card-main"><div><h3>{fmtItem(row.rule.itemKey)}</h3><p>{labels[row.rule.condition]} <strong>{numberText(row.rule.threshold)}</strong></p></div><span class="alert-state" data-state={row.state}>{stateLabel[row.state] || row.state}</span></div>
-              <div class="alert-meta"><span>Zuletzt bekannter Wert: {row.currentValue == null ? 'keine Daten' : numberText(row.currentValue)}</span><span>Datenstand: {row.lastUpdatedAtMs ? new Date(row.lastUpdatedAtMs).toLocaleString('de-DE') : 'noch nie synchronisiert'}</span><span>{row.rule.repeat ? `Wiederholung · ${row.rule.cooldownSeconds}s Cooldown` : 'Einmalig'}</span><span>Benachrichtigung: {row.rule.notification}</span></div>
+              <div class="alert-meta"><span>Zuletzt bekannter Wert: {row.currentValue == null ? 'keine Daten' : numberText(row.currentValue)}</span><span>Datenstand: {row.lastUpdatedAtMs ? new Date(row.lastUpdatedAtMs).toLocaleString('de-DE') : 'noch nie synchronisiert'}</span><span>{row.rule.repeat ? `Wiederholung · ${row.rule.cooldownSeconds}s Cooldown` : 'Einmalig'}</span><span>Benachrichtigung: {channelLabel[row.rule.notification] || row.rule.notification}</span></div>
               <div class="alert-actions"><button class="btn-outline" onclick={() => toggle(row)}>{row.rule.enabled ? 'Pausieren' : 'Aktivieren'}</button><button class="btn-outline" onclick={() => edit(row)}>Bearbeiten</button><button class="btn-outline danger" onclick={() => remove(row)}>Entfernen</button></div>
             </article>
           {/each}
@@ -162,7 +163,7 @@
           <label>Marktitem<select bind:value={form.itemKey} required>{#each items as key}<option value={key}>{fmtItem(key)}</option>{/each}</select></label>
           <label>Bedingung<select bind:value={form.condition}>{#each conditions as [value, label]}<option {value}>{label}</option>{/each}</select></label>
           <label>Schwellenwert<input type="number" step="any" bind:value={form.threshold} required /></label>
-          <label>Benachrichtigung<select bind:value={form.notification}><option value="CHAT">Minecraft-Chat</option><option value="WEB">Web-UI (solange offen)</option><option value="BOTH">Chat und Web-UI</option></select></label>
+          <label>Benachrichtigung<select bind:value={form.notification}><option value="HUD">Minecraft-HUD</option><option value="WEB">Web-UI (solange offen)</option><option value="HUD_WEB">Minecraft-HUD und Web-UI</option></select></label>
           <label class="settings-check"><input type="checkbox" bind:checked={form.repeat} />Wiederholt benachrichtigen</label>
           <label>Cooldown (Sekunden)<input type="number" min="10" max="86400" step="1" bind:value={form.cooldownSeconds} disabled={!form.repeat} /></label>
           <label class="settings-check"><input type="checkbox" bind:checked={form.rearmOnExit} disabled={!form.repeat} />Nach Verlassen des Schwellenbereichs wieder scharf schalten</label>
@@ -176,6 +177,7 @@
     {:else}
     <section class="settings-section" aria-labelledby="tooltip-title">
       <div class="settings-section-head"><div><p class="settings-kicker">CLIENT-SEITIG · CACHE-ONLY</p><h2 id="tooltip-title">Item-Tooltips</h2></div><button class="btn-primary" onclick={saveTooltip} disabled={busy}>Einstellungen speichern</button></div>
+      <p class="settings-help">Diese Zusätze erscheinen im normalen Minecraft-Tooltip, wenn du im Inventar, einer Kiste oder einem Menü mit der Maus über einen Item-Slot fährst. Sie ergänzen die üblichen Item-Eigenschaften und Verzauberungen. Off-Hand, dauerhaftes HUD und Container-Gesamtwert sind getrennte Anzeigen.</p>
       <div class="vi-card tooltip-options">
         <label class="settings-check"><input type="checkbox" bind:checked={tooltip.showMarketPrices} />Marktpreise im Tooltip aktivieren</label>
         <div class="settings-nested">

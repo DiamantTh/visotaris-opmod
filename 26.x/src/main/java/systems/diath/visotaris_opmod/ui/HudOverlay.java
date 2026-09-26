@@ -11,6 +11,11 @@ import systems.diath.visotaris_opmod.model.JobSnapshot;
 import systems.diath.visotaris_opmod.model.InventoryValuation;
 import systems.diath.visotaris_opmod.services.InventoryValuationService;
 import systems.diath.visotaris_opmod.services.JobTrackerService;
+import systems.diath.visotaris_opmod.services.PriceAlertNotificationQueue;
+import systems.diath.visotaris_opmod.services.PriceAlertService;
+import systems.diath.visotaris_opmod.util.ItemNameResolver;
+
+import java.util.Locale;
 
 /**
  * HUD-Overlay: zeigt Job-Tracker-Daten (Job, Level, XP/h, Money/h) sowie die
@@ -34,6 +39,11 @@ public final class HudOverlay implements HudElement {
     private final JobTrackerService          jobTracker;
     private final InventoryValuationService  valuation;
     private final ConfigManager              config;
+    private final PriceAlertNotificationQueue alertNotifications;
+    private PriceAlertService.Event displayedAlert;
+    private String alertItem;
+    private String alertCondition;
+    private String alertValue;
 
     /** Standard-Position oben links (offset). */
     private int posX = 4;
@@ -43,25 +53,67 @@ public final class HudOverlay implements HudElement {
 
     public HudOverlay(JobTrackerService jobTracker,
                       InventoryValuationService valuation,
-                      ConfigManager config) {
+                      ConfigManager config,
+                      PriceAlertNotificationQueue alertNotifications) {
         this.jobTracker = jobTracker;
         this.valuation  = valuation;
         this.config     = config;
+        this.alertNotifications = alertNotifications;
     }
 
     /** Wird per HudElementRegistry.addLast(...) registriert. */
     @Override
     public void extractRenderState(GuiGraphicsExtractor ctx, DeltaTracker tickCounter) {
         var cfg = config.getConfig();
-        if (!cfg.ingameFeaturesEnabled()) return;
-        if (!cfg.showHud) return;
-
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.gui.hud.isHidden()) return;
+
+        if (cfg.priceAlertsEnabled) renderPriceAlert(ctx, mc);
+        else alertNotifications.clear();
+        if (!cfg.ingameFeaturesEnabled() || !cfg.showHud) return;
 
         int nextY = renderJobInfo(ctx, mc);
         renderInventoryValue(ctx, mc, nextY);
         if (cfg.enableInventoryWarning) renderInventoryWarning(ctx, mc);
+    }
+
+    /** Short-lived price alert card; independent of the persistent job/inventory HUD. */
+    private void renderPriceAlert(GuiGraphicsExtractor ctx, Minecraft mc) {
+        PriceAlertService.Event alert = alertNotifications.current(System.currentTimeMillis());
+        if (alert == null) { displayedAlert = null; return; }
+        if (alert != displayedAlert) {
+            displayedAlert = alert;
+            alertItem = ItemNameResolver.resolve(alert.itemKey());
+            alertCondition = PriceAlertService.conditionLabel(alert.condition()) + " " + formatAlertPrice(alert.threshold());
+            alertValue = "Aktuell: " + formatAlertPrice(alert.currentValue());
+        }
+
+        int width = Math.min(256, mc.getWindow().getGuiScaledWidth() - 16);
+        int x = mc.getWindow().getGuiScaledWidth() - width - 8;
+        int y = 8;
+        ctx.fill(x, y, x + width, y + 54, 0xE9132030);
+        ctx.fill(x, y, x + 3, y + 54, 0xFFA3E635);
+        ctx.fill(x + 3, y, x + width, y + 1, 0xFF375773);
+        ctx.text(mc.font, "PREISALARM", x + 9, y + 5, 0xFFA3E635, true);
+        int more = alertNotifications.pendingCount();
+        if (more > 0) {
+            String count = "+" + more;
+            ctx.text(mc.font, count, x + width - mc.font.width(count) - 8, y + 5, 0xFFB7C9D9, true);
+        }
+        int textWidth = Math.max(0, width - 18);
+        ctx.text(mc.font, fitAlertText(mc, alertItem, textWidth), x + 9, y + 17, 0xFFE5EDF2, true);
+        ctx.text(mc.font, fitAlertText(mc, alertCondition, textWidth), x + 9, y + 29, 0xFFB7C9D9, true);
+        ctx.text(mc.font, fitAlertText(mc, alertValue, textWidth), x + 9, y + 41, 0xFFA3E635, true);
+    }
+
+    private static String formatAlertPrice(double price) {
+        return String.format(Locale.GERMANY, "%,.2f", price);
+    }
+
+    private static String fitAlertText(Minecraft mc, String text, int maxWidth) {
+        if (mc.font.width(text) <= maxWidth) return text;
+        while (!text.isEmpty() && mc.font.width(text + "…") > maxWidth) text = text.substring(0, text.length() - 1);
+        return text + "…";
     }
 
     // ── Job-Info ────────────────────────────────────────────────────────────

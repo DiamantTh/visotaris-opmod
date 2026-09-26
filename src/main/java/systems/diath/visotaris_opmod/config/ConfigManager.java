@@ -51,10 +51,10 @@ public final class ConfigManager {
             VisotarisLogger.info("Neue Konfiguration erstellt: {}", configPath);
             return;
         }
-        boolean migrateLegacySections = false;
+        boolean migrateLegacySettings = false;
         try (CommentedFileConfig toml = CommentedFileConfig.builder(configPath, TomlFormat.instance()).build()) {
             toml.load();
-            migrateLegacySections = toml.contains("modus") || toml.contains("anzeige") || toml.contains("schutz") || toml.contains("netzwerk")
+            migrateLegacySettings = toml.contains("modus") || toml.contains("anzeige") || toml.contains("schutz") || toml.contains("netzwerk")
                 || hasLegacyFlatSettings(toml) || toml.contains("features.enableDiscordRpc")
                 || toml.contains("features.discordApplicationId") || toml.contains("features.saveDiscordScreenshotsLocally")
                 || toml.contains("features.verboseDiscordScreenshotLogging");
@@ -80,8 +80,14 @@ public final class ConfigManager {
                 try {
                     if (entry instanceof String json) {
                         java.util.Map<?, ?> map = GSON.fromJson(JsonParser.parseString(json), java.util.Map.class);
-                        c.priceAlertRules.add(PriceAlertRule.fromMap(map));
-                    } else if (entry instanceof java.util.Map<?, ?> map) c.priceAlertRules.add(PriceAlertRule.fromMap(map));
+                        PriceAlertRule rule = PriceAlertRule.fromMap(map);
+                        c.priceAlertRules.add(rule);
+                        if (map.get("notification") instanceof String stored && !stored.equals(rule.notification)) migrateLegacySettings = true;
+                    } else if (entry instanceof java.util.Map<?, ?> map) {
+                        PriceAlertRule rule = PriceAlertRule.fromMap(map);
+                        c.priceAlertRules.add(rule);
+                        if (map.get("notification") instanceof String stored && !stored.equals(rule.notification)) migrateLegacySettings = true;
+                    }
                 } catch (RuntimeException ignored) { }
             }
             // ── Schutz ────────────────────────────────────────────────────────────────
@@ -140,7 +146,7 @@ public final class ConfigManager {
         } catch (Exception e) {
             VisotarisLogger.warn("Konfiguration konnte nicht gelesen werden, nutze Defaults: {}", e.getMessage());
         }
-        if (migrateLegacySections) save();
+        if (migrateLegacySettings) save();
     }
 
     public synchronized void save() {

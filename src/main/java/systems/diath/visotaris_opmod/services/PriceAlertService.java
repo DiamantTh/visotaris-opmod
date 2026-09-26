@@ -14,15 +14,15 @@ import java.util.function.Consumer;
 
 /** Evaluates rules only after a successful MarketCache update. */
 public final class PriceAlertService {
-    public record Event(String id, String itemKey, String condition, double threshold, double currentValue, long timestampMs) { }
+    public record Event(String id, String itemKey, String condition, double threshold, double currentValue, long timestampMs, String notification) { }
     private final ConfigManager config;
-    private final Consumer<String> chatNotifier;
+    private final Consumer<Event> hudNotifier;
     private final PriceAlertEngine engine = new PriceAlertEngine();
     private final Deque<Event> events = new ArrayDeque<>();
 
-    public PriceAlertService(ConfigManager config, MarketCache cache, Consumer<String> chatNotifier) {
+    public PriceAlertService(ConfigManager config, MarketCache cache, Consumer<Event> hudNotifier) {
         this.config = config;
-        this.chatNotifier = chatNotifier;
+        this.hudNotifier = hudNotifier;
         cache.addUpdateListener(this::evaluate);
     }
 
@@ -34,20 +34,18 @@ public final class PriceAlertService {
             if (!fired.isEmpty()) config.save();
         }
         for (var alarm : fired) {
+            String channel = alarm.rule().notificationChannel();
             Event event = new Event(alarm.rule().id, alarm.rule().itemKey, alarm.rule().condition,
-                alarm.rule().threshold, alarm.currentValue(), alarm.timestampMs());
+                alarm.rule().threshold, alarm.currentValue(), alarm.timestampMs(), channel);
             synchronized (events) {
                 events.addFirst(event);
                 while (events.size() > 50) events.removeLast();
             }
-            if (alarm.rule().notification.equals("CHAT") || alarm.rule().notification.equals("BOTH")) {
-                chatNotifier.accept("§b[Visotaris] §f" + alarm.rule().itemKey + " §7" + conditionLabel(alarm.rule().condition)
-                    + " §f" + String.format(java.util.Locale.ROOT, "%.2f", alarm.currentValue()));
-            }
+            if (channel.equals("HUD") || channel.equals("HUD_WEB")) hudNotifier.accept(event);
         }
     }
 
-    private static String conditionLabel(String condition) {
+    public static String conditionLabel(String condition) {
         return switch (condition) {
             case "BUY_ABOVE" -> "Kaufpreis über";
             case "BUY_BELOW" -> "Kaufpreis unter";

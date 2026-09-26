@@ -30,6 +30,7 @@ import systems.diath.visotaris_opmod.services.MinecraftScreenshotCaptureBackend;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 import systems.diath.visotaris_opmod.services.TooltipValueService;
 import systems.diath.visotaris_opmod.services.PriceAlertService;
+import systems.diath.visotaris_opmod.services.PriceAlertNotificationQueue;
 import systems.diath.visotaris_opmod.ui.HudOverlay;
 import systems.diath.visotaris_opmod.web.WebServer;
 
@@ -52,6 +53,7 @@ public class VisotarisModClient implements ClientModInitializer {
     private JobTrackerService          jobTrackerService;
     private TooltipValueService        tooltipValueService;
     private PriceAlertService           priceAlertService;
+    private PriceAlertNotificationQueue alertNotifications;
     private InventoryValuationService  inventoryValuationService;
     private PendingConfirmationService pendingConfirmationService;
     private DiscordPresenceService      discordPresenceService;
@@ -78,9 +80,8 @@ public class VisotarisModClient implements ClientModInitializer {
         marketSyncService         = new MarketSyncService(marketCache, configManager);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
-        priceAlertService          = new PriceAlertService(configManager, marketCache, message -> Minecraft.getInstance().execute(() -> {
-            if (Minecraft.getInstance().player != null) Minecraft.getInstance().player.sendSystemMessage(Component.literal(message));
-        }));
+        alertNotifications        = new PriceAlertNotificationQueue();
+        priceAlertService         = new PriceAlertService(configManager, marketCache, alertNotifications::enqueue);
         inventoryValuationService = new InventoryValuationService(marketCache, shardCache, configManager);
         jobTrackerService         = new JobTrackerService(configManager);
         pendingConfirmationService = new PendingConfirmationService(configManager);
@@ -152,7 +153,7 @@ public class VisotarisModClient implements ClientModInitializer {
         });
 
         // 9. HUD registrieren (fabric-rendering-v1: HudElementRegistry ersetzt das entfernte HudRenderCallback)
-        hudOverlay = new HudOverlay(jobTrackerService, inventoryValuationService, configManager);
+        hudOverlay = new HudOverlay(jobTrackerService, inventoryValuationService, configManager, alertNotifications);
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), hudOverlay);
 
         // 10. Client-Commands registrieren

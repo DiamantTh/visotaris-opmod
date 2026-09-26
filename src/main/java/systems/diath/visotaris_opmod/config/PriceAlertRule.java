@@ -2,6 +2,7 @@ package systems.diath.visotaris_opmod.config;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
 
 /** Persisted, observation-only market alert. No rule can perform a trade. */
@@ -14,7 +15,7 @@ public final class PriceAlertRule {
     public boolean repeat;
     public int cooldownSeconds = 300;
     public boolean rearmOnExit = true;
-    public String notification = "CHAT";
+    public String notification = "HUD";
     public long lastTriggeredAtMs;
     public boolean triggered;
     public boolean latched;
@@ -32,7 +33,7 @@ public final class PriceAlertRule {
         map.put("id", id); map.put("itemKey", itemKey); map.put("condition", condition);
         map.put("threshold", threshold); map.put("enabled", enabled); map.put("repeat", repeat);
         map.put("cooldownSeconds", cooldownSeconds); map.put("rearmOnExit", rearmOnExit);
-        map.put("notification", notification); map.put("lastTriggeredAtMs", lastTriggeredAtMs);
+        map.put("notification", notificationChannel()); map.put("lastTriggeredAtMs", lastTriggeredAtMs);
         map.put("triggered", triggered); map.put("latched", latched);
         return map;
     }
@@ -46,10 +47,27 @@ public final class PriceAlertRule {
         rule.enabled = bool(map, "enabled", true); rule.repeat = bool(map, "repeat", false);
         rule.cooldownSeconds = (int) number(map, "cooldownSeconds", 300);
         rule.rearmOnExit = bool(map, "rearmOnExit", true);
-        rule.notification = string(map, "notification", "CHAT");
+        String channel = normalizeNotification(string(map, "notification", "HUD"));
+        rule.notification = channel == null ? "HUD" : channel;
         rule.lastTriggeredAtMs = (long) number(map, "lastTriggeredAtMs", 0);
         rule.triggered = bool(map, "triggered", false); rule.latched = bool(map, "latched", false);
         return rule;
+    }
+
+    /** Legacy CHAT/BOTH values retain their original destinations without using Minecraft chat. */
+    public static String normalizeNotification(String value) {
+        if (value == null) return null;
+        return switch (value.toUpperCase(Locale.ROOT)) {
+            case "CHAT", "HUD" -> "HUD";
+            case "WEB" -> "WEB";
+            case "BOTH", "HUD_WEB" -> "HUD_WEB";
+            default -> null;
+        };
+    }
+
+    public String notificationChannel() {
+        String normalized = normalizeNotification(notification);
+        return normalized == null ? "HUD" : normalized;
     }
 
     private static String string(Map<?, ?> m, String k, String d) { Object v=m.get(k); return v instanceof String s ? s : d; }
