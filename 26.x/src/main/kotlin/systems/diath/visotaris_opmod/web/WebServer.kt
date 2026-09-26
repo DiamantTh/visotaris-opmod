@@ -18,6 +18,10 @@ import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
 import systems.diath.visotaris_opmod.config.ConfigManager
+import systems.diath.visotaris_opmod.config.PriceAlertRule
+import systems.diath.visotaris_opmod.services.PriceAlertEngine
+import systems.diath.visotaris_opmod.services.PriceAlertService
+import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
 import java.util.Arrays
 
 /**
@@ -32,7 +36,8 @@ class WebServer(
     private val marketCache: MarketCache,
     private val shardCache: ShardCache,
     private val historyCache: PriceHistoryCache,
-    private val config: ConfigManager
+    private val config: ConfigManager,
+    private val priceAlerts: PriceAlertService
 ) {
     private val gson = Gson()
     private val systemAccess = SystemAccessControl(config)
@@ -107,6 +112,8 @@ class WebServer(
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
             get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
             get("/merchant") { serveResource(call, "assets/webui/merchant.html", ContentType.Text.Html) }
+            get("/settings") { call.respondRedirect("/system/settings") }
+            get("/system/settings") { serveResource(call, "assets/webui/settings.html", ContentType.Text.Html) }
             // Statischer lokaler Einrichtungs-/Login-Dialog; die Datenrouten sind geschützt.
             get("/system") { serveResource(call, "assets/webui/system.html", ContentType.Text.Html) }
             get("/system/mcinfo") {
@@ -186,6 +193,7 @@ class WebServer(
             }
             post("/api/system/setup") {
                 if (systemAccess.configured()) { call.respond(HttpStatusCode.Conflict, "Passwort bereits eingerichtet"); return@post }
+                if (!allowLocalWrite(call)) return@post
                 val form = call.receiveParameters()
                 val password = form["password"]?.toCharArray() ?: charArrayOf()
                 val confirmation = form["confirmation"]?.toCharArray() ?: charArrayOf()
@@ -198,6 +206,7 @@ class WebServer(
             }
             post("/api/system/login") {
                 if (!systemAccess.configured()) { call.respond(HttpStatusCode(428, "Precondition Required"), "Systempasswort zuerst einrichten"); return@post }
+                if (!allowLocalWrite(call)) return@post
                 val password = call.receiveParameters()["password"]?.toCharArray() ?: charArrayOf()
                 try {
                     val token = systemAccess.login(password)
@@ -205,7 +214,7 @@ class WebServer(
                     else { setSystemCookie(call, token); call.respondText("{}", ContentType.Application.Json) }
                 } finally { Arrays.fill(password, '\u0000') }
             }
-            post("/api/system/logout") { systemAccess.logout(call.request.cookies[SystemAccessControl.COOKIE]); clearSystemCookie(call); call.respond(HttpStatusCode.NoContent) }
+            post("/api/system/logout") { if (!allowLocalWrite(call)) return@post; systemAccess.logout(call.request.cookies[SystemAccessControl.COOKIE]); clearSystemCookie(call); call.respond(HttpStatusCode.NoContent) }
             get("/api/system/status") { call.respondText(gson.toJson(mapOf("configured" to systemAccess.configured())), ContentType.Application.Json) }
             get("/api/system") {
                 if (!requireSystemAccess(call)) return@get
@@ -214,6 +223,104 @@ class WebServer(
             get("/api/system/mcinfo") {
                 if (!requireSystemAccess(call)) return@get
                 call.respondText(gson.toJson(minecraftSnapshot()), ContentType.Application.Json)
+            }
+            get("/api/system/price-alerts") {
+                if (!requireSystemAccess(call)) return@get
+                val snapshot = synchronized(config) {
+                    val cfg = config.config
+                    cfg.priceAlertRules.map { rule ->
+                    val p = marketCache.get(rule.itemKey).orElse(null)
+                    mapOf("rule" to rule.toMap(), "currentValue" to p?.let { PriceAlertEngine.value(rule.condition, it) },
+                        "lastUpdatedAtMs" to marketCache.getLastUpdatedMs(), "dataAgeSeconds" to marketCache.getAgeSeconds(),
+                        "state" to when {
+                            !cfg.priceAlertsEnabled -> "globally_paused"; !rule.enabled -> "paused"; p == null -> "waiting_for_data"
+                            rule.triggered && !rule.repeat -> "triggered"; rule.latched && rule.rearmOnExit -> "rearm_pending"
+                            rule.repeat && rule.lastTriggeredAtMs > 0 && System.currentTimeMillis() - rule.lastTriggeredAtMs < rule.cooldownSeconds * 1000L -> "cooldown"
+                            else -> "watching"
+                        })
+                    } to cfg.priceAlertsEnabled
+                }
+                call.respondText(gson.toJson(mapOf("enabled" to snapshot.second, "rules" to snapshot.first)), ContentType.Application.Json)
+            }
+            post("/api/system/price-alerts") {
+                if (!requireSystemAccess(call)) return@post
+                if (!allowLocalWrite(call)) return@post
+                val rule = parseAlert(call.receiveText())
+                if (rule == null) { call.respond(HttpStatusCode.BadRequest, "Invalid alert rule"); return@post }
+                val created = synchronized(config) {
+                    if (config.config.priceAlertRules.size >= 200) false
+                    else { config.config.priceAlertRules.add(rule); config.save(); true }
+                }
+                if (!created) { call.respond(HttpStatusCode(429, "Too Many Requests"), "Maximum of 200 rules reached"); return@post }
+                call.respondText(gson.toJson(rule.toMap()), ContentType.Application.Json, HttpStatusCode.Created)
+            }
+            put("/api/system/price-alerts/global") {
+                if (!requireSystemAccess(call)) return@put
+                if (!allowLocalWrite(call)) return@put
+                val body = runCatching { JsonParser.parseString(call.receiveText()).asJsonObject }.getOrNull()
+                if (body == null || !body.has("enabled") || !body.get("enabled").isJsonPrimitive || !body.getAsJsonPrimitive("enabled").isBoolean) { call.respond(HttpStatusCode.BadRequest, "enabled must be boolean"); return@put }
+                synchronized(config) { config.config.priceAlertsEnabled = body.get("enabled").asBoolean; config.save() }
+                call.respond(HttpStatusCode.NoContent)
+            }
+            put("/api/system/price-alerts/{id}") {
+                if (!requireSystemAccess(call)) return@put
+                if (!allowLocalWrite(call)) return@put
+                val id = call.parameters["id"].orEmpty()
+                val replacement = parseAlert(call.receiveText())
+                if (replacement == null) { call.respond(HttpStatusCode.BadRequest, "Invalid alert rule"); return@put }
+                val found = synchronized(config) {
+                    val rule = config.config.priceAlertRules.firstOrNull { it.id == id } ?: return@synchronized false
+                    val wasEnabled = rule.enabled
+                    val definitionChanged = rule.itemKey != replacement.itemKey || rule.condition != replacement.condition
+                        || rule.threshold != replacement.threshold || rule.repeat != replacement.repeat
+                        || rule.cooldownSeconds != replacement.cooldownSeconds || rule.rearmOnExit != replacement.rearmOnExit
+                        || rule.notification != replacement.notification
+                    rule.itemKey = replacement.itemKey; rule.condition = replacement.condition; rule.threshold = replacement.threshold
+                    rule.enabled = replacement.enabled; rule.repeat = replacement.repeat; rule.cooldownSeconds = replacement.cooldownSeconds
+                    rule.rearmOnExit = replacement.rearmOnExit; rule.notification = replacement.notification
+                    if (definitionChanged || (rule.enabled && !wasEnabled)) { rule.triggered = false; rule.latched = false; rule.lastTriggeredAtMs = 0 }
+                    config.save(); true
+                }
+                if (!found) { call.respond(HttpStatusCode.NotFound); return@put }
+                call.respond(HttpStatusCode.NoContent)
+            }
+            delete("/api/system/price-alerts/{id}") {
+                if (!requireSystemAccess(call)) return@delete
+                if (!allowLocalWrite(call)) return@delete
+                val id = call.parameters["id"].orEmpty()
+                val removed = synchronized(config) { config.config.priceAlertRules.removeIf { it.id == id }.also { if (it) config.save() } }
+                if (!removed) call.respond(HttpStatusCode.NotFound) else call.respond(HttpStatusCode.NoContent)
+            }
+            get("/api/system/price-alerts/events") {
+                if (!requireSystemAccess(call)) return@get
+                call.respondText(gson.toJson(priceAlerts.events()), ContentType.Application.Json)
+            }
+            get("/api/system/tooltips") {
+                if (!requireSystemAccess(call)) return@get
+                val c = synchronized(config) { config.config }
+                call.respondText(gson.toJson(mapOf("showMarketPrices" to c.showMarketTooltips, "showBuyPrice" to c.tooltipShowBuyPrice,
+                    "showSellPrice" to c.tooltipShowSellPrice, "showMerchantRates" to c.tooltipShowMerchantRates,
+                    "showShardRates" to c.tooltipShowShardRates,
+                    "showDataAge" to c.tooltipShowDataAge, "showStaleData" to c.tooltipShowStaleData, "maxAgeSeconds" to c.tooltipMaxAgeSeconds)), ContentType.Application.Json)
+            }
+            put("/api/system/tooltips") {
+                if (!requireSystemAccess(call)) return@put
+                if (!allowLocalWrite(call)) return@put
+                val body = runCatching { JsonParser.parseString(call.receiveText()).asJsonObject }.getOrNull()
+                val fields = listOf("showMarketPrices", "showBuyPrice", "showSellPrice", "showMerchantRates", "showShardRates", "showDataAge", "showStaleData")
+                if (body == null || fields.any { !body.has(it) || !body.get(it).isJsonPrimitive || !body.getAsJsonPrimitive(it).isBoolean }
+                    || !body.has("maxAgeSeconds") || !body.get("maxAgeSeconds").isJsonPrimitive || !body.getAsJsonPrimitive("maxAgeSeconds").isNumber
+                    || body.get("maxAgeSeconds").asDouble != body.get("maxAgeSeconds").asInt.toDouble()
+                    || body.get("maxAgeSeconds").asInt !in 60..86400) { call.respond(HttpStatusCode.BadRequest, "Invalid tooltip options"); return@put }
+                synchronized(config) {
+                    val c = config.config
+                    c.showMarketTooltips = body.get("showMarketPrices").asBoolean; c.tooltipShowBuyPrice = body.get("showBuyPrice").asBoolean
+                    c.tooltipShowSellPrice = body.get("showSellPrice").asBoolean; c.tooltipShowMerchantRates = body.get("showMerchantRates").asBoolean
+                    c.tooltipShowShardRates = body.get("showShardRates").asBoolean
+                    c.tooltipShowDataAge = body.get("showDataAge").asBoolean; c.tooltipShowStaleData = body.get("showStaleData").asBoolean
+                    c.tooltipMaxAgeSeconds = body.get("maxAgeSeconds").asInt; config.save()
+                }
+                call.respond(HttpStatusCode.NoContent)
             }
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
@@ -316,6 +423,36 @@ class WebServer(
         if (!systemAccess.authenticated(call.request.cookies[SystemAccessControl.COOKIE])) { call.respond(HttpStatusCode.Unauthorized, "Systemanmeldung erforderlich"); return false }
         return true
     }
+
+    private suspend fun allowLocalWrite(call: ApplicationCall): Boolean {
+        val origin = call.request.header(HttpHeaders.Origin)?.let { runCatching { Url(it) }.getOrNull() }
+        val localHost = origin?.host?.lowercase() in setOf("localhost", "127.0.0.1", "::1", "[::1]")
+        val safeOrigin = origin != null && origin.protocol.name == "http" && localHost && origin.port == port
+        if (!safeOrigin || call.request.header("Sec-Fetch-Site")?.lowercase() == "cross-site") {
+            call.respond(HttpStatusCode.Forbidden, "Local same-origin request required")
+            return false
+        }
+        return true
+    }
+
+    private fun parseAlert(raw: String): PriceAlertRule? = runCatching {
+        val body = JsonParser.parseString(raw).asJsonObject
+        fun string(key: String, default: String? = null): String? = if (!body.has(key)) default
+            else body.get(key).takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+        fun flag(key: String, default: Boolean): Boolean? = if (!body.has(key)) default
+            else body.get(key).takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }?.asBoolean
+        val itemKey = string("itemKey") ?: return null
+        val condition = string("condition") ?: return null
+        val thresholdElement = body.get("threshold")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber } ?: return null
+        val threshold = thresholdElement.asDouble
+        val cooldownElement = body.get("cooldownSeconds")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
+        if (body.has("cooldownSeconds") && cooldownElement == null) return null
+        val cooldownDouble = cooldownElement?.asDouble ?: 300.0
+        if (cooldownDouble % 1.0 != 0.0) return null
+        val notification = string("notification", "CHAT") ?: return null
+        PriceAlertInputValidator.create(itemKey, condition, threshold, flag("enabled", true) ?: return null,
+            flag("repeat", false) ?: return null, cooldownDouble.toInt(), flag("rearmOnExit", true) ?: return null, notification)
+    }.getOrNull()
     private fun setSystemCookie(call: ApplicationCall, token: String) {
         call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, token, maxAge = SystemAccessControl.SESSION_SECONDS.toInt(), path = "/", httpOnly = true, extensions = mapOf("SameSite" to "Strict")))
     }

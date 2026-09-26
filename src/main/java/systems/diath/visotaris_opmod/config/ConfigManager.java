@@ -2,12 +2,18 @@ package systems.diath.visotaris_opmod.config;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.toml.TomlFormat;
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import systems.diath.visotaris_opmod.VisotarisLogger;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 
 /**
  * Lädt und speichert die Mod-Konfiguration als TOML-Datei
@@ -17,6 +23,8 @@ import java.nio.file.Path;
  * Unbekannte Schlüssel werden ignoriert; fehlende Schlüssel behalten ihren Default.
  */
 public final class ConfigManager {
+
+    private static final Gson GSON = new Gson();
 
     private final Path configPath;
 
@@ -34,28 +42,53 @@ public final class ConfigManager {
         this.config = cfg;
     }
 
+    /** Package-private file-backed constructor for migration tests. */
+    ConfigManager(Path path) { this.configPath = path; }
+
     public void load() {
         if (!Files.exists(configPath)) {
             save();
             VisotarisLogger.info("Neue Konfiguration erstellt: {}", configPath);
             return;
         }
+        boolean migrateLegacySections = false;
         try (CommentedFileConfig toml = CommentedFileConfig.builder(configPath, TomlFormat.instance()).build()) {
             toml.load();
+            migrateLegacySections = toml.contains("modus") || toml.contains("anzeige") || toml.contains("schutz") || toml.contains("netzwerk")
+                || hasLegacyFlatSettings(toml) || toml.contains("features.enableDiscordRpc")
+                || toml.contains("features.discordApplicationId") || toml.contains("features.saveDiscordScreenshotsLocally")
+                || toml.contains("features.verboseDiscordScreenshotLogging");
             VisotarisConfig c = new VisotarisConfig();
             // ── Modus ─────────────────────────────────────────────────────────────────
-            c.observerModeOnly = toml.getOrElse("modus.observerModeOnly", toml.getOrElse("observerModeOnly", c.observerModeOnly));
+            c.observerModeOnly = bool(toml, "mode.observerModeOnly", "modus.observerModeOnly", "observerModeOnly", c.observerModeOnly);
             // ── Anzeige (neu: anzeige.x; alt: x) ─────────────────────────────────────
-            c.showMarketTooltips   = toml.getOrElse("anzeige.showMarketTooltips",   toml.getOrElse("showMarketTooltips",   c.showMarketTooltips));
-            c.showHud              = toml.getOrElse("anzeige.showHud",              toml.getOrElse("showHud",              c.showHud));
-            c.showContainerOverlay = toml.getOrElse("anzeige.showContainerOverlay", toml.getOrElse("showContainerOverlay", c.showContainerOverlay));
-            c.showQuickButtons     = toml.getOrElse("anzeige.showQuickButtons",     toml.getOrElse("showQuickButtons",     c.showQuickButtons));
-            c.shulkerRecursion     = toml.getOrElse("anzeige.shulkerRecursion",     toml.getOrElse("shulkerRecursion",     c.shulkerRecursion));
+            c.showMarketTooltips   = bool(toml, "display.showMarketTooltips", "anzeige.showMarketTooltips", "showMarketTooltips", c.showMarketTooltips);
+            c.showHud              = bool(toml, "display.showHud", "anzeige.showHud", "showHud", c.showHud);
+            c.showContainerOverlay = bool(toml, "display.showContainerOverlay", "anzeige.showContainerOverlay", "showContainerOverlay", c.showContainerOverlay);
+            c.showQuickButtons     = bool(toml, "display.showQuickButtons", "anzeige.showQuickButtons", "showQuickButtons", c.showQuickButtons);
+            c.shulkerRecursion     = bool(toml, "display.shulkerRecursion", "anzeige.shulkerRecursion", "shulkerRecursion", c.shulkerRecursion);
+            c.tooltipShowBuyPrice = bool(toml, "tooltips.showBuyPrice", "", "", c.tooltipShowBuyPrice);
+            c.tooltipShowSellPrice = bool(toml, "tooltips.showSellPrice", "", "", c.tooltipShowSellPrice);
+            c.tooltipShowMerchantRates = bool(toml, "tooltips.showMerchantRates", "", "", c.tooltipShowMerchantRates);
+            c.tooltipShowShardRates = bool(toml, "tooltips.showShardRates", "", "", c.tooltipShowShardRates);
+            c.tooltipShowDataAge = bool(toml, "tooltips.showDataAge", "", "", c.tooltipShowDataAge);
+            c.tooltipShowStaleData = bool(toml, "tooltips.showStaleData", "", "", c.tooltipShowStaleData);
+            c.tooltipMaxAgeSeconds = intValue(toml, "tooltips.maxAgeSeconds", c.tooltipMaxAgeSeconds);
+            c.priceAlertsEnabled = bool(toml, "priceAlerts.enabled", "", "", c.priceAlertsEnabled);
+            Object storedRules = toml.get("priceAlerts.rules");
+            if (storedRules instanceof java.util.List<?> list) for (Object entry : list) {
+                try {
+                    if (entry instanceof String json) {
+                        java.util.Map<?, ?> map = GSON.fromJson(JsonParser.parseString(json), java.util.Map.class);
+                        c.priceAlertRules.add(PriceAlertRule.fromMap(map));
+                    } else if (entry instanceof java.util.Map<?, ?> map) c.priceAlertRules.add(PriceAlertRule.fromMap(map));
+                } catch (RuntimeException ignored) { }
+            }
             // ── Schutz ────────────────────────────────────────────────────────────────
-            c.enableRenameProtection = toml.getOrElse("schutz.enableRenameProtection", toml.getOrElse("enableRenameProtection", c.enableRenameProtection));
-            c.enableSignProtection   = toml.getOrElse("schutz.enableSignProtection",   toml.getOrElse("enableSignProtection",   c.enableSignProtection));
-            c.enableOffhandBlocker   = toml.getOrElse("schutz.enableOffhandBlocker",   toml.getOrElse("enableOffhandBlocker",   c.enableOffhandBlocker));
-            c.enableInventoryWarning = toml.getOrElse("schutz.enableInventoryWarning", toml.getOrElse("enableInventoryWarning", c.enableInventoryWarning));
+            c.enableRenameProtection = bool(toml, "protection.enableRenameProtection", "schutz.enableRenameProtection", "enableRenameProtection", c.enableRenameProtection);
+            c.enableSignProtection   = bool(toml, "protection.enableSignProtection", "schutz.enableSignProtection", "enableSignProtection", c.enableSignProtection);
+            c.enableOffhandBlocker   = bool(toml, "protection.enableOffhandBlocker", "schutz.enableOffhandBlocker", "enableOffhandBlocker", c.enableOffhandBlocker);
+            c.enableInventoryWarning = bool(toml, "protection.enableInventoryWarning", "schutz.enableInventoryWarning", "enableInventoryWarning", c.enableInventoryWarning);
             // ── Features ──────────────────────────────────────────────────────────────
             c.enableJobTracker         = toml.getOrElse("features.enableJobTracker",         toml.getOrElse("enableJobTracker",         c.enableJobTracker));
             c.enableCommandShortforms  = toml.getOrElse("features.enableCommandShortforms",  toml.getOrElse("enableCommandShortforms",  c.enableCommandShortforms));
@@ -93,23 +126,24 @@ public final class ConfigManager {
                 );
             }
             // ── Netzwerk ──────────────────────────────────────────────────────────────
-            c.marketRefreshIntervalSeconds   = getInt(toml, "netzwerk.marketRefreshIntervalSeconds",   getInt(toml, "marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds));
-            c.merchantRefreshIntervalSeconds = getInt(toml, "netzwerk.merchantRefreshIntervalSeconds", getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds));
-            c.enableWebUi    = toml.getOrElse("netzwerk.enableWebUi",    toml.getOrElse("enableWebUi",    c.enableWebUi));
-            c.webUiPort      = getInt(toml, "netzwerk.webUiPort",        getInt(toml, "webUiPort",        c.webUiPort));
-            c.proxyType      = normalizeProxyType(toml.getOrElse("netzwerk.proxyType", toml.getOrElse("proxyType", c.proxyType)));
-            c.proxyHost      = toml.getOrElse("netzwerk.proxyHost",      toml.getOrElse("proxyHost",      c.proxyHost));
-            c.proxyPort      = getInt(toml, "netzwerk.proxyPort",        getInt(toml, "proxyPort",        c.proxyPort));
-            c.customUserAgent = toml.getOrElse("netzwerk.customUserAgent", toml.getOrElse("customUserAgent", c.customUserAgent));
+            c.marketRefreshIntervalSeconds   = getInt(toml, "network.marketRefreshIntervalSeconds", getInt(toml, "netzwerk.marketRefreshIntervalSeconds", getInt(toml, "marketRefreshIntervalSeconds", c.marketRefreshIntervalSeconds)));
+            c.merchantRefreshIntervalSeconds = getInt(toml, "network.merchantRefreshIntervalSeconds", getInt(toml, "netzwerk.merchantRefreshIntervalSeconds", getInt(toml, "merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds)));
+            c.enableWebUi    = bool(toml, "network.enableWebUi", "netzwerk.enableWebUi", "enableWebUi", c.enableWebUi);
+            c.webUiPort      = getInt(toml, "network.webUiPort", getInt(toml, "netzwerk.webUiPort", getInt(toml, "webUiPort", c.webUiPort)));
+            c.proxyType      = normalizeProxyType(toml.getOrElse("network.proxyType", toml.getOrElse("netzwerk.proxyType", toml.getOrElse("proxyType", c.proxyType))));
+            c.proxyHost      = toml.getOrElse("network.proxyHost", toml.getOrElse("netzwerk.proxyHost", toml.getOrElse("proxyHost", c.proxyHost)));
+            c.proxyPort      = getInt(toml, "network.proxyPort", getInt(toml, "netzwerk.proxyPort", getInt(toml, "proxyPort", c.proxyPort)));
+            c.customUserAgent = toml.getOrElse("network.customUserAgent", toml.getOrElse("netzwerk.customUserAgent", toml.getOrElse("customUserAgent", c.customUserAgent)));
             c.systemPasswordHash = toml.getOrElse("system.passwordHash", toml.getOrElse("systemPasswordHash", c.systemPasswordHash));
             config = c;
             VisotarisLogger.info("Konfiguration geladen von: {}", configPath);
         } catch (Exception e) {
             VisotarisLogger.warn("Konfiguration konnte nicht gelesen werden, nutze Defaults: {}", e.getMessage());
         }
+        if (migrateLegacySections) save();
     }
 
-    public void save() {
+    public synchronized void save() {
         try {
             Files.createDirectories(configPath.getParent());
         } catch (IOException e) {
@@ -117,35 +151,60 @@ public final class ConfigManager {
             return;
         }
         try (CommentedFileConfig toml = CommentedFileConfig.builder(configPath, TomlFormat.instance()).build()) {
+            if (Files.exists(configPath)) toml.load();
             VisotarisConfig c = config;
-            // ── [modus] ───────────────────────────────────────────────────────────────
-            toml.setComment("modus", " Observer-Modus: nur Datenabruf, keine Ingame-Eingriffe");
-            toml.set("modus.observerModeOnly", c.observerModeOnly);
-            // ── [anzeige] ─────────────────────────────────────────────────────────────
-            toml.setComment("anzeige", " HUD, Tooltips und UI-Overlays");
-            toml.set("anzeige.showMarketTooltips",   c.showMarketTooltips);
-            toml.set("anzeige.showHud",              c.showHud);
-            toml.set("anzeige.showContainerOverlay", c.showContainerOverlay);
-            toml.set("anzeige.showQuickButtons",     c.showQuickButtons);
-            toml.set("anzeige.shulkerRecursion",     c.shulkerRecursion);
-            // ── [schutz] ──────────────────────────────────────────────────────────────
-            toml.setComment("schutz", " Schutzmechanismen (Rename, Sign, Offhand, Inventar)");
-            toml.set("schutz.enableRenameProtection", c.enableRenameProtection);
-            toml.set("schutz.enableSignProtection",   c.enableSignProtection);
-            toml.set("schutz.enableOffhandBlocker",   c.enableOffhandBlocker);
-            toml.set("schutz.enableInventoryWarning", c.enableInventoryWarning);
+            for (String legacy : new String[]{"modus", "anzeige", "schutz", "netzwerk"}) toml.remove(legacy);
+            for (String legacy : new String[]{
+                "observerModeOnly", "showMarketTooltips", "showHud", "showContainerOverlay", "showQuickButtons", "shulkerRecursion",
+                "enableRenameProtection", "enableSignProtection", "enableOffhandBlocker", "enableInventoryWarning",
+                "enableJobTracker", "enableCommandShortforms", "enableAnvilNormalization", "enableDiscordRpc", "discordApplicationId",
+                "saveDiscordScreenshotsLocally", "verboseDiscordScreenshotLogging", "marketRefreshIntervalSeconds",
+                "merchantRefreshIntervalSeconds", "enableWebUi", "webUiPort", "proxyType", "proxyHost", "proxyPort",
+                "customUserAgent", "systemPasswordHash"
+            }) toml.remove(legacy);
+            for (String legacy : new String[]{"enableDiscordRpc", "discordApplicationId", "saveDiscordScreenshotsLocally", "verboseDiscordScreenshotLogging"})
+                toml.remove("features." + legacy);
+            for (int slot = 1; slot <= 5; slot++) {
+                toml.remove("discordScreenshotTarget" + slot + "Enabled");
+                toml.remove("discordScreenshotTarget" + slot + "Name");
+                toml.remove("discordScreenshotTarget" + slot + "WebhookUrl");
+            }
+            toml.setComment("mode", "Observer mode: data access only, no in-game interactions");
+            toml.set("mode.observerModeOnly", c.observerModeOnly);
+            toml.setComment("display", "HUD, tooltips and UI overlays");
+            toml.set("display.showMarketTooltips", c.showMarketTooltips);
+            toml.set("display.showHud", c.showHud);
+            toml.set("display.showContainerOverlay", c.showContainerOverlay);
+            toml.set("display.showQuickButtons", c.showQuickButtons);
+            toml.set("display.shulkerRecursion", c.shulkerRecursion);
+            toml.setComment("tooltips", "Client-side tooltip groups and stale-data policy");
+            toml.set("tooltips.showBuyPrice", c.tooltipShowBuyPrice);
+            toml.set("tooltips.showSellPrice", c.tooltipShowSellPrice);
+            toml.set("tooltips.showMerchantRates", c.tooltipShowMerchantRates);
+            toml.set("tooltips.showShardRates", c.tooltipShowShardRates);
+            toml.set("tooltips.showDataAge", c.tooltipShowDataAge);
+            toml.set("tooltips.showStaleData", c.tooltipShowStaleData);
+            toml.set("tooltips.maxAgeSeconds", c.tooltipMaxAgeSeconds);
+            toml.setComment("priceAlerts", "Client-side market observation only; no trades or server actions");
+            toml.set("priceAlerts.enabled", c.priceAlertsEnabled);
+            toml.set("priceAlerts.rules", c.priceAlertRules.stream().map(rule -> GSON.toJson(rule.toMap())).toList());
+            toml.setComment("protection", "Client-side safety features");
+            toml.set("protection.enableRenameProtection", c.enableRenameProtection);
+            toml.set("protection.enableSignProtection", c.enableSignProtection);
+            toml.set("protection.enableOffhandBlocker", c.enableOffhandBlocker);
+            toml.set("protection.enableInventoryWarning", c.enableInventoryWarning);
             // ── [features] ────────────────────────────────────────────────────────────
-            toml.setComment("features", " Ingame-Spielmechanik-Features");
+            toml.setComment("features", "In-game gameplay features");
             toml.set("features.enableJobTracker",         c.enableJobTracker);
             toml.set("features.enableCommandShortforms",  c.enableCommandShortforms);
             toml.set("features.enableAnvilNormalization", c.enableAnvilNormalization);
             // ── [discord] ─────────────────────────────────────────────────────────────
-            toml.setComment("discord", " Discord Rich Presence und Screenshot-Versand");
+            toml.setComment("discord", "Discord Rich Presence and screenshot delivery");
             toml.set("discord.enableDiscordRpc", c.enableDiscordRpc);
             toml.set("discord.applicationId", c.discordApplicationId);
             toml.set("discord.saveScreenshotsLocally", c.saveDiscordScreenshotsLocally);
             toml.set("discord.verboseScreenshotLogging", c.verboseDiscordScreenshotLogging);
-            toml.setComment("discordScreenshots", " Discord-Screenshot-Ziele. Jedes Ziel ist separat aktivierbar.");
+            toml.setComment("discordScreenshots", "Discord screenshot targets; each target can be enabled independently");
             for (int i = 0; i < c.discordScreenshotTargets.length; i++) {
                 int slot = i + 1;
                 VisotarisConfig.DiscordScreenshotTarget target = c.discordScreenshotTargets[i];
@@ -154,20 +213,31 @@ public final class ConfigManager {
                 toml.set("discordScreenshots.target" + slot + ".webhookUrl", target.webhookUrl);
             }
             // ── [netzwerk] ────────────────────────────────────────────────────────────
-            toml.setComment("netzwerk", " Refresh-Intervalle (Sekunden), Web-Interface & Proxy");
-            toml.set("netzwerk.marketRefreshIntervalSeconds",   c.marketRefreshIntervalSeconds);
-            toml.set("netzwerk.merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
-            toml.set("netzwerk.enableWebUi",    c.enableWebUi);
-            toml.set("netzwerk.webUiPort",      c.webUiPort);
-            toml.set("netzwerk.proxyType",      normalizeProxyType(c.proxyType));
-            toml.set("netzwerk.proxyHost",      c.proxyHost);
-            toml.set("netzwerk.proxyPort",      c.proxyPort);
-            toml.set("netzwerk.customUserAgent", c.customUserAgent);
-            toml.setComment("system", " Lokaler Systemzugang: nur Argon2id-Hash, nie ein Klartextpasswort");
+            toml.setComment("network", "Refresh intervals, local web UI and outbound API proxy");
+            toml.set("network.marketRefreshIntervalSeconds", c.marketRefreshIntervalSeconds);
+            toml.set("network.merchantRefreshIntervalSeconds", c.merchantRefreshIntervalSeconds);
+            toml.set("network.enableWebUi", c.enableWebUi);
+            toml.set("network.webUiPort", c.webUiPort);
+            toml.set("network.proxyType", normalizeProxyType(c.proxyType));
+            toml.set("network.proxyHost", c.proxyHost);
+            toml.set("network.proxyPort", c.proxyPort);
+            toml.set("network.customUserAgent", c.customUserAgent);
+            toml.setComment("system", "Local system access; stores only the Argon2id hash, never a plaintext password");
             toml.set("system.passwordHash", c.systemPasswordHash);
-            toml.save();
+            java.io.StringWriter serialized = new java.io.StringWriter();
+            TomlFormat.instance().createWriter().write(toml, serialized);
+            Path temporary = Files.createTempFile(configPath.getParent(), "visotaris-", ".toml.tmp");
+            try {
+                Files.writeString(temporary, serialized.toString(), java.nio.charset.StandardCharsets.UTF_8);
+                try {
+                    Set<java.nio.file.attribute.PosixFilePermission> permissions = PosixFilePermissions.fromString("rw-------");
+                    Files.setPosixFilePermissions(temporary, permissions);
+                } catch (UnsupportedOperationException ignored) { /* Windows ACL inheritance */ }
+                try { Files.move(temporary, configPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+                catch (AtomicMoveNotSupportedException ignored) { Files.move(temporary, configPath, StandardCopyOption.REPLACE_EXISTING); }
+            } finally { Files.deleteIfExists(temporary); }
         } catch (Exception e) {
-            VisotarisLogger.error("Konfiguration konnte nicht gespeichert werden: {}", e.getMessage());
+            VisotarisLogger.error("Konfiguration konnte nicht gespeichert werden: {}", e.toString());
         }
     }
 
@@ -202,6 +272,30 @@ public final class ConfigManager {
     private static int getInt(CommentedFileConfig toml, String key, int def) {
         Object val = toml.get(key);
         return val instanceof Number n ? n.intValue() : def;
+    }
+
+    private static boolean bool(CommentedFileConfig toml, String current, String legacyGroup, String legacyRoot, boolean def) {
+        Object value = !current.isEmpty() ? toml.get(current) : null;
+        if (!(value instanceof Boolean) && !legacyGroup.isEmpty()) value = toml.get(legacyGroup);
+        if (!(value instanceof Boolean) && !legacyRoot.isEmpty()) value = toml.get(legacyRoot);
+        return value instanceof Boolean b ? b : def;
+    }
+
+    private static int intValue(CommentedFileConfig toml, String key, int def) {
+        Object value = toml.get(key);
+        return value instanceof Number n ? n.intValue() : def;
+    }
+
+    private static boolean hasLegacyFlatSettings(CommentedFileConfig toml) {
+        for (String key : new String[]{"observerModeOnly", "showMarketTooltips", "showHud", "showContainerOverlay", "showQuickButtons",
+            "shulkerRecursion", "enableRenameProtection", "enableSignProtection", "enableOffhandBlocker", "enableInventoryWarning",
+            "enableJobTracker", "enableCommandShortforms", "enableAnvilNormalization", "enableDiscordRpc", "discordApplicationId",
+            "saveDiscordScreenshotsLocally", "verboseDiscordScreenshotLogging", "marketRefreshIntervalSeconds",
+            "merchantRefreshIntervalSeconds", "enableWebUi", "webUiPort", "proxyType", "proxyHost", "proxyPort",
+            "customUserAgent", "systemPasswordHash"}) if (toml.contains(key)) return true;
+        for (int slot = 1; slot <= 5; slot++) if (toml.contains("discordScreenshotTarget" + slot + "Enabled")
+            || toml.contains("discordScreenshotTarget" + slot + "Name") || toml.contains("discordScreenshotTarget" + slot + "WebhookUrl")) return true;
+        return false;
     }
 
     private static String normalizeProxyType(String value) {

@@ -32,6 +32,19 @@ public final class VisotarisConfig {
     public boolean showQuickButtons     = true;
     public boolean shulkerRecursion     = true;
 
+    // ── Client-side tooltip details ──────────────────────────────────────────
+    public boolean tooltipShowBuyPrice = true;
+    public boolean tooltipShowSellPrice = true;
+    public boolean tooltipShowMerchantRates = true;
+    public boolean tooltipShowShardRates = true;
+    public boolean tooltipShowDataAge = false;
+    public boolean tooltipShowStaleData = true;
+    public int tooltipMaxAgeSeconds = 900;
+
+    // ── Client-side price alerts ─────────────────────────────────────────────
+    public boolean priceAlertsEnabled = true;
+    public java.util.List<PriceAlertRule> priceAlertRules = new java.util.ArrayList<>();
+
     // ── Schutz ────────────────────────────────────────────────────────────────
     public boolean enableRenameProtection = true;
     public boolean enableSignProtection   = true;

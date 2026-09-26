@@ -29,6 +29,8 @@ die speziell auf die Spielmechaniken von OPSUCHT ausgelegt sind.
 | **Keybinds** | Konfigurierbare Tastenbelegungen (Einstellungen öffnen, HUD-Toggle, Markt-Refresh) |
 | **Config + ModMenu** | Alle Funktionen einzeln ein-/ausschaltbar über eine Einstellungsseite (ModMenu-kompatibel) |
 | **Discord RPC** | Optionaler Discord-Rich-Presence-Service (standardmäßig deaktiviert) |
+| **Preisalarme** | Clientseitige Schwellenalarme für Kauf-, Verkaufs- und Spannenpreise aus dem synchronisierten Markt-Cache |
+| **Web-UX: Alarme & Tooltips** | Geschützter Bereich für Alarmregeln sowie Tooltip-Gruppen, Frischegrenze und Anzeige veralteter Cache-Daten |
 
 ---
 
@@ -77,6 +79,25 @@ Das vollständige technische Analysedokument liegt unter
 ---
 
 ## Build
+
+### Preisalarme und Tooltip-Einstellungen
+
+Die lokale Web-UX enthält unter `/system/settings` einen eigenen Bereich für Preisalarme
+und Minecraft-Tooltip-Optionen. Der Bereich verwendet dieselbe lokale Systemanmeldung
+wie `/system`. Alarmregeln werden ausschließlich nach einem erfolgreichen Update des
+bereits vorhandenen Markt-Caches ausgewertet. Kaufpreis, Verkaufspreis und Spanne
+(`buy - sell`) können jeweils über oder unter einem Schwellenwert beobachtet werden.
+Regeln unterstützen einmalige oder wiederholte Meldungen, Cooldown, erneutes Auslösen
+nach Verlassen des Schwellenbereichs sowie Minecraft-Chat, Web-UI oder beide Kanäle.
+Sie führen keine Käufe, Verkäufe, Befehle oder zusätzlichen Markt-/Minecraft-Abfragen aus.
+
+Tooltips lesen weiterhin nur die lokalen Markt- und Händler-Caches. In der Web-UX sind
+Kauf-/Verkaufspreis, Händlerwerte, Datenalter und der Umgang mit veralteten Daten
+separat konfigurierbar; Shard- und sonstige Händlerkurse lassen sich getrennt schalten. Die TOML-Datei verwendet englische Abschnittsnamen wie
+`[display]`, `[network]`, `[tooltips]` und `[priceAlerts]`; ältere deutsche Abschnitte
+wie `[anzeige]` und `[netzwerk]` werden beim Laden übernommen und atomar in die
+englischen Namen migriert. Unter POSIX-Systemen wird die Config-Datei mit Modus `0600`
+geschrieben; unter Windows gelten die ACLs des Konfigurationsordners.
 
 Voraussetzungen: Java 21 für 1.21.11, Java 25 für 26.x, Gradle (Wrapper inklusive)
 

@@ -28,6 +28,7 @@ import systems.diath.visotaris_opmod.services.KeybindService;
 import systems.diath.visotaris_opmod.services.MinecraftScreenshotCaptureBackend;
 import systems.diath.visotaris_opmod.services.PendingConfirmationService;
 import systems.diath.visotaris_opmod.services.TooltipValueService;
+import systems.diath.visotaris_opmod.services.PriceAlertService;
 import systems.diath.visotaris_opmod.ui.HudOverlay;
 import systems.diath.visotaris_opmod.web.WebServer;
 
@@ -49,6 +50,7 @@ public class VisotarisModClient implements ClientModInitializer {
     private MerchantSyncService        merchantSyncService;
     private JobTrackerService          jobTrackerService;
     private TooltipValueService        tooltipValueService;
+    private PriceAlertService           priceAlertService;
     private InventoryValuationService  inventoryValuationService;
     private PendingConfirmationService pendingConfirmationService;
     private DiscordPresenceService      discordPresenceService;
@@ -75,6 +77,9 @@ public class VisotarisModClient implements ClientModInitializer {
         marketSyncService         = new MarketSyncService(marketCache, configManager);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
+        priceAlertService          = new PriceAlertService(configManager, marketCache, message -> Minecraft.getInstance().execute(() -> {
+            if (Minecraft.getInstance().player != null) Minecraft.getInstance().player.displayClientMessage(Component.literal(message), false);
+        }));
         inventoryValuationService = new InventoryValuationService(marketCache, shardCache, configManager);
         jobTrackerService         = new JobTrackerService(configManager);
         pendingConfirmationService = new PendingConfirmationService(configManager);
@@ -120,9 +125,7 @@ public class VisotarisModClient implements ClientModInitializer {
         // 5. Tooltip-Event (Fabric API)
         net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register(
             (stack, context, type, lines) -> {
-                if (configManager.getConfig().showMarketTooltips) {
-                    tooltipValueService.appendTooltips(stack, lines);
-                }
+                tooltipValueService.appendTooltips(stack, lines);
             }
         );
 
@@ -204,7 +207,7 @@ public class VisotarisModClient implements ClientModInitializer {
             if (webServer != null) {
                 webServer.stop();
             }
-            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, priceHistoryCache, configManager);
+            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, priceHistoryCache, configManager, priceAlertService);
         }
         if (cfg.enableWebUi) {
             webServer.start();

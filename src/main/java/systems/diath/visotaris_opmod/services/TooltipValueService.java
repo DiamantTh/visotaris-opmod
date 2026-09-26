@@ -44,25 +44,32 @@ public final class TooltipValueService {
     public void appendTooltips(ItemStack stack, List<Component> lines) {
         var cfg = config.getConfig();
         if (!cfg.ingameFeaturesEnabled()) return;
-        if (!cfg.showMarketTooltips) return;
+        if (!cfg.showMarketTooltips && !cfg.tooltipShowMerchantRates && !cfg.tooltipShowShardRates) return;
         if (stack.isEmpty()) return;
 
         String baseKey = resolveBaseKey(stack);
 
         // Marktpreis
-        Optional<MarketPrice> price = marketCache.get(baseKey);
+        boolean marketStale = marketCache.isStale(cfg.tooltipMaxAgeSeconds);
+        Optional<MarketPrice> price = !cfg.showMarketTooltips || (marketStale && !cfg.tooltipShowStaleData)
+            ? Optional.empty() : marketCache.get(baseKey);
         price.ifPresent(p -> {
             String localName = ItemNameResolver.resolve(baseKey);
             lines.add(Component.literal("§8[Visotaris] §7" + localName));
-            if (p.getBuy()  > 0) lines.add(Component.literal("§eKaufpreis:      §f" + formatMoney(p.getBuy())));
-            if (p.getSell() > 0) lines.add(Component.literal("§eVerkaufspreis:  §f" + formatMoney(p.getSell())));
+            if (cfg.tooltipShowBuyPrice && p.getBuy() > 0) lines.add(Component.literal("§eKaufpreis:      §f" + formatMoney(p.getBuy())));
+            if (cfg.tooltipShowSellPrice && p.getSell() > 0) lines.add(Component.literal("§eVerkaufspreis:  §f" + formatMoney(p.getSell())));
         });
 
         // Händlerkurs: erst einfaches Lookup, dann mit custom_model_data.
         // Die Merchant-API liefert inzwischen neben OPSHARDS auch REDCOINS.
         // Daher die Zielwährung aus der API anzeigen, statt jeden Kurs als OPS
         // auszugeben.
-        Optional<ShardRate> merchantRate = findShard(stack, baseKey);
+        Optional<ShardRate> foundRate = (shardCache.isStale(cfg.tooltipMaxAgeSeconds) && !cfg.tooltipShowStaleData)
+            ? Optional.empty() : findShard(stack, baseKey);
+        Optional<ShardRate> merchantRate = foundRate.filter(rate -> {
+            MerchantCurrency currency = MerchantCurrency.fromApiTarget(rate.getTarget());
+            return currency == MerchantCurrency.OPSHARDS ? cfg.tooltipShowShardRates : cfg.tooltipShowMerchantRates;
+        });
         merchantRate.ifPresent(rate -> {
             String target = formatTarget(rate.getTarget());
             MerchantCurrency currency = MerchantCurrency.fromApiTarget(rate.getTarget());
@@ -72,6 +79,16 @@ public final class TooltipValueService {
             lines.add(Component.literal(color + currency.getDisplayLabel() + ": §f"
                 + rate.getExchangeRate() + " " + unit));
         });
+        if (cfg.tooltipShowDataAge && (price.isPresent() || merchantRate.isPresent())) {
+            long marketAge = marketCache.getAgeSeconds();
+            long shardAge = shardCache.getAgeSeconds();
+            long age = price.isPresent() && merchantRate.isPresent() ? Math.max(marketAge, shardAge)
+                : price.isPresent() ? marketAge : shardAge;
+            boolean stale = (price.isPresent() && marketStale)
+                || (merchantRate.isPresent() && shardCache.isStale(cfg.tooltipMaxAgeSeconds));
+            String ageText = age == Long.MAX_VALUE ? "unbekannt" : age + " s";
+            lines.add(Component.literal("§8Marktdaten: " + ageText + (stale ? " (veraltet)" : "")));
+        }
     }
 
     // ── Item-Key-Ableitung ────────────────────────────────────────────────────

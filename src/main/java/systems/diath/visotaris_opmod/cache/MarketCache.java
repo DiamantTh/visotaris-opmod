@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /**
  * Thread-sicherer In-Memory-Cache für Marktpreise.
@@ -31,6 +33,7 @@ public final class MarketCache {
         .build();
 
     private final AtomicLong lastUpdatedMs = new AtomicLong(0L);
+    private final CopyOnWriteArrayList<Consumer<Map<String, MarketPrice>>> updateListeners = new CopyOnWriteArrayList<>();
 
     private final JsonCachePersistence<MarketPrice> persistence =
         new JsonCachePersistence<>(SOURCE_URL,
@@ -45,7 +48,14 @@ public final class MarketCache {
             caffeine.put(p.getItemKey(), p);
         }
         lastUpdatedMs.set(System.currentTimeMillis());
+        Map<String, MarketPrice> current = snapshot();
+        updateListeners.forEach(listener -> {
+            try { listener.accept(current); } catch (RuntimeException ignored) { }
+        });
     }
+
+    /** Called only after a successful synchronized update; cache readers remain network-free. */
+    public void addUpdateListener(Consumer<Map<String, MarketPrice>> listener) { updateListeners.add(listener); }
 
     // ── Lesen ────────────────────────────────────────────────────────────────
 
