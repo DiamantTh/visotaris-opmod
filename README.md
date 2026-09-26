@@ -75,7 +75,9 @@ Mechaniken funktionieren, wurde OPMOD technisch analysiert. Das Vorgehen war:
   dem Verständnis der Spielmechaniken und der OPSUCHT-Chat-/Screen-Formate
 
 Das vollständige technische Analysedokument liegt unter
-[`doc/OPMOD-Architektur-und-Bauplan.md`](doc/OPMOD-Architektur-und-Bauplan.md).
+[`docs/OPMOD-Architektur-und-Bauplan.md`](docs/OPMOD-Architektur-und-Bauplan.md).
+Die Übersicht der direkten Abhängigkeiten und ihrer Lizenzen steht in
+[`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md).
 
 ---
 
@@ -89,13 +91,19 @@ wie `/system`. Alarmregeln werden ausschließlich nach einem erfolgreichen Updat
 bereits vorhandenen Markt-Caches ausgewertet. Kaufpreis, Verkaufspreis und Spanne
 (`buy - sell`) können jeweils über oder unter einem Schwellenwert beobachtet werden.
 Regeln unterstützen einmalige oder wiederholte Meldungen, Cooldown, erneutes Auslösen
-nach Verlassen des Schwellenbereichs sowie Minecraft-Chat, Web-UI oder beide Kanäle.
+nach Verlassen des Schwellenbereichs sowie Minecraft-HUD, Web-UI (solange geöffnet)
+oder beide Kanäle. HUD-Meldungen erscheinen kurzzeitig und nacheinander, ohne den
+Minecraft-Chat zu belegen. Alte `CHAT`-/`BOTH`-Regeln werden beim Laden unter Erhalt
+ihres Zustands auf `HUD`/`HUD_WEB` migriert.
 Sie führen keine Käufe, Verkäufe, Befehle oder zusätzlichen Markt-/Minecraft-Abfragen aus.
 In den Minecraft-Einstellungen lässt sich die Alarmfunktion global an- und ausschalten;
 von dort führt ein Button zur Regelverwaltung im lokalen Webinterface. Falls das
 Webinterface noch nicht läuft, öffnet der Button zunächst dessen Einrichtung.
 
-Tooltips lesen weiterhin nur die lokalen Markt- und Händler-Caches. In der Web-UX sind
+Die Zusatzinformationen erscheinen im normalen Minecraft-Item-Tooltip beim Zeigen
+auf einen Item-Slot, zusammen mit den regulären Eigenschaften und Verzauberungen.
+Off-Hand, dauerhaftes HUD und Container-Gesamtwert sind davon getrennt. Tooltips
+lesen weiterhin nur die lokalen Markt- und Händler-Caches. In der Web-UX sind
 Kauf-/Verkaufspreis, Händlerwerte, Datenalter und der Umgang mit veralteten Daten
 separat konfigurierbar; Shard- und sonstige Händlerkurse lassen sich getrennt schalten. Die TOML-Datei verwendet englische Abschnittsnamen wie
 `[display]`, `[network]`, `[tooltips]` und `[priceAlerts]`; ältere deutsche Abschnitte
