@@ -12,6 +12,7 @@ import systems.diath.visotaris_opmod.model.MarketPrice;
 import systems.diath.visotaris_opmod.model.MerchantCurrency;
 import systems.diath.visotaris_opmod.model.ShardRate;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
+import systems.diath.visotaris_opmod.util.StackClassification;
 
 import java.util.List;
 import java.util.Optional;
@@ -51,7 +52,8 @@ public final class TooltipValueService {
 
         // Marktpreis
         boolean marketStale = marketCache.isStale(cfg.tooltipMaxAgeSeconds);
-        Optional<MarketPrice> price = !cfg.showMarketTooltips || (marketStale && !cfg.tooltipShowStaleData)
+        Optional<MarketPrice> price = !cfg.showMarketTooltips || StackClassification.isCustomVariant(stack)
+            || (marketStale && !cfg.tooltipShowStaleData)
             ? Optional.empty() : marketCache.get(baseKey);
         price.ifPresent(p -> {
             String localName = ItemNameResolver.resolve(baseKey);

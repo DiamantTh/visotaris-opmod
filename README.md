@@ -5,6 +5,10 @@ Eine **freie, quelloffene** Fabric-Client-Mod für Minecraft mit Fokus auf den
 
 Lizenz: [AGPLv3+](LICENSE) · Minecraft: 1.21.11 / 26.x (aktuell 26.2) · Loader: Fabric
 
+Aktueller Entwicklungsstand: **Visotaris OPMod 1.2.0-pre.3 (Vorabversion)**.
+Die Mod-Version ist unabhängig von den unterstützten Minecraft-Versionen.
+Änderungen und noch offene Prüfungen: [Release-Notizen](docs/RELEASE_NOTES.md).
+
 ---
 
 ## Features
@@ -26,12 +30,13 @@ die speziell auf die Spielmechaniken von OPSUCHT ausgelegt sind.
 | **Amboss-Normalisierung** | Expandiert Kurzformen im Amboss-Rename-Feld: `1k` → `1000`, `2.5m` → `2500000` |
 | **Command-Kurzformen** | Dasselbe für Geld-Befehle: `/pay spieler 1k`, `/bank deposit 2.5m` u.v.m. |
 | **Inventar-voll-Warnung** | Pulsierender roter HUD-Hinweis wenn kein freier Inventar-Slot mehr vorhanden |
-| **Keybinds** | Konfigurierbare Tastenbelegungen (Einstellungen öffnen, HUD-Toggle, Markt-Refresh) |
+| **Keybinds** | MaLiLib-Hotkey Alt+V (anpassbar/deaktivierbar) öffnet das native Menü; HUD-Toggle und Markt-Refresh bleiben eigene optionale Tastenbelegungen |
 | **Config + ModMenu** | Alle Funktionen einzeln ein-/ausschaltbar über eine Einstellungsseite (ModMenu-kompatibel) |
 | **Discord RPC** | Optionaler Discord-Rich-Presence-Service (standardmäßig deaktiviert) |
 | **Preisalarme** | Clientseitige Schwellenalarme für Kauf-, Verkaufs- und Spannenpreise aus dem synchronisierten Markt-Cache |
 | **Web-UX: Preisalarme** | Geschützter Bereich zum Verwalten und Beobachten einzelner Alarmregeln |
 | **Web-UX: Einstellungen** | Geschützter Bereich für Tooltip-Gruppen, Frischegrenze und Anzeige veralteter Cache-Daten |
+| **Native Ingame-UX (1.2.0-pre.3)** | Kompaktes Client-Menü mit Übersicht, Markt, Shard & Händler, Tooltips, Preisalarmen, Schutz & Komfort und System; öffnet sich über MaLiLib (Standard Alt+V) |
 
 ---
 
@@ -123,6 +128,9 @@ Voraussetzungen: Java 21 für 1.21.11, Java 25 für 26.x, Gradle (Wrapper inklus
 ```
 
 JARs landen in `1.21.11/build/libs/` bzw. `26.x/build/libs/`.
+`./gradlew buildAll` kopiert die auslieferbaren Dateien nach `out/`:
+`visotaris_opmod-1.2.0-pre.1+mc1.21.11.jar` und
+`visotaris_opmod-1.2.0-pre.1+mc26.2.jar`.
 
 ---
 

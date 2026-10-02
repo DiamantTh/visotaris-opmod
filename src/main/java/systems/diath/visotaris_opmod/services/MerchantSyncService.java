@@ -58,10 +58,15 @@ public final class MerchantSyncService {
 
     /** Übernimmt Intervall, Proxy und User-Agent direkt aus dem Einstellungsmenü. */
     public synchronized void applyConfig() {
+        applyConfig(true);
+    }
+
+    /** Applies settings without turning a Save click into a merchant API request. */
+    public synchronized void applyConfig(boolean fetchImmediately) {
         client = new MerchantApiClient(config);
         if (task != null) task.cancel(false);
         int intervalSec = Math.max(60, config.getConfig().merchantRefreshIntervalSeconds);
-        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
+        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, fetchImmediately ? 0 : intervalSec, intervalSec, TimeUnit.SECONDS);
         VisotarisLogger.info("MerchantSyncService konfiguriert (Intervall: {}s).", intervalSec);
     }
 

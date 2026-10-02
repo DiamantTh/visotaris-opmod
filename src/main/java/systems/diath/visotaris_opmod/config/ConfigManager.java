@@ -150,15 +150,25 @@ public final class ConfigManager {
     }
 
     public synchronized void save() {
+        saveToDisk(config);
+    }
+
+    /** Persist a staged UI configuration and publish it to shared services only after disk success. */
+    public synchronized boolean saveCandidate(VisotarisConfig candidate) {
+        if (candidate == null || !saveToDisk(candidate)) return false;
+        config = candidate;
+        return true;
+    }
+
+    private boolean saveToDisk(VisotarisConfig c) {
         try {
             Files.createDirectories(configPath.getParent());
         } catch (IOException e) {
             VisotarisLogger.error("Konfigurationsverzeichnis konnte nicht erstellt werden: {}", e.getMessage());
-            return;
+            return false;
         }
         try (CommentedFileConfig toml = CommentedFileConfig.builder(configPath, TomlFormat.instance()).build()) {
             if (Files.exists(configPath)) toml.load();
-            VisotarisConfig c = config;
             for (String legacy : new String[]{"modus", "anzeige", "schutz", "netzwerk"}) toml.remove(legacy);
             for (String legacy : new String[]{
                 "observerModeOnly", "showMarketTooltips", "showHud", "showContainerOverlay", "showQuickButtons", "shulkerRecursion",
@@ -242,8 +252,10 @@ public final class ConfigManager {
                 try { Files.move(temporary, configPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
                 catch (AtomicMoveNotSupportedException ignored) { Files.move(temporary, configPath, StandardCopyOption.REPLACE_EXISTING); }
             } finally { Files.deleteIfExists(temporary); }
+            return true;
         } catch (Exception e) {
             VisotarisLogger.error("Konfiguration konnte nicht gespeichert werden: {}", e.toString());
+            return false;
         }
     }
 

@@ -103,11 +103,19 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
     // ════════════════════════════════════════════════════════════════════════
 
     private void renderContainerOverlay(GuiGraphics ctx, VisotarisModClient mod) {
-        // Alle Slot-Stacks sammeln
+        // Server-Menüs wie /markt zeigen oben fremde Angebots-Slots und unten
+        // das echte Spielerinventar. Nur Letzteres ist Besitz des Spielers.
+        // Physische Kisten/Shulker bleiben hingegen als Container vollständig
+        // bewertbar.
         T handler = getMenu();
         if (handler.slots == null) return;
         List<ItemStack> stacks = new ArrayList<>(handler.slots.size());
-        for (Slot slot : handler.slots) stacks.add(slot.getItem());
+        boolean serverMenu = isLikelyServerMenu();
+        Minecraft mc = Minecraft.getInstance();
+        for (Slot slot : handler.slots) {
+            if (serverMenu && (mc.player == null || slot.container != mc.player.getInventory())) continue;
+            stacks.add(slot.getItem());
+        }
 
         InventoryValuation val = mod.getInventoryValuationService().evaluate(stacks);
         if (val.getSellTotal() <= 0 && val.getBuyTotal() <= 0
@@ -117,10 +125,15 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
         String line = buildValueLine(val);
 
         // Oberhlab des Screen-Hintergrunds in der Titelzeile rendern
-        Minecraft mc = Minecraft.getInstance();
         ctx.drawString(mc.font, line,
             leftPos + 4, topPos - mc.font.lineHeight - 2,
             0xFFFFFFFF, true);
+    }
+
+    private boolean isLikelyServerMenu() {
+        String title = ((AbstractContainerScreen<?>)(Object) this).getTitle().getString().toLowerCase(java.util.Locale.ROOT);
+        return title.contains("markt") || title.contains("market") || title.contains("auktion") || title.contains("auction")
+            || title.contains("händler") || title.contains("merchant") || title.contains("shop");
     }
 
     private void renderQuickButtons(GuiGraphics ctx, int mouseX, int mouseY) {

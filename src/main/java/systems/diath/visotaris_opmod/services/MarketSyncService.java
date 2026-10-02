@@ -65,12 +65,17 @@ public final class MarketSyncService {
 
     /** Übernimmt Änderungen aus dem Einstellungsmenü ohne Client-Neustart. */
     public synchronized void applyConfig() {
+        applyConfig(true);
+    }
+
+    /** Applies settings without treating a Save click as a manual market refresh. */
+    public synchronized void applyConfig(boolean fetchImmediately) {
         // Proxy und User-Agent gehören zum OkHttp-Client und müssen bei einer
         // Konfigurationsänderung ebenfalls neu aufgebaut werden.
         client = new MarketApiClient(config);
         if (task != null) task.cancel(false);
         int intervalSec = Math.max(60, config.getConfig().marketRefreshIntervalSeconds);
-        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, 0, intervalSec, TimeUnit.SECONDS);
+        task = scheduler.scheduleAtFixedRate(this::scheduledFetch, fetchImmediately ? 0 : intervalSec, intervalSec, TimeUnit.SECONDS);
         VisotarisLogger.info("MarketSyncService konfiguriert (Intervall: {}s).", intervalSec);
     }
 

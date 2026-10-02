@@ -39,7 +39,8 @@ public final class ShardCache {
     public void update(List<ShardRate> rates) {
         caffeine.invalidateAll();
         for (ShardRate r : rates) {
-            caffeine.put(r.getSource(), r);
+            ShardRate normalized = r.withRatePrecision();
+            caffeine.put(normalized.getSource(), normalized);
         }
         lastUpdatedMs.set(System.currentTimeMillis());
     }
@@ -94,7 +95,8 @@ public final class ShardCache {
         caffeine.invalidateAll();
         for (ShardRate r : snapshot.entries) {
             if (r != null && r.getSource() != null) {
-                caffeine.put(r.getSource(), r);
+                ShardRate normalized = r.withRatePrecision();
+                caffeine.put(normalized.getSource(), normalized);
             }
         }
         lastUpdatedMs.set(snapshot.savedAtMs);

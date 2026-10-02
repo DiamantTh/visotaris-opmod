@@ -15,6 +15,7 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.resources.Identifier
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
+import systems.diath.visotaris_opmod.cache.AuctionCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
 import systems.diath.visotaris_opmod.config.ConfigManager
@@ -35,6 +36,7 @@ class WebServer(
     val port: Int,
     private val marketCache: MarketCache,
     private val shardCache: ShardCache,
+    private val auctionCache: AuctionCache,
     private val historyCache: PriceHistoryCache,
     private val config: ConfigManager,
     private val priceAlerts: PriceAlertService
@@ -144,6 +146,12 @@ class WebServer(
             get("/api/market") {
                 call.respondText(gson.toJson(marketCache.snapshot()), ContentType.Application.Json)
             }
+            get("/api/auctions") {
+                call.respondText(gson.toJson(auctionCache.snapshot().values), ContentType.Application.Json)
+            }
+            get("/api/auctions/categories") {
+                call.respondText(gson.toJson(auctionCache.categories()), ContentType.Application.Json)
+            }
             get("/api/market/top") {
                 call.respondText(gson.toJson(topMarketActivity()), ContentType.Application.Json)
             }
@@ -189,7 +197,12 @@ class WebServer(
             get("/api/meta") {
                 call.respondText(gson.toJson(mapOf(
                     "market" to cacheMeta(marketCache.getLastUpdatedMs(), marketCache.getAgeSeconds()),
-                    "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds())
+                    "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds()),
+                    "auctions" to mapOf(
+                        "updatedAt" to auctionCache.getLastUpdatedMs(),
+                        "active" to auctionCache.snapshot().size,
+                        "categories" to auctionCache.categories().size
+                    )
                 )), ContentType.Application.Json)
             }
             post("/api/system/setup") {

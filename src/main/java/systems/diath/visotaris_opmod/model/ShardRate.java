@@ -1,5 +1,8 @@
 package systems.diath.visotaris_opmod.model;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /**
  * Unveränderliches Datenobjekt eines Merchant-/Shardkurs-Eintrags.
  * Quelle: https://api.opsucht.net/merchant/rates
@@ -21,8 +24,8 @@ public final class ShardRate {
     public ShardRate(String source, double exchangeRate,
                      double base, String target, String displayName) {
         this.source       = source;
-        this.exchangeRate = exchangeRate;
-        this.base         = base;
+        this.exchangeRate = roundToTwoDecimals(exchangeRate);
+        this.base         = roundToTwoDecimals(base);
         this.target       = target;
         this.displayName  = displayName;
     }
@@ -37,6 +40,16 @@ public final class ShardRate {
     public double getBase()         { return base; }
     public String getTarget()       { return target; }
     public String getDisplayName()  { return displayName; }
+
+    /** Rebuilds a rate through the precision normalization, including Gson-loaded disk entries. */
+    public ShardRate withRatePrecision() {
+        return new ShardRate(source, exchangeRate, base, target, displayName);
+    }
+
+    private static double roundToTwoDecimals(double value) {
+        if (!Double.isFinite(value)) return value;
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
 
     @Override
     public String toString() {

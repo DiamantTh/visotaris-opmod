@@ -4,16 +4,21 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import systems.diath.visotaris_opmod.VisotarisModClient;
+import systems.diath.visotaris_opmod.ui.IngameUxScreenBase;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.function.Predicate;
 
 /**
  * Unter-Screen für Netzwerk-Einstellungen (OPSucht-API, Web-Interface, Proxy).
  *
  * <p>Wird aus {@link VisotarisConfigScreen} geöffnet.
- * Änderungen werden sofort in {@link VisotarisConfig} geschrieben;
- * das endgültige Speichern auf Disk übernimmt der übergeordnete ConfigScreen.
+ * Änderungen landen ausschließlich im geteilten UI-Entwurf. Erst der explizite
+ * Speichern-Button übergibt diesen an den gemeinsamen ConfigManager.
  */
 public final class NetworkSettingsScreen extends Screen {
 
@@ -24,9 +29,9 @@ public final class NetworkSettingsScreen extends Screen {
     private static final int MARGIN    = 20;  // Horizontaler Rand
 
     // ── Zustand ─────────────────────────────────────────────────────────────
-    private final Screen        parent;
-    private final ConfigManager configManager;
-    private final VisotarisConfig    cfg;
+    private final IngameUxScreenBase parent;
+    private final VisotarisConfig cfg;
+    private final Predicate<VisotarisConfig> saveDraft;
 
     private EditBox fieldUserAgent;
     private EditBox fieldWebUiPort;
@@ -34,12 +39,13 @@ public final class NetworkSettingsScreen extends Screen {
     private EditBox fieldProxyPort;
     private Button proxyTypeButton;
     private Button webUiActionButton;
+    private boolean closing;
 
-    public NetworkSettingsScreen(Screen parent) {
+    public NetworkSettingsScreen(IngameUxScreenBase parent, VisotarisConfig cfg, Predicate<VisotarisConfig> saveDraft) {
         super(Component.literal("Visotaris \u2013 Netzwerk & Web-Interface"));
-        this.parent        = parent;
-        this.configManager = VisotarisModClient.getInstance().getConfigManager();
-        this.cfg           = configManager.getConfig();
+        this.parent = parent;
+        this.cfg = cfg;
+        this.saveDraft = saveDraft;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -145,13 +151,7 @@ public final class NetworkSettingsScreen extends Screen {
         webUiActionButton = Button.builder(
             makeWebUiActionText(),
             b -> {
-                Integer webUiPort = parsePort(fieldWebUiPort.getValue());
-                if (webUiPort != null) {
-                    cfg.webUiPort = webUiPort;
-                }
-                cfg.enableWebUi = !isWebUiRunning();
-                configManager.save();
-                VisotarisModClient.getInstance().applyWebUiConfig();
+                cfg.enableWebUi = !cfg.enableWebUi;
                 b.setMessage(makeWebUiActionText());
             }
         ).bounds(this.width / 2 - (bw * 2 + gap) / 2, by - 24, bw * 2 + gap, bh).build();
@@ -160,38 +160,38 @@ public final class NetworkSettingsScreen extends Screen {
         this.addRenderableWidget(Button.builder(
             Component.literal("Web-Interface öffnen"),
             b -> {
-                Integer webUiPort = parsePort(fieldWebUiPort.getValue());
-                if (webUiPort != null) cfg.webUiPort = webUiPort;
-                if (!isWebUiRunning()) {
-                    cfg.enableWebUi = true;
-                    configManager.save();
-                    VisotarisModClient.getInstance().applyWebUiConfig();
-                }
+                var server = VisotarisModClient.getInstance().getWebServer();
+                if (server == null || !server.isRunning()) return;
                 // Hostname statt Legacy-IPv4: funktioniert mit IPv4/IPv6-Loopback.
-                Util.getPlatform().openUri("http://localhost:" + cfg.webUiPort + "/");
+                Util.getPlatform().openUri("http://localhost:" + server.getPort() + "/");
             }
         ).bounds(this.width / 2 - (bw * 2 + gap) / 2, by - 48, bw * 2 + gap, bh).build());
 
         this.addRenderableWidget(Button.builder(
-            Component.literal("Speichern & Schlie\u00dfen"),
+            Component.literal("Speichern"),
             b -> {
                 Integer webUiPort = parsePort(fieldWebUiPort.getValue());
-                if (webUiPort != null) {
-                    cfg.webUiPort = webUiPort;
-                }
-                configManager.save();
-                VisotarisModClient.getInstance().applyWebUiConfig();
-                this.minecraft.setScreen(parent);
+                if (webUiPort == null) { fieldWebUiPort.setSuggestion("Ungültiger Port"); return; }
+                cfg.webUiPort = webUiPort;
+                if (saveDraft.test(cfg)) { closing = true; this.minecraft.setScreen(parent); }
             }
         ).bounds(bx, by, bw, bh).build());
 
         this.addRenderableWidget(Button.builder(
-            Component.literal("Abbrechen"),
-            b -> {
-                configManager.load();
-                this.minecraft.setScreen(parent);
-            }
+            Component.literal("Zurück"),
+            b -> { closing = true; parent.returnFromSubscreen(); }
         ).bounds(bx + bw + gap, by, bw, bh).build());
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE) { closing = true; parent.returnFromSubscreen(); return true; }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public void onClose() {
+        if (!closing) { closing = true; parent.returnFromSubscreen(); }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -238,7 +238,7 @@ public final class NetworkSettingsScreen extends Screen {
         // unteren Bereich. Zusätzliche Hinweise würden dort überlappen.
         if (this.height >= 300) {
             ctx.drawCenteredString(this.font,
-                Component.literal("\u00a77Speichern \u00fcbernimmt den Port direkt."),
+                Component.literal("\u00a77Port und Web-Interface werden erst nach Speichern angewendet."),
                 this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
             ctx.drawCenteredString(this.font,
                 Component.literal("\u00a77HTTPS-Proxy: TLS zum Proxy; Ziel-HTTPS via CONNECT."),
@@ -250,7 +250,7 @@ public final class NetworkSettingsScreen extends Screen {
     }
 
     private Component makeWebUiActionText() {
-        return Component.literal(isWebUiRunning() ? "Web-Interface stoppen" : "Web-Interface starten");
+        return Component.literal("Web-Interface  ·  " + (cfg.enableWebUi ? "AN" : "AUS") + " (Änderung vormerken)");
     }
 
     private Component makeProxyTypeText() {

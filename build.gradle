@@ -125,6 +125,14 @@ subprojects {
             name = 'TerraformersMC'
             url  = 'https://maven.terraformersmc.com/releases'
         }
+        maven {
+            name = 'Modrinth'
+            url  = 'https://api.modrinth.com/maven'
+        }
+        maven {
+            name = 'FallenBreath'
+            url  = 'https://maven.fallenbreath.me/releases'
+        }
         mavenCentral()
     }
 

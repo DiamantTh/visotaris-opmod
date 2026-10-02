@@ -107,11 +107,17 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
     // ════════════════════════════════════════════════════════════════════════
 
     private void renderContainerOverlay(GuiGraphicsExtractor ctx, VisotarisModClient mod) {
-        // Alle Slot-Stacks sammeln
+        // In Server-Menüs wie /markt sind nur Slots des Spielerinventars Besitz.
+        // Angebots-, Händler- und Menüs-Slots werden nie in den Wert eingerechnet.
         T handler = getMenu();
         if (handler.slots == null) return;
         List<ItemStack> stacks = new ArrayList<>(handler.slots.size());
-        for (Slot slot : handler.slots) stacks.add(slot.getItem());
+        boolean serverMenu = isLikelyServerMenu();
+        Minecraft mc = Minecraft.getInstance();
+        for (Slot slot : handler.slots) {
+            if (serverMenu && (mc.player == null || slot.container != mc.player.getInventory())) continue;
+            stacks.add(slot.getItem());
+        }
 
         InventoryValuation val = mod.getInventoryValuationService().evaluate(stacks);
         if (val.getSellTotal() <= 0 && val.getBuyTotal() <= 0
@@ -121,10 +127,15 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
         String line = buildValueLine(val);
 
         // Oberhlab des Screen-Hintergrunds in der Titelzeile rendern
-        Minecraft mc = Minecraft.getInstance();
         ctx.text(mc.font, line,
             leftPos + 4, topPos - mc.font.lineHeight - 2,
             0xFFFFFFFF, true);
+    }
+
+    private boolean isLikelyServerMenu() {
+        String title = ((AbstractContainerScreen<?>)(Object) this).getTitle().getString().toLowerCase(java.util.Locale.ROOT);
+        return title.contains("markt") || title.contains("market") || title.contains("auktion") || title.contains("auction")
+            || title.contains("händler") || title.contains("merchant") || title.contains("shop");
     }
 
     private void renderQuickButtons(GuiGraphicsExtractor ctx, int mouseX, int mouseY) {

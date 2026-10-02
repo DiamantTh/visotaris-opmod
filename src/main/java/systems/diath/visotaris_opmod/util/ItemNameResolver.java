@@ -1,8 +1,5 @@
 package systems.diath.visotaris_opmod.util;
 
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
 
 /**
@@ -12,8 +9,7 @@ import net.minecraft.locale.Language;
  * <p>Funktionsweise:
  * <ol>
  *   <li>API-Item-ID → Minecraft-Registry-ID ({@code minecraft:acacia_leaves})</li>
- *   <li>Registry-Lookup → {@link Item}</li>
- *   <li>{@link Item#getDescriptionId()} → Übersetzungs-Key ({@code block.minecraft.acacia_leaves})</li>
+ *   <li>Item-/Block-Übersetzungs-Key anhand der Registry-ID bestimmen</li>
  *   <li>{@link Language#getInstance()} → lokalisierter String in der aktiven Spielsprache</li>
  * </ol>
  *
@@ -47,28 +43,26 @@ public final class ItemNameResolver {
             suffix  = " (" + apiItemId.substring(hashIdx + 1) + ")";
         }
 
-        // minecraft-Namespace versuchen; bei Vanilla-Items immer korrekt
-        final String lookupKey = baseKey;
-        Item item = BuiltInRegistries.ITEM.stream()
-            .filter(candidate -> {
-                var id = BuiltInRegistries.ITEM.getKey(candidate);
-                return id != null && "minecraft".equals(id.getNamespace()) && lookupKey.equals(id.getPath());
-            })
-            .findFirst()
-            .orElse(Items.AIR);
-
-        // Items.AIR ist der Fallback wenn nichts gefunden – in dem Fall den Key zurückgeben
-        if (item == Items.AIR && !"air".equals(baseKey)) {
-            return apiItemId;   // unbekanntes Item → Roh-ID beibehalten
+        Language lang = Language.getInstance();
+        String namespace = "minecraft";
+        String path = baseKey;
+        int namespaceSeparator = baseKey.indexOf(':');
+        if (namespaceSeparator >= 0) {
+            namespace = baseKey.substring(0, namespaceSeparator);
+            path = baseKey.substring(namespaceSeparator + 1);
         }
 
-        Language lang = Language.getInstance();
-        String translationKey = item.getDescriptionId();
-        String localizedName  = lang.getOrDefault(translationKey, null);
+        // Vanilla translations are already loaded by Minecraft. Check item and block
+        // keys directly so a market list never needs to scan the registry per row.
+        String itemKey = "item." + namespace + "." + path;
+        String blockKey = "block." + namespace + "." + path;
+        String localizedName = lang.getOrDefault(itemKey, null);
+        if (localizedName == null || localizedName.equals(itemKey)) {
+            localizedName = lang.getOrDefault(blockKey, null);
+        }
 
-        // Wenn Language den Key nicht kennt, roh zurückgeben
-        if (localizedName == null || localizedName.equals(translationKey)) {
-            return apiItemId + suffix;
+        if (localizedName == null || localizedName.equals(itemKey) || localizedName.equals(blockKey)) {
+            return apiItemId;
         }
         return localizedName + suffix;
     }

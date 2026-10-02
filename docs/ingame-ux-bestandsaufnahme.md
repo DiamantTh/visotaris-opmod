@@ -1,6 +1,6 @@
 # Ingame-UX: Bestandsaufnahme und Konzept (Entscheidungsvorlage)
 
-Stand: 27. September 2026. Dieses Dokument beschreibt den untersuchten Quellstand; das neue Menü ist **nicht** implementiert. Die 18 visuellen Beispielansichten stehen in [`ux/visotaris-ingame-ux-konzepte.pdf`](ux/visotaris-ingame-ux-konzepte.pdf). Zahlen und Uhrzeiten darin sind ausdrücklich Beispieldaten.
+Stand: 27. September 2026. Der erste technische Bestandsstand und die inzwischen umgesetzte A+C-Hybrid-Oberfläche sind hier zusammen dokumentiert. Die UX-Referenz liegt in [`ux/visotaris-ingame-ux-konzepte.pdf`](ux/visotaris-ingame-ux-konzepte.pdf); Beispielzahlen im Konzept-PDF sind keine Produktdaten. Screenshots der laufenden Implementierung liegen unter [`ux/implemented/`](ux/implemented/README.md).
 
 ## Tatsächlich verfügbare Bausteine
 
@@ -14,14 +14,14 @@ Stand: 27. September 2026. Dieses Dokument beschreibt den untersuchten Quellstan
 | Schutz/Komfort | Rename-/Sign-Schutz, Offhand-Blocker, Inventarwarnung, Job-Tracker, Command-Kurzformen, Amboss-Normalisierung; Discord RPC/Screenshot-Ziele. | Schutzgruppe mit klaren Wirkhinweisen. Discord/Web/Proxy getrennt als erweiterte Einrichtung. |
 | Verlauf | `PriceHistoryCache` lädt Itemverläufe bei Bedarf nach. | **Nicht** auf Menüöffnung oder Seitenwechsel zugreifen; detaillierte Charts verbleiben im Web. |
 
-Das bestehende Ingame-Fenster ist eine zweispaltige, scrollbar angeordnete Einstellungsseite mit Modus-, Anzeige-, Alarm-, Schutz-, Komfort-, Discord-, API- und Web-Gruppen. Es bietet noch keine integrierte Markt-/Kursübersicht. Der vorhandene Keybind „Einstellungen öffnen“ ist konfigurierbar, aber standardmäßig ungebunden; dasselbe gilt für HUD-Umschalten, manuellen Markt-/Händler-Refresh und fünf Screenshot-Tasten. Ein künftiger Menü-Keybind sollte den bisherigen Öffnen-Keybind **weiterverwenden**, nicht doppelt anlegen.
+Das Ingame-Fenster verwendet den bereits vorhandenen, konfigurierbaren Öffnen-Keybind „Einstellungen öffnen“; es wird kein zweiter Menü-Keybind registriert. Der Keybind bleibt standardmäßig ungebunden; dasselbe gilt für HUD-Umschalten, manuellen Markt-/Händler-Refresh und fünf Screenshot-Tasten.
 
 ## Wirkung, Überschneidung und Lücken
 
 - `showMarketTooltips` ist der Master-Schalter für Marktpreise im Tooltip; `tooltipShowBuyPrice` und `tooltipShowSellPrice` sind Details, keine Duplikate. Merchant-/Shard-Toggles wirken unabhängig davon. Die Detailoptionen sind heute in der Web-UX, aber nicht im Ingame-Fenster erreichbar.
 - `showHud` schaltet das bestehende dauerhafte HUD einschließlich Inventarwarnung aus. Die kurzlebigen Preisalarm-HUD-Meldungen sind getrennt. Deshalb nicht beide als einen unklaren „HUD“-Schalter darstellen.
 - `showContainerOverlay`, `showQuickButtons` und `shulkerRecursion` betreffen Container/Handled Screens, nicht den normalen Item-Tooltip.
-- `priceAlertsEnabled` ist ingame vorhanden, Regelbearbeitung bisher nur über die geschützte Web-UX. Das ist eine sinnvolle Aufgabenteilung; kein zweiter Regel-Editor nötig.
+- `priceAlertsEnabled` und die einzelnen Regeln sind jetzt ingame und in der Web-UX über denselben `ConfigManager` erreichbar. Beide Editoren verwenden dieselbe Eingabevalidierung; der Ingame-Editor bietet Suche, Bedingungen, Schwelle, Wiederholung, Cooldown, Rearm und HUD/Web-Kanäle.
 - `tooltipMaxAgeSeconds` und `tooltipShowStaleData` sind wirksame Optionen, brauchen aber eine gemeinsame Erklärung: Datenalter kennzeichnen versus veraltete Werte ausblenden.
 - Beim Aktivieren einiger Anzeigeoptionen ruft das alte Einstellungsfenster `triggerDataRefresh()` auf. Für das neue Menü ist dies zu entkoppeln: Öffnen/Navigieren/Anzeigeoptionen ändern lesen nur Cache; ausschließlich ein ausdrücklich beschrifteter manueller Refresh darf die öffentliche OPSucht-API anfragen.
 - `PriceHistoryCache` ist ein Sonderfall: Der Web-Endpunkt `/api/history/{material}` kann bei Cache-Miss extern abrufen. Für die Ingame-Übersicht nur die vorhandenen Markt-/Händler-Snapshots benutzen.
@@ -38,8 +38,16 @@ Beide unterstützten Builds (Minecraft 1.21.11 und 26.x) haben dieselben fachlic
 
 Vorhanden sind lesende Routen für Markt, Top-Aktivität, Einzelitem, Verlauf, Shard, Redcoins, Händler und Cache-Metadaten sowie geschützte `/api/system/*`-Routen für System-/MC-Info, Alarmregeln/-Events und Tooltip-Optionen. Regel- und Tooltip-Schreibzugriffe sind gezielt validiert. Die Ingame-Ansicht braucht **keinen** neuen HTTP-Endpunkt: Sie kann Services und Config direkt lesen. Lokale Anzeigeänderungen gehen über denselben `ConfigManager` wie die Web-UX; kein separater Zustand. Sensible Port-/Proxy-/Webhook- und Systemzugangsdaten gehören nicht in öffentliche Informationskarten.
 
-## Menüstruktur und Umsetzungsreihenfolge
+## Menüstruktur und Umsetzungsstand
 
-Empfohlene Struktur: **Übersicht** (Cachefrische, letzte Updates, Alarmstatus), **Markt** (Suche/Kategorie, Preis, aktive Aufträge), **Shard & Händler** (Zielwährungen/Kurse), **Preisalarme** (Status/globaler Schalter/Link zur Web-UX), **Anzeige** (normaler Item-Tooltip getrennt von HUD und Container), **Schutz & Komfort** (Observer, Schutzlogik, Kurzformen), **System** (Status und bewusster Refresh; sensible Einrichtung nur in eigenen geschützten Schirmen). Keyboard: vorhandener Öffnen-Keybind, Escape zurück, Tab oder Pfeile durch Kategorien, Enter/Space für fokussierte Optionen, Maus und Scrollrad parallel. Mindestabstände und Scissor/Scroll für kleine GUI-Skalierungen.
+Umgesetzt sind **Übersicht** (Cachefrische, letzte Updates, Alarmstatus), **Markt** (lokale Suche/Kategorien, Preise, aktive Auftragszahlen), **Shard & Händler** (Filter nach Zielwährung und Kurse), **Tooltips** (konkrete Slot-Tooltip-Optionen), **Preisalarme** (Regelzustand/globaler Schalter/Link), **Schutz & Komfort** (Observer, Anzeige, Schutzlogik, Kurzformen) und **System** (Status, manueller Refresh, weiterführende lokale Einstellungsseiten). Bedienung: vorhandener Öffnen-Keybind, Escape zurück, Tab/Shift+Tab und Pfeile für Fokus/Navigieren, Enter/Space für Optionen, Maus und Scrollrad. Kleine Höhen sind scrollbar; Seitenbereiche verwenden kompakte Beschriftungen mit Hover-Details.
+
+Menüöffnung, Seitenwechsel, Suche, Filter und Anzeigeoptionen lesen lokale Snapshots und `ConfigManager`; sie stoßen selbst keine API-Abfragen an. Der ausdrücklich betätigte System-Refresh ruft den bestehenden Markt- und Händler-Sync auf. Reguläre Hintergrundsynchronisation bleibt davon unberührt. Der Menücode greift nicht auf den lazy ladenden `PriceHistoryCache` zu.
+
+Abweichungen bzw. absichtlich Web-only: Detaillierte Charts/Preisverläufe bleiben im Web; eine neue Anfrage je Menüaufruf oder Chart wäre nicht cache-lokal. Passwort-, Proxy-, Webhook- und Pfaddaten erscheinen nicht in Systemkarten. Discord/Screenshot- sowie Netzwerkdetails bleiben in den bisherigen eigenen lokalen Unterseiten. Alarmregeln lassen sich jetzt auch nativ vollständig verwalten; die Web-UX bleibt als ausführliche Ansicht verfügbar. Der genaue Funktionsabgleich steht unter [`ux/implemented/web-ingame-abgleich.md`](ux/implemented/web-ingame-abgleich.md).
+
+`ItemNameResolver` verwendet die Vanilla Item-/Block-Übersetzungsschlüssel der aktiven Minecraft-Sprache. Damit werden Markt-/Shard-Keys als normale Spielnamen angezeigt; unbekannte, nicht in der installierten Sprache auflösbare Items fallen auf den API-Key/Anzeigenamen zurück. Es wird keine eigene Font- oder Itemdatenbank ausgeliefert.
+
+Beide Render-Brücken sind getrennt: Minecraft 1.21.11 rendert mit `GuiGraphics`, 26.x extrahiert Renderzustände mit `GuiGraphicsExtractor`; Layout, Inhalte, lokale Konfiguration und Navigation sind gemeinsam.
 
 Variantenentscheidung: A priorisiert klare Seitennavigation; B priorisiert Daten und schnelle Marktbeobachtung; C ist die kompakte, tastaturorientierte Minecraft-Ansicht. Alle sechs Beispielseiten pro Variante sind im PDF. Nach Auswahl: (1) Leseschnittstellen und Cache-Frische-Viewmodel, (2) responsive Screen-Shell für beide Builds, (3) read-only Datenkarten, (4) gemeinsame Config-Toggles ohne Refresh-Nebeneffekt, (5) Fokus-/Skalierungs-/Observer-Tests. **Keine Implementierung vor Feedback zur Variante.**

@@ -69,4 +69,45 @@ class ConfigMigrationTest {
         assertFalse(rewritten.contains("\\\"CHAT\\\""), rewritten);
         assertFalse(rewritten.contains("\\\"BOTH\\\""), rewritten);
     }
+
+    @Test void stagedCopyIsIsolatedUntilExplicitSaveAndThenShared() throws Exception {
+        Path file = directory.resolve("manual-save.toml");
+        ConfigManager manager = new ConfigManager(file);
+        manager.load();
+        VisotarisConfig live = manager.getConfig();
+        String before = Files.readString(file);
+
+        VisotarisConfig draft = new VisotarisConfig(live);
+        draft.showHud = !draft.showHud;
+        draft.discordScreenshotTargets[0].webhookUrl = "draft-only";
+        PriceAlertRule rule = new PriceAlertRule("diamond", "BUY_ABOVE", 120);
+        draft.priceAlertRules.add(rule);
+
+        assertTrue(live.showHud != draft.showHud);
+        assertTrue(live.priceAlertRules.isEmpty());
+        assertEquals("", live.discordScreenshotTargets[0].webhookUrl);
+        assertEquals(before, Files.readString(file), "editing the draft must not write the file");
+
+        assertTrue(manager.saveCandidate(draft));
+        assertSame(draft, manager.getConfig());
+        ConfigManager reloaded = new ConfigManager(file);
+        reloaded.load();
+        assertEquals(draft.showHud, reloaded.getConfig().showHud);
+        assertEquals("draft-only", reloaded.getConfig().discordScreenshotTargets[0].webhookUrl);
+        assertEquals(1, reloaded.getConfig().priceAlertRules.size());
+    }
+
+    @Test void failedCandidateSaveDoesNotPublishDraftAsLiveConfig() throws Exception {
+        Path parentFile = directory.resolve("not-a-directory");
+        Files.writeString(parentFile, "blocking file");
+        ConfigManager manager = new ConfigManager(parentFile.resolve("visotaris.toml"));
+        manager.load();
+        VisotarisConfig live = manager.getConfig();
+        VisotarisConfig draft = new VisotarisConfig(live);
+        draft.showContainerOverlay = !draft.showContainerOverlay;
+
+        assertFalse(manager.saveCandidate(draft));
+        assertSame(live, manager.getConfig());
+        assertNotEquals(draft.showContainerOverlay, manager.getConfig().showContainerOverlay);
+    }
 }

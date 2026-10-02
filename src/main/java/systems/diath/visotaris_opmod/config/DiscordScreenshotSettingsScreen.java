@@ -4,11 +4,14 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
-import systems.diath.visotaris_opmod.VisotarisModClient;
+import org.lwjgl.glfw.GLFW;
+import systems.diath.visotaris_opmod.ui.IngameUxScreenBase;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public final class DiscordScreenshotSettingsScreen extends Screen {
 
@@ -16,16 +19,18 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
     private static final int MARGIN = 20;
     private static final int TARGETS = 5;
 
-    private final Screen parent;
-    private final ConfigManager configManager;
+    private final IngameUxScreenBase parent;
     private final VisotarisConfig cfg;
+    private final Predicate<VisotarisConfig> saveDraft;
     private final List<Button> targetButtons = new ArrayList<>();
+    private boolean closing;
 
-    public DiscordScreenshotSettingsScreen(Screen parent) {
+    public DiscordScreenshotSettingsScreen(IngameUxScreenBase parent, VisotarisConfig cfg,
+                                           Predicate<VisotarisConfig> saveDraft) {
         super(Component.literal("Visotaris - Discord-Screenshots"));
         this.parent = parent;
-        this.configManager = VisotarisModClient.getInstance().getConfigManager();
-        this.cfg = configManager.getConfig();
+        this.cfg = cfg;
+        this.saveDraft = saveDraft;
     }
 
     @Override
@@ -96,19 +101,26 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
         int by = this.height - 28;
         int bx = this.width / 2 - bw - 4;
         this.addRenderableWidget(Button.builder(
-            Component.literal("Speichern & Schließen"),
+            Component.literal("Speichern"),
             b -> {
-                configManager.save();
-                this.minecraft.setScreen(parent);
+                if (saveDraft.test(cfg)) { closing = true; this.minecraft.setScreen(parent); }
             }
         ).bounds(bx, by, bw, bh).build());
         this.addRenderableWidget(Button.builder(
-            Component.literal("Abbrechen"),
-            b -> {
-                configManager.load();
-                this.minecraft.setScreen(parent);
-            }
+            Component.literal("Zurück"),
+            b -> { closing = true; parent.returnFromSubscreen(); }
         ).bounds(bx + bw + 8, by, bw, bh).build());
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE) { closing = true; parent.returnFromSubscreen(); return true; }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public void onClose() {
+        if (!closing) { closing = true; parent.returnFromSubscreen(); }
     }
 
     @Override

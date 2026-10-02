@@ -41,6 +41,11 @@ dependencies {
     // kein modImplementation: im disableObfuscation-Modus gibt es keine Remap-Konfigurationen
     implementation "com.terraformersmc:modmenu:20.0.1"
 
+    // MaLiLib hotkey API (separate runtime mod, exact 26.2 build)
+    implementation "maven.modrinth:GcWjdA9I:${malilib_version_26_2}"
+    // MaLiLib's production JAR nests this library; explicit only for the local Loom run.
+    runtimeOnly "me.fallenbreath:conditional-mixin-fabric:${malilib_conditional_mixin_version}"
+
     // Kotlin Runtime (fabric-language-kotlin stellt Stdlib + Coroutinen bereit)
     implementation "net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version_26}"
 

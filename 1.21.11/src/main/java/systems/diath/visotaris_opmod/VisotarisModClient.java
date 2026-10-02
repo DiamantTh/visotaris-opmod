@@ -13,6 +13,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.cache.MarketCache;
+import systems.diath.visotaris_opmod.cache.AuctionCache;
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.commands.VisotarisCommands;
@@ -20,6 +21,7 @@ import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.services.InventoryValuationService;
 import systems.diath.visotaris_opmod.services.JobTrackerService;
 import systems.diath.visotaris_opmod.services.MarketSyncService;
+import systems.diath.visotaris_opmod.services.AuctionSyncService;
 import systems.diath.visotaris_opmod.services.MerchantSyncService;
 import systems.diath.visotaris_opmod.services.CommandRewriteService;
 import systems.diath.visotaris_opmod.services.DiscordPresenceService;
@@ -43,11 +45,13 @@ public class VisotarisModClient implements ClientModInitializer {
 
     // Caches (gemeinsam genutzte In-Memory-Daten)
     private final MarketCache marketCache = new MarketCache();
+    private final AuctionCache auctionCache = new AuctionCache();
     private final ShardCache  shardCache  = new ShardCache();
 
     // Services (Businesslogik, von Caches getrennt)
     private ConfigManager              configManager;
     private MarketSyncService          marketSyncService;
+    private AuctionSyncService         auctionSyncService;
     private MerchantSyncService        merchantSyncService;
     private JobTrackerService          jobTrackerService;
     private TooltipValueService        tooltipValueService;
@@ -77,6 +81,7 @@ public class VisotarisModClient implements ClientModInitializer {
 
         // 2. Services aufbauen (Abhängigkeiten explizit injizieren)
         marketSyncService         = new MarketSyncService(marketCache, configManager);
+        auctionSyncService        = new AuctionSyncService(auctionCache, configManager);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
         alertNotifications        = new PriceAlertNotificationQueue();
@@ -94,6 +99,7 @@ public class VisotarisModClient implements ClientModInitializer {
         keybindService             = new KeybindService(configManager, marketSyncService, merchantSyncService, discordScreenshotService);
         // 3. Hintergrundfetcher starten
         marketSyncService.start();
+        auctionSyncService.start();
         merchantSyncService.start();
 
         // 4. Fabric-Events registrieren (Chat → Jobtracker)
@@ -147,6 +153,7 @@ public class VisotarisModClient implements ClientModInitializer {
         keybindService.registerTick();
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             marketSyncService.stop();
+            auctionSyncService.stop();
             merchantSyncService.stop();
             discordScreenshotService.shutdown();
         });
@@ -190,6 +197,7 @@ public class VisotarisModClient implements ClientModInitializer {
 
     public ConfigManager getConfigManager()                         { return configManager; }
     public MarketSyncService getMarketSyncService()                 { return marketSyncService; }
+    public AuctionSyncService getAuctionSyncService()               { return auctionSyncService; }
     public MerchantSyncService getMerchantSyncService()             { return merchantSyncService; }
     public JobTrackerService getJobTrackerService()                 { return jobTrackerService; }
     public TooltipValueService getTooltipValueService()             { return tooltipValueService; }
@@ -197,18 +205,25 @@ public class VisotarisModClient implements ClientModInitializer {
     public PendingConfirmationService getPendingConfirmationService(){ return pendingConfirmationService; }
     public DiscordScreenshotService getDiscordScreenshotService()      { return discordScreenshotService; }
     public MarketCache getMarketCache()                             { return marketCache; }
+    public AuctionCache getAuctionCache()                           { return auctionCache; }
     public ShardCache getShardCache()                               { return shardCache; }
     public WebServer getWebServer()                                 { return webServer; }
+    public PriceAlertService getPriceAlertService()                 { return priceAlertService; }
 
     public void applyWebUiConfig() {
+        applyWebUiConfig(true);
+    }
+
+    /** Applies saved options without issuing immediate market/merchant requests. */
+    public void applyWebUiConfig(boolean refreshImmediately) {
         var cfg = configManager.getConfig();
-        marketSyncService.applyConfig();
-        merchantSyncService.applyConfig();
+        marketSyncService.applyConfig(refreshImmediately);
+        merchantSyncService.applyConfig(refreshImmediately);
         if (webServer == null || webServer.getPort() != cfg.webUiPort) {
             if (webServer != null) {
                 webServer.stop();
             }
-            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, priceHistoryCache, configManager, priceAlertService);
+            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, auctionCache, priceHistoryCache, configManager, priceAlertService);
         }
         if (cfg.enableWebUi) {
             webServer.start();

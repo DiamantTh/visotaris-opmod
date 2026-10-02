@@ -1,7 +1,7 @@
 # Visotaris OPMod – Abhängigkeiten und Lizenzen
 
 Dieses Dokument listet alle direkten Abhängigkeiten des Projekts mit ihren jeweiligen Lizenzen auf.
-Zuletzt aktualisiert: 2026-07-18
+Zuletzt aktualisiert: 2026-09-27
 
 ---
 
@@ -9,7 +9,7 @@ Zuletzt aktualisiert: 2026-07-18
 
 | Abhängigkeit | Version | Lizenz | SPDX-ID |
 |---|---|---|---|
-| [Fabric Loom](https://github.com/FabricMC/fabric-loom) | 1.14.6 | MIT License | `MIT` |
+| [Fabric Loom](https://github.com/FabricMC/fabric-loom) | 1.16.3 (1.21.11); 1.17-SNAPSHOT (26.2) | MIT License | `MIT` |
 | [Kotlin JVM Gradle Plugin](https://kotlinlang.org/) | 2.2.21 | Apache License 2.0 | `Apache-2.0` |
 | [Shadow (GradleUp)](https://github.com/GradleUp/shadow) | 9.4.1 | Apache License 2.0 | `Apache-2.0` |
 
@@ -32,6 +32,13 @@ Zuletzt aktualisiert: 2026-07-18
 |---|---|---|---|---|
 | [Mod Menu](https://github.com/TerraformersMC/ModMenu) | 17.0.0 | 18.0.0-alpha.8 | MIT License | `MIT` |
 | [fabric-language-kotlin](https://github.com/FabricMC/fabric-language-kotlin) | 1.13.7+kotlin.2.2.21 | 1.13.7+kotlin.2.2.21 | Apache License 2.0 | `Apache-2.0` |
+| [MaLiLib](https://modrinth.com/mod/malilib) | 0.27.16 (1.21.11) | 0.29.3 (26.2) | GNU Lesser General Public License v3.0 only | `LGPL-3.0-only` |
+
+MaLiLib wird als separate, erforderliche Client-Mod für den konfigurierbaren
+Mehrfach-Tasten-Hotkey des Ingame-Menüs verwendet. Die gezielte Version ist je
+Minecraft-Build unterschiedlich. MaLiLib wird nicht in Visotaris-JARs eingebettet
+oder verändert. Der Hotkey ist über MaLiLibs Hotkeyverwaltung deaktivierbar.
+Siehe auch [Dritthersteller-Hinweise](THIRD_PARTY_NOTICES.md).
 
 ### Eingebettete Bibliotheken (shade / shadowJar)
 

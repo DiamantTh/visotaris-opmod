@@ -22,10 +22,10 @@ class KeybindService(
         private val CATEGORY: KeyMapping.Category = KeyMapping.Category.MISC
     }
 
-    val keyOpenSettings: KeyMapping = KeyMappingHelper.registerKeyMapping(
-        KeyMapping("visotaris_opmod.key.open_settings",
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
-    )
+    private val menuHotkey = VisotarisMenuHotkey {
+        val mc = net.minecraft.client.Minecraft.getInstance()
+        mc.gui.setScreen(VisotarisConfigScreen(mc.gui.screen()))
+    }
     val keyToggleHud: KeyMapping = KeyMappingHelper.registerKeyMapping(
         KeyMapping("visotaris_opmod.key.toggle_hud",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY)
@@ -43,9 +43,6 @@ class KeybindService(
 
     fun registerTick() {
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
-            while (keyOpenSettings.consumeClick()) {
-                mc.gui.setScreen(VisotarisConfigScreen(mc.gui.screen()))
-            }
             while (keyToggleHud.consumeClick()) {
                 config.getConfig().showHud = !config.getConfig().showHud
                 config.save()

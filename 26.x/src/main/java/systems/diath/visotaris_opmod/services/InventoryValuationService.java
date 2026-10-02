@@ -15,6 +15,7 @@ import systems.diath.visotaris_opmod.model.InventoryValuation;
 import systems.diath.visotaris_opmod.model.MarketPrice;
 import systems.diath.visotaris_opmod.model.MerchantCurrency;
 import systems.diath.visotaris_opmod.model.ShardRate;
+import systems.diath.visotaris_opmod.util.StackClassification;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,7 +93,9 @@ public final class InventoryValuationService {
             }
 
             String key = itemKey(stack);
-            Optional<MarketPrice> price = marketCache.get(key);
+            // Named/lore/CMD OP items must not inherit their vanilla carrier's market price.
+            Optional<MarketPrice> price = StackClassification.isCustomVariant(stack)
+                ? Optional.empty() : marketCache.get(key);
 
             if (price.isPresent()) {
                 int count = stack.getCount();

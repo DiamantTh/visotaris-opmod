@@ -26,4 +26,15 @@ class MerchantApiClientContractTest {
             assertEquals("paper#626", rates.get(2).getSource());
         }
     }
+
+    @Test
+    void trimsFloatingPointNoiseFromMerchantRatesToTwoDecimals() {
+        var json = JsonParser.parseString("""
+            [{"source":"example_item","target":"opshards","base":21.0,"exchangeRate":23.740000000000002}]
+            """);
+
+        ShardRate rate = MerchantApiClient.parseRates(json).getFirst();
+        assertEquals(21.0, rate.getBase());
+        assertEquals(23.74, rate.getExchangeRate());
+    }
 }

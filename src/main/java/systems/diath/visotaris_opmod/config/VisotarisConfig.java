@@ -10,6 +10,53 @@ package systems.diath.visotaris_opmod.config;
  */
 public final class VisotarisConfig {
 
+    public VisotarisConfig() { }
+
+    /** Deep copy used by the in-game editor until the user confirms Save. */
+    public VisotarisConfig(VisotarisConfig source) {
+        observerModeOnly = source.observerModeOnly;
+        showMarketTooltips = source.showMarketTooltips;
+        showHud = source.showHud;
+        showContainerOverlay = source.showContainerOverlay;
+        showQuickButtons = source.showQuickButtons;
+        shulkerRecursion = source.shulkerRecursion;
+        tooltipShowBuyPrice = source.tooltipShowBuyPrice;
+        tooltipShowSellPrice = source.tooltipShowSellPrice;
+        tooltipShowMerchantRates = source.tooltipShowMerchantRates;
+        tooltipShowShardRates = source.tooltipShowShardRates;
+        tooltipShowDataAge = source.tooltipShowDataAge;
+        tooltipShowStaleData = source.tooltipShowStaleData;
+        tooltipMaxAgeSeconds = source.tooltipMaxAgeSeconds;
+        priceAlertsEnabled = source.priceAlertsEnabled;
+        priceAlertRules = new java.util.ArrayList<>();
+        for (PriceAlertRule rule : source.priceAlertRules) priceAlertRules.add(PriceAlertRule.fromMap(rule.toMap()));
+        enableRenameProtection = source.enableRenameProtection;
+        enableSignProtection = source.enableSignProtection;
+        enableOffhandBlocker = source.enableOffhandBlocker;
+        enableInventoryWarning = source.enableInventoryWarning;
+        enableJobTracker = source.enableJobTracker;
+        enableCommandShortforms = source.enableCommandShortforms;
+        enableAnvilNormalization = source.enableAnvilNormalization;
+        enableDiscordRpc = source.enableDiscordRpc;
+        discordApplicationId = source.discordApplicationId;
+        saveDiscordScreenshotsLocally = source.saveDiscordScreenshotsLocally;
+        verboseDiscordScreenshotLogging = source.verboseDiscordScreenshotLogging;
+        for (int i = 0; i < discordScreenshotTargets.length; i++) {
+            discordScreenshotTargets[i].enabled = source.discordScreenshotTargets[i].enabled;
+            discordScreenshotTargets[i].name = source.discordScreenshotTargets[i].name;
+            discordScreenshotTargets[i].webhookUrl = source.discordScreenshotTargets[i].webhookUrl;
+        }
+        marketRefreshIntervalSeconds = source.marketRefreshIntervalSeconds;
+        merchantRefreshIntervalSeconds = source.merchantRefreshIntervalSeconds;
+        enableWebUi = source.enableWebUi;
+        webUiPort = source.webUiPort;
+        proxyType = source.proxyType;
+        proxyHost = source.proxyHost;
+        proxyPort = source.proxyPort;
+        customUserAgent = source.customUserAgent;
+        systemPasswordHash = source.systemPasswordHash;
+    }
+
     // ── Modus ─────────────────────────────────────────────────────────────────
     /**
      * Observer-Modus: deaktiviert sämtliche Ingame-Eingriffe (Tooltips, HUD,

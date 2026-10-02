@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.server.packs.resources.ResourceManager
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
+import systems.diath.visotaris_opmod.cache.AuctionCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
 import systems.diath.visotaris_opmod.cache.ShardCache
 import systems.diath.visotaris_opmod.config.ConfigManager
@@ -54,6 +55,7 @@ class WebServer(
     val port: Int,
     private val marketCache: MarketCache,
     private val shardCache: ShardCache,
+    private val auctionCache: AuctionCache,
     private val historyCache: PriceHistoryCache,
     private val config: ConfigManager,
     private val priceAlerts: PriceAlertService
@@ -165,6 +167,12 @@ class WebServer(
             get("/api/market") {
                 call.respondText(gson.toJson(marketCache.snapshot()), ContentType.Application.Json)
             }
+            get("/api/auctions") {
+                call.respondText(gson.toJson(auctionCache.snapshot().values), ContentType.Application.Json)
+            }
+            get("/api/auctions/categories") {
+                call.respondText(gson.toJson(auctionCache.categories()), ContentType.Application.Json)
+            }
             get("/api/market/top") {
                 call.respondText(gson.toJson(topMarketActivity()), ContentType.Application.Json)
             }
@@ -210,7 +218,12 @@ class WebServer(
             get("/api/meta") {
                 call.respondText(gson.toJson(mapOf(
                     "market" to cacheMeta(marketCache.getLastUpdatedMs(), marketCache.getAgeSeconds()),
-                    "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds())
+                    "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds()),
+                    "auctions" to mapOf(
+                        "updatedAt" to auctionCache.getLastUpdatedMs(),
+                        "active" to auctionCache.snapshot().size,
+                        "categories" to auctionCache.categories().size
+                    )
                 )), ContentType.Application.Json)
             }
             post("/api/system/setup") {
@@ -367,8 +380,16 @@ class WebServer(
 
                 val rm = Minecraft.getInstance().resourceManager
 
-                // Zuerst versuchen mit Original-Key (auch Custom Items wie "paper#626")
-                var bytes = loadItemIconBytes(rm, rawKey)
+                // OPSUCHT-Custom-Items benötigen ihr fachliches Symbol; der
+                // Vanilla-Träger (z.B. PAPER) ist dafür kein passendes Icon.
+                var bytes = loadCustomItemIconBytes(rm, rawKey)
+                if (bytes != null) {
+                    call.respondBytes(bytes, ContentType.Image.PNG)
+                    return@get
+                }
+
+                // Reguläre Minecraft-Items zuerst exakt auflösen.
+                bytes = loadItemIconBytes(rm, rawKey)
                 if (bytes != null) {
                     call.respondBytes(bytes, ContentType.Image.PNG)
                     return@get
@@ -387,15 +408,6 @@ class WebServer(
                         return@get
                     }
 
-                    // Zweiter Fallback: Custom-Item-Mapping (paper#626 → purple_dye, etc.)
-                    val fallbackKey = getCustomItemFallback(rawKey, key)
-                    if (fallbackKey != null) {
-                        bytes = loadItemIconBytes(rm, fallbackKey)
-                        if (bytes != null) {
-                            call.respondBytes(bytes, ContentType.Image.PNG)
-                            return@get
-                        }
-                    }
                 }
 
                 call.respond(HttpStatusCode.NotFound)
@@ -615,21 +627,19 @@ class WebServer(
         return Identifier.fromNamespaceAndPath(namespace, path)
     }
 
-    /** Fallback-Icon für bekannte Custom Items.
-     *  Nutzt visotaris-spezifische Custom-ModelData-Items und mappt sie auf bessere Icons.
-     *  Daten aus https://api.opsucht.net/merchant/rates
-     */
-    private fun getCustomItemFallback(rawKey: String, baseKey: String): String? {
-        if (baseKey != "paper") return null  // Nur für Paper-basierte Custom Items
-
-        // Custom ModelData → Fallback Icon Mapping (OPSUCHT Shardhändler Items)
-        val customModelData = rawKey.substringAfter('#').takeIf { it.isNotEmpty() }?.toIntOrNull()
-        return when (customModelData) {
-            625 -> "stick"                 // Holzbündel - braunes Icon
-            626 -> "amethyst_shard"        // Gräbergemisch - violettes Icon
-            635 -> "stone"                 // Steinplatten - graues Icon
-            else -> null
+    /** Echte OPSUCHT-Symbole für bekannte Paper-basierte Shard-Angebote. */
+    private fun loadCustomItemIconBytes(rm: ResourceManager, rawKey: String): ByteArray? {
+        if (!rawKey.substringBefore('#').equals("paper", ignoreCase = true)) return null
+        val texture = when (rawKey.substringAfter('#', "").toIntOrNull()) {
+            625 -> "holzbuendel.png"
+            626 -> "graebergemisch.png"
+            635 -> "steinplatten.png"
+            else -> return null
         }
+        return runCatching {
+            openResource(rm, "visotaris_opmod", "textures/item/shard/$texture")
+                .use { it.readBytes() }
+        }.getOrNull()
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {
