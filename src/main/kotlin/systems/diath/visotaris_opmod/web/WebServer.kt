@@ -17,9 +17,13 @@ import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.AuctionCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
+import systems.diath.visotaris_opmod.cache.ProfileCache
 import systems.diath.visotaris_opmod.cache.ShardCache
 import systems.diath.visotaris_opmod.config.ConfigManager
 import systems.diath.visotaris_opmod.config.PriceAlertRule
+import systems.diath.visotaris_opmod.config.VisotarisConfig
+import systems.diath.visotaris_opmod.services.AuctionSyncService
+import systems.diath.visotaris_opmod.services.AuctionIconCache
 import systems.diath.visotaris_opmod.services.PriceAlertEngine
 import systems.diath.visotaris_opmod.services.PriceAlertService
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
@@ -39,7 +43,10 @@ class WebServer(
     private val auctionCache: AuctionCache,
     private val historyCache: PriceHistoryCache,
     private val config: ConfigManager,
-    private val priceAlerts: PriceAlertService
+    private val priceAlerts: PriceAlertService,
+    private val auctionSync: AuctionSyncService,
+    private val auctionIcons: AuctionIconCache,
+    private val profileCache: ProfileCache
 ) {
     private val gson = Gson()
     private val systemAccess = SystemAccessControl(config)
@@ -110,6 +117,7 @@ class WebServer(
         routing {
             // ── HTML-Seiten ─────────────────────────────────────────────────────
             get("/") { serveResource(call, "assets/webui/index.html", ContentType.Text.Html) }
+            get("/auctions") { serveResource(call, "assets/webui/auctions.html", ContentType.Text.Html) }
             get("/history") { serveResource(call, "assets/webui/history.html", ContentType.Text.Html) }
             get("/shard") { serveResource(call, "assets/webui/shard.html", ContentType.Text.Html) }
             get("/redcoins") { serveResource(call, "assets/webui/redcoins.html", ContentType.Text.Html) }
@@ -151,6 +159,40 @@ class WebServer(
             }
             get("/api/auctions/categories") {
                 call.respondText(gson.toJson(auctionCache.categories()), ContentType.Application.Json)
+            }
+            get("/api/auctions/{uid}/icon") {
+                val auction = auctionCache.get(call.parameters["uid"]) ?: run {
+                    call.respond(HttpStatusCode.NotFound); return@get
+                }
+                val iconUrl = auction.item()?.icon()
+                if (AuctionIconCache.normalizeUrl(iconUrl) == null) {
+                    call.respond(HttpStatusCode.NotFound); return@get
+                }
+                val cached = auctionIcons.getCached(iconUrl)
+                if (cached != null) call.respondBytes(cached, ContentType.Image.PNG)
+                else {
+                    auctionIcons.request(iconUrl)
+                    call.response.headers.append(HttpHeaders.RetryAfter, "2")
+                    call.respondText("{\"pending\":true}", ContentType.Application.Json, HttpStatusCode.Accepted)
+                }
+            }
+            get("/api/profiles/{uuid}") {
+                val uuid = ProfileCache.canonicalUuid(call.parameters["uuid"])
+                if (uuid == null || !isAuctionParticipant(uuid)) {
+                    call.respond(HttpStatusCode.NotFound); return@get
+                }
+                val cachedName = profileCache.getDisplayName(uuid)
+                val resolved = cachedName != ProfileCache.shortUuid(uuid)
+                if (!resolved) profileCache.resolve(uuid)
+                call.respondText(gson.toJson(mapOf("uuid" to uuid, "name" to cachedName, "resolved" to resolved)), ContentType.Application.Json)
+            }
+            get("/api/auctions/finalized") {
+                call.respondText(gson.toJson(auctionCache.finalizedSnapshot().values), ContentType.Application.Json)
+            }
+            post("/api/auctions/refresh") {
+                if (!allowLocalWrite(call)) return@post
+                auctionSync.refreshSnapshot()
+                call.respondText("{\"accepted\":true}", ContentType.Application.Json, HttpStatusCode.Accepted)
             }
             get("/api/market/top") {
                 call.respondText(gson.toJson(topMarketActivity()), ContentType.Application.Json)
@@ -201,7 +243,11 @@ class WebServer(
                     "auctions" to mapOf(
                         "updatedAt" to auctionCache.getLastUpdatedMs(),
                         "active" to auctionCache.snapshot().size,
-                        "categories" to auctionCache.categories().size
+                        "categories" to auctionCache.categories().size,
+                        "liveUpdatesEnabled" to config.config.auctionLiveUpdatesEnabled,
+                        "streamEnabled" to auctionSync.isLiveUpdatesActive(),
+                        "streamActive" to auctionSync.isStreamConnected(),
+                        "devOverride" to auctionSync.isDevOverrideActive()
                     )
                 )), ContentType.Application.Json)
             }
@@ -317,6 +363,32 @@ class WebServer(
                     "showShardRates" to c.tooltipShowShardRates,
                     "showDataAge" to c.tooltipShowDataAge, "showStaleData" to c.tooltipShowStaleData, "maxAgeSeconds" to c.tooltipMaxAgeSeconds)), ContentType.Application.Json)
             }
+            get("/api/system/auctions") {
+                if (!requireSystemAccess(call)) return@get
+                val c = synchronized(config) { config.config }
+                call.respondText(gson.toJson(mapOf("liveUpdatesEnabled" to c.auctionLiveUpdatesEnabled,
+                    "streamActive" to auctionSync.isStreamConnected(), "streamEnabled" to auctionSync.isLiveUpdatesActive(),
+                    "devOverride" to auctionSync.isDevOverrideActive())), ContentType.Application.Json)
+            }
+            put("/api/system/auctions") {
+                if (!requireSystemAccess(call)) return@put
+                if (!allowLocalWrite(call)) return@put
+                val body = runCatching { JsonParser.parseString(call.receiveText()).asJsonObject }.getOrNull()
+                if (body == null || body.size() != 1 || !body.has("liveUpdatesEnabled")
+                    || !body.get("liveUpdatesEnabled").isJsonPrimitive
+                    || !body.getAsJsonPrimitive("liveUpdatesEnabled").isBoolean) {
+                    call.respond(HttpStatusCode.BadRequest, "Invalid auction settings")
+                    return@put
+                }
+                val saved = synchronized(config) {
+                    val candidate = VisotarisConfig(config.config)
+                    candidate.auctionLiveUpdatesEnabled = body.get("liveUpdatesEnabled").asBoolean
+                    config.saveCandidate(candidate)
+                }
+                if (!saved) { call.respond(HttpStatusCode.InternalServerError, "Settings could not be saved"); return@put }
+                auctionSync.applyConfig()
+                call.respond(HttpStatusCode.NoContent)
+            }
             put("/api/system/tooltips") {
                 if (!requireSystemAccess(call)) return@put
                 if (!allowLocalWrite(call)) return@put
@@ -391,6 +463,13 @@ class WebServer(
     private fun merchantRatesFor(target: String) = shardCache.snapshot().values
         .filter { target.equals(it.target, ignoreCase = true) }
         .sortedBy { it.source }
+
+    private fun isAuctionParticipant(uuid: String): Boolean {
+        fun matches(value: String?) = ProfileCache.canonicalUuid(value) == uuid
+        return (auctionCache.snapshot().values + auctionCache.finalizedSnapshot().values).any { auction ->
+            matches(auction.seller()) || matches(auction.highestBidder()) || auction.bids()?.keys?.any(::matches) == true
+        }
+    }
 
     /** Vollständige, erweiterbare Merchant-Übersicht für neue API-Zielwährungen. */
     private fun merchantRatesByTarget() = shardCache.snapshot().values

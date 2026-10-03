@@ -16,6 +16,7 @@ import systems.diath.visotaris_opmod.api.MarketHistoryApiClient;
 import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.AuctionCache;
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache;
+import systems.diath.visotaris_opmod.cache.ProfileCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.commands.VisotarisCommands;
 import systems.diath.visotaris_opmod.config.ConfigManager;
@@ -23,6 +24,7 @@ import systems.diath.visotaris_opmod.services.InventoryValuationService;
 import systems.diath.visotaris_opmod.services.JobTrackerService;
 import systems.diath.visotaris_opmod.services.MarketSyncService;
 import systems.diath.visotaris_opmod.services.AuctionSyncService;
+import systems.diath.visotaris_opmod.services.AuctionIconCache;
 import systems.diath.visotaris_opmod.services.MerchantSyncService;
 import systems.diath.visotaris_opmod.services.CommandRewriteService;
 import systems.diath.visotaris_opmod.services.DiscordPresenceService;
@@ -47,6 +49,8 @@ public class VisotarisModClient implements ClientModInitializer {
     // Caches (gemeinsam genutzte In-Memory-Daten)
     private final MarketCache marketCache = new MarketCache();
     private final AuctionCache auctionCache = new AuctionCache();
+    private AuctionIconCache auctionIconCache;
+    private ProfileCache profileCache;
     private final ShardCache  shardCache  = new ShardCache();
 
     // Services (Businesslogik, von Caches getrennt)
@@ -82,6 +86,8 @@ public class VisotarisModClient implements ClientModInitializer {
 
         // 2. Services aufbauen (Abhängigkeiten explizit injizieren)
         marketSyncService         = new MarketSyncService(marketCache, configManager);
+        auctionIconCache          = new AuctionIconCache(configManager);
+        profileCache              = new ProfileCache(configManager);
         auctionSyncService        = new AuctionSyncService(auctionCache, configManager);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
@@ -145,6 +151,8 @@ public class VisotarisModClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             marketSyncService.stop();
             auctionSyncService.stop();
+            auctionIconCache.close();
+            profileCache.close();
             merchantSyncService.stop();
             discordScreenshotService.shutdown();
         });
@@ -204,6 +212,8 @@ public class VisotarisModClient implements ClientModInitializer {
     public DiscordScreenshotService getDiscordScreenshotService()      { return discordScreenshotService; }
     public MarketCache getMarketCache()                             { return marketCache; }
     public AuctionCache getAuctionCache()                           { return auctionCache; }
+    public AuctionIconCache getAuctionIconCache()                   { return auctionIconCache; }
+    public ProfileCache getProfileCache()                            { return profileCache; }
     public ShardCache getShardCache()                               { return shardCache; }
     public WebServer getWebServer()                                 { return webServer; }
     public PriceAlertService getPriceAlertService()                 { return priceAlertService; }
@@ -221,7 +231,8 @@ public class VisotarisModClient implements ClientModInitializer {
             if (webServer != null) {
                 webServer.stop();
             }
-            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, auctionCache, priceHistoryCache, configManager, priceAlertService);
+            webServer = new WebServer(cfg.webUiPort, marketCache, shardCache, auctionCache, priceHistoryCache,
+                configManager, priceAlertService, auctionSyncService, auctionIconCache, profileCache);
         }
         if (cfg.enableWebUi) {
             webServer.start();

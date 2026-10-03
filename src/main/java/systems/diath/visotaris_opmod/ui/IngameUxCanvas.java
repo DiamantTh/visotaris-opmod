@@ -4,6 +4,7 @@ package systems.diath.visotaris_opmod.ui;
 public interface IngameUxCanvas {
     void fill(int left, int top, int right, int bottom, int color);
     void item(String registryKey, int x, int y);
+    default boolean image(String key, byte[] png, int x, int y, int size) { return false; }
     void icon(String path, int x, int y, int size);
     void enableScissor(int left, int top, int right, int bottom);
     void disableScissor();

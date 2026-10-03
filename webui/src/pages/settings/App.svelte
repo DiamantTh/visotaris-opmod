@@ -15,6 +15,8 @@
   let itemsLoaded = false
   let events = $state([])
   let tooltip = $state({ showMarketPrices: true, showBuyPrice: true, showSellPrice: true, showMerchantRates: true, showShardRates: true, showDataAge: false, showStaleData: true, maxAgeSeconds: 900 })
+  let auctionSettings = $state({ liveUpdatesEnabled: false, streamActive: false, streamEnabled: false })
+  let auctionSettingsDirty = $state(false)
   let busy = $state(false)
   let error = $state('')
   let notice = $state('')
@@ -53,9 +55,9 @@
         if (!form.itemKey && items.length) form.itemKey = items[0]
         clearInterval(timer); timer = setInterval(refreshLive, 5000)
       } else {
-        const t = await request('/api/system/tooltips')
-        if (!t) return
-        authenticated = true; tooltip = t
+        const [t, a] = await Promise.all([request('/api/system/tooltips'), request('/api/system/auctions')])
+        if (!t || !a) return
+        authenticated = true; tooltip = t; auctionSettings = a; auctionSettingsDirty = false
       }
     } catch (e) { error = e.message }
   }
@@ -83,6 +85,16 @@
     busy = true; error = ''; notice = ''
     try { await request('/api/system/tooltips', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tooltip) }); notice = 'Tooltip-Einstellungen gespeichert.' }
     catch (e) { error = e.message } finally { busy = false }
+  }
+  async function saveAuctionSettings() {
+    busy = true; error = ''; notice = ''
+    try {
+      await request('/api/system/auctions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ liveUpdatesEnabled: auctionSettings.liveUpdatesEnabled }) })
+      auctionSettingsDirty = false
+      const updated = await request('/api/system/auctions')
+      if (updated) auctionSettings = updated
+      notice = 'Auktionshaus-Einstellungen gespeichert.'
+    } catch (e) { error = e.message } finally { busy = false }
   }
   function edit(row) {
     const r = row.rule; editingId = r.id
@@ -175,6 +187,14 @@
       {#if events.length}<div class="settings-events"><h3>Zuletzt ausgelöst</h3>{#each events.slice(0, 8) as event}<p><time>{new Date(event.timestampMs).toLocaleTimeString('de-DE')}</time> · {fmtItem(event.itemKey)} — {labels[event.condition]} {numberText(event.currentValue)}</p>{/each}</div>{/if}
     </section>
     {:else}
+    <section class="settings-section" aria-labelledby="auction-title">
+      <div class="settings-section-head"><div><p class="settings-kicker">READ-ONLY · GEMEINSAMER AUKTIONSCACHE</p><h2 id="auction-title">Auktionshaus-Liveupdates</h2></div><button class="btn-primary" onclick={saveAuctionSettings} disabled={busy || !auctionSettingsDirty}>Einstellungen speichern</button></div>
+      <div class="vi-card tooltip-options">
+        <label class="settings-check"><input type="checkbox" bind:checked={auctionSettings.liveUpdatesEnabled} onchange={() => auctionSettingsDirty = true} />Liveupdates über SSE aktivieren</label>
+        <p class="settings-help">Standardmäßig AUS: vorhandene Cache-Daten bleiben sichtbar; „Auktionen aktualisieren“ lädt bewusst Kategorien und <code>/auctions/active</code>. Wenn aktiviert, lädt Visotaris zuerst einen neuen Snapshot und verbindet danach den Stream. Minecraft und Web lesen denselben AuctionCache. Keine Gebote oder Käufe werden ausgelöst.</p>
+        <p class="settings-help">Status: {auctionSettings.streamActive ? 'Live-Stream verbunden' : auctionSettings.devOverride && !auctionSettings.liveUpdatesEnabled ? 'Nur durch Entwicklungs-ENV aktiviert' : auctionSettings.streamEnabled ? 'Liveupdates gespeichert; Verbindung wird aufgebaut oder wiederhergestellt' : 'Stream aus; manuelle Aktualisierung verfügbar'}.</p>
+      </div>
+    </section>
     <section class="settings-section" aria-labelledby="tooltip-title">
       <div class="settings-section-head"><div><p class="settings-kicker">CLIENT-SEITIG · CACHE-ONLY</p><h2 id="tooltip-title">Item-Tooltips</h2></div><button class="btn-primary" onclick={saveTooltip} disabled={busy}>Einstellungen speichern</button></div>
       <p class="settings-help">Diese Zusätze erscheinen im normalen Minecraft-Tooltip, wenn du im Inventar, einer Kiste oder einem Menü mit der Maus über einen Item-Slot fährst. Sie ergänzen die üblichen Item-Eigenschaften und Verzauberungen. Off-Hand, dauerhaftes HUD und Container-Gesamtwert sind getrennte Anzeigen.</p>

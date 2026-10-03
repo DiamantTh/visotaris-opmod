@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import Icon from '@iconify/svelte'
   import { fmtItem } from '../lib/utils.js'
-/** @type {{ activePage: 'market' | 'shard' | 'redcoins' | 'merchant' | 'history' | 'system' }} */
+/** @type {{ activePage: 'market' | 'auctions' | 'shard' | 'redcoins' | 'merchant' | 'history' | 'system' }} */
   let { activePage } = $props()
   let alert = $state(null)
   let initialized = false
@@ -49,6 +49,9 @@
   <div class="vi-navbar-links">
     <a href="/" class:active={activePage === 'market'}>
       <Icon icon="lucide:table" width={13} />Markt
+    </a>
+    <a href="/auctions" class:active={activePage === 'auctions'}>
+      <Icon icon="lucide:gavel" width={13} />Auktionshaus
     </a>
     <a href="/shard" class:active={activePage === 'shard'}>
       <Icon icon="lucide:gem" width={13} />Shards

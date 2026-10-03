@@ -70,10 +70,7 @@ public final class VisotarisConst {
             .readTimeout(10, TimeUnit.SECONDS)
             .followRedirects(true)
             .addInterceptor(chain -> {
-                Request.Builder req = chain.request().newBuilder()
-                    .header("User-Agent", buildUserAgent(cfg.customUserAgent))
-                    .header("Accept", "application/json");
-                return chain.proceed(req.build());
+                return chain.proceed(applyDefaultHeaders(chain.request(), buildUserAgent(cfg.customUserAgent)));
             });
         if (cfg.proxyHost != null && !cfg.proxyHost.isBlank() && cfg.proxyPort > 0) {
             String proxyType = normalizeProxyType(cfg.proxyType);
@@ -83,6 +80,13 @@ public final class VisotarisConst {
                 builder.socketFactory(SSLSocketFactory.getDefault());
             }
         }
+        return builder.build();
+    }
+
+    /** Applies common headers without overwriting an endpoint's explicit content negotiation. */
+    public static Request applyDefaultHeaders(Request request, String userAgent) {
+        Request.Builder builder = request.newBuilder().header("User-Agent", userAgent);
+        if (request.header("Accept") == null) builder.header("Accept", "application/json");
         return builder.build();
     }
 

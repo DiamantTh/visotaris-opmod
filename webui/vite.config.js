@@ -19,6 +19,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         market:  resolve(__dirname, 'index.html'),
+        auctions: resolve(__dirname, 'auctions.html'),
         history: resolve(__dirname, 'history.html'),
         shard:   resolve(__dirname, 'shard.html'),
         redcoins: resolve(__dirname, 'redcoins.html'),

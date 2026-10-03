@@ -79,11 +79,13 @@ class ConfigMigrationTest {
 
         VisotarisConfig draft = new VisotarisConfig(live);
         draft.showHud = !draft.showHud;
+        draft.auctionLiveUpdatesEnabled = true;
         draft.discordScreenshotTargets[0].webhookUrl = "draft-only";
         PriceAlertRule rule = new PriceAlertRule("diamond", "BUY_ABOVE", 120);
         draft.priceAlertRules.add(rule);
 
         assertTrue(live.showHud != draft.showHud);
+        assertFalse(live.auctionLiveUpdatesEnabled, "live updates default to off until saved");
         assertTrue(live.priceAlertRules.isEmpty());
         assertEquals("", live.discordScreenshotTargets[0].webhookUrl);
         assertEquals(before, Files.readString(file), "editing the draft must not write the file");
@@ -93,8 +95,17 @@ class ConfigMigrationTest {
         ConfigManager reloaded = new ConfigManager(file);
         reloaded.load();
         assertEquals(draft.showHud, reloaded.getConfig().showHud);
+        assertTrue(reloaded.getConfig().auctionLiveUpdatesEnabled);
         assertEquals("draft-only", reloaded.getConfig().discordScreenshotTargets[0].webhookUrl);
         assertEquals(1, reloaded.getConfig().priceAlertRules.size());
+    }
+
+    @Test void freshConfigurationKeepsAuctionLiveUpdatesDisabled() throws Exception {
+        Path file = directory.resolve("fresh.toml");
+        ConfigManager manager = new ConfigManager(file);
+        manager.load();
+        assertFalse(manager.getConfig().auctionLiveUpdatesEnabled);
+        assertTrue(Files.readString(file).contains("liveUpdatesEnabled = false"));
     }
 
     @Test void failedCandidateSaveDoesNotPublishDraftAsLiveConfig() throws Exception {

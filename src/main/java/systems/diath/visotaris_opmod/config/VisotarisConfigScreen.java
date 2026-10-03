@@ -3,19 +3,33 @@ package systems.diath.visotaris_opmod.config;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import com.mojang.blaze3d.platform.NativeImage;
 import systems.diath.visotaris_opmod.ui.IngameUxCanvas;
 import systems.diath.visotaris_opmod.ui.IngameUxScreenBase;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** Native A+C client menu, rendered with Minecraft 26.x's render-state API. */
 public final class VisotarisConfigScreen extends IngameUxScreenBase {
+    private final Map<String, Identifier> auctionTextures = new HashMap<>();
+
     public VisotarisConfigScreen(Screen parent) { super(parent); }
 
     @Override
     protected void showScreen(Screen screen) {
         Minecraft.getInstance().gui.setScreen(screen);
+    }
+
+    @Override
+    public void removed() {
+        super.removed();
+        auctionTextures.values().forEach(id -> Minecraft.getInstance().getTextureManager().release(id));
+        auctionTextures.clear();
     }
 
     @Override
@@ -40,6 +54,22 @@ public final class VisotarisConfigScreen extends IngameUxScreenBase {
                     graphics.item(new ItemStack(holder.get()), x, y);
                 } else {
                     placeholder(x, y);
+                }
+            }
+            @Override public boolean image(String key, byte[] png, int x, int y, int size) {
+                try {
+                    Identifier textureId = auctionTextures.get(key);
+                    if (textureId == null) {
+                        textureId = Identifier.fromNamespaceAndPath("visotaris_opmod", "auction/" + key);
+                        NativeImage pixels = NativeImage.read(png);
+                        Minecraft.getInstance().getTextureManager().register(textureId,
+                            new DynamicTexture(() -> "Visotaris auction icon", pixels));
+                        auctionTextures.put(key, textureId);
+                    }
+                    graphics.blit(textureId, x, y, x + size, y + size, 0f, 1f, 0f, 1f);
+                    return true;
+                } catch (Exception invalidIcon) {
+                    return false;
                 }
             }
             private void placeholder(int x, int y) {

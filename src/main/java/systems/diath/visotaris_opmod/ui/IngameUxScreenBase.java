@@ -364,6 +364,7 @@ public abstract class IngameUxScreenBase extends Screen {
         VisotarisConfig candidate = cfg;
         mergeAlertRuntimeState(candidate, configManager.getConfig());
         boolean reconfigureNetwork = networkConfigChanged(savedConfig, candidate);
+        boolean reconfigureAuctions = savedConfig.auctionLiveUpdatesEnabled != candidate.auctionLiveUpdatesEnabled;
         if (!configManager.saveCandidate(candidate)) {
             setStatus("Speichern fehlgeschlagen · Änderungen bleiben vorgemerkt.");
             refreshWidgets();
@@ -373,6 +374,7 @@ public abstract class IngameUxScreenBase extends Screen {
         savedConfig = new VisotarisConfig(candidate);
         alertEditorDirty = false;
         if (reconfigureNetwork) mod.applyWebUiConfig(false);
+        if (reconfigureAuctions) mod.getAuctionSyncService().applyConfig();
         setStatus("Änderungen erfolgreich gespeichert.");
         refreshWidgets();
     }
@@ -381,11 +383,13 @@ public abstract class IngameUxScreenBase extends Screen {
         if (alertDraft != null && !stageAlertDraft()) return false;
         mergeAlertRuntimeState(candidate, configManager.getConfig());
         boolean reconfigureNetwork = networkConfigChanged(savedConfig, candidate);
+        boolean reconfigureAuctions = savedConfig.auctionLiveUpdatesEnabled != candidate.auctionLiveUpdatesEnabled;
         if (!configManager.saveCandidate(candidate)) return false;
         cfg = candidate;
         savedConfig = new VisotarisConfig(candidate);
         alertEditorDirty = false;
         if (reconfigureNetwork) mod.applyWebUiConfig(false);
+        if (reconfigureAuctions) mod.getAuctionSyncService().applyConfig();
         setStatus("Änderungen erfolgreich gespeichert.");
         return true;
     }
@@ -560,6 +564,12 @@ public abstract class IngameUxScreenBase extends Screen {
     @Override
     public void tick() {
         super.tick();
+        VisotarisConfig liveConfig = configManager.getConfig();
+        if (!hasUnsavedChanges() && !CONFIG_JSON.toJson(savedConfig).equals(CONFIG_JSON.toJson(liveConfig))) {
+            cfg = new VisotarisConfig(liveConfig);
+            savedConfig = new VisotarisConfig(liveConfig);
+            refreshWidgets();
+        }
         long marketUpdated = marketCache.getLastUpdatedMs();
         long shardUpdated = shardCache.getLastUpdatedMs();
         long auctionUpdated = auctionCache.getLastUpdatedMs();
@@ -934,8 +944,13 @@ public abstract class IngameUxScreenBase extends Screen {
 
     private void drawAuctions(IngameUxCanvas c, int x, int y, int w, int mouseX, int mouseY) {
         drawInput(c, auctionSearch, "Auktion suchen …");
-        c.text(fit(c, "Aktiv · " + auctionRows.size() + " Auktionen · " + ageText(auctionCache.getLastUpdatedMs()), w - 12), x + 6, y + 58, MUTED, false);
-        int rowsY = y + 78;
+        boolean auctionSettingDraft = cfg.auctionLiveUpdatesEnabled != savedConfig.auctionLiveUpdatesEnabled;
+        String streamStatus = auctionSettingDraft ? " · Änderung erst nach Speichern" :
+            mod.getAuctionSyncService().isStreamConnected() ? " · Live verbunden" :
+            mod.getAuctionSyncService().isDevOverrideActive() && !cfg.auctionLiveUpdatesEnabled ? " · DEV-Stream verbindet" :
+            cfg.auctionLiveUpdatesEnabled ? " · Liveupdates verbinden …" : " · manuell";
+        c.text(fit(c, "Aktiv · " + auctionRows.size() + " Auktionen · " + ageText(auctionCache.getLastUpdatedMs()) + streamStatus, w - 12), x + 6, y + 84, MUTED, false);
+        int rowsY = y + 103;
         int rh = 38;
         int available = Math.max(30, window.contentBottom() - rowsY - c.lineHeight() - 8);
         if (auctionRows.isEmpty()) {
@@ -957,8 +972,13 @@ public abstract class IngameUxScreenBase extends Screen {
             Auction auction = auctionRows.get(i);
             int ry = rowsY + (int) Math.round((i - start - fraction) * rh);
             card(c, x + 2, ry, w - 4, rh - 2);
-            String material = auction.item() == null ? "barrier" : auction.item().material().toLowerCase(Locale.ROOT);
-            c.item(material, x + 7, ry + 5);
+            String material = auction.item() == null || auction.item().material() == null
+                ? "barrier" : auction.item().material().toLowerCase(Locale.ROOT);
+            String iconUrl = auction.item() == null ? null : auction.item().icon();
+            byte[] icon = mod.getAuctionIconCache().getCached(iconUrl);
+            if (icon == null && iconUrl != null) mod.getAuctionIconCache().request(iconUrl);
+            String iconKey = systems.diath.visotaris_opmod.services.AuctionIconCache.cacheId(iconUrl);
+            if (icon == null || iconKey == null || !c.image(iconKey, icon, x + 7, ry + 5, 16)) c.item(material, x + 7, ry + 5);
             String name = auction.item() == null || auction.item().displayName() == null ? material : auction.item().displayName();
             c.text(fit(c, name, Math.max(50, w - 150)), x + 30, ry + 4, WHITE, false);
             String price = "Gebot " + formatMoney(auction.currentBid());
@@ -967,9 +987,30 @@ public abstract class IngameUxScreenBase extends Screen {
             if (mouseX >= x && mouseX <= x + w && mouseY >= rowsY && mouseY < rowsY + available
                 && mouseY >= ry && mouseY < ry + rh - 2) {
                 hoveredRow = i;
-                hoveredDetails = name + "\nKategorie: " + auction.category() + "\nStatus: " + auction.state()
-                    + "\nAktuelles Gebot: " + formatMoney(auction.currentBid())
-                    + (auction.instantBuyPrice() != null ? "\nSofortkauf: " + formatMoney(auction.instantBuyPrice()) : "")
+                String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
+                String bidder = auction.highestBidder() == null ? "–" : mod.getProfileCache().getDisplayName(auction.highestBidder());
+                if (auction.seller() != null) mod.getProfileCache().resolve(auction.seller());
+                if (auction.highestBidder() != null) mod.getProfileCache().resolve(auction.highestBidder());
+                String bidDetails = auction.bids() == null ? "" : auction.bids().entrySet().stream().limit(3)
+                    .map(entry -> {
+                        mod.getProfileCache().resolve(entry.getKey());
+                        return mod.getProfileCache().getDisplayName(entry.getKey()) + ": " + formatMoney(entry.getValue());
+                    }).collect(java.util.stream.Collectors.joining(" · "));
+                hoveredDetails = name + " · " + (auction.item() == null ? 1 : auction.item().amount()) + "×"
+                    + "\nKategorie: " + auction.category() + " · Status: " + auction.state()
+                    + "\nStartgebot: " + formatMoney(auction.startBid()) + " · Aktuell: " + formatMoney(auction.currentBid())
+                    + (auction.instantBuyPrice() != null ? " · Sofortkauf: " + formatMoney(auction.instantBuyPrice()) : "")
+                    + "\nVerkäufer: " + seller + " · Höchstbietender: " + bidder
+                    + "\nGebote: " + (auction.bids() == null ? 0 : auction.bids().size())
+                    + (bidDetails.isBlank() ? "" : " · " + bidDetails)
+                    + "\nStart: " + (auction.startTime() == null ? "–" : auction.startTime())
+                    + " · Ende: " + (auction.endTime() == null ? "–" : auction.endTime())
+                    + (auction.item() == null || auction.item().lore() == null || auction.item().lore().isEmpty() ? "" :
+                        "\nBeschreibung: " + String.join(" · ", auction.item().lore().stream().filter(line -> !line.isBlank()).limit(4).toList()))
+                    + (auction.item() == null || auction.item().enchantments() == null || auction.item().enchantments().isEmpty() ? "" :
+                        "\nVerzauberungen: " + auction.item().enchantments().entrySet().stream().limit(6)
+                            .map(entry -> entry.getKey().substring(entry.getKey().lastIndexOf(':') + 1).replace('_', ' ') + " " + entry.getValue())
+                            .collect(java.util.stream.Collectors.joining(", ")))
                     + "\nUID: " + auction.uid();
                 c.fill(x + 2, ry, x + 4, ry + rh - 2, ICE);
             }
@@ -1243,7 +1284,17 @@ public abstract class IngameUxScreenBase extends Screen {
             () -> "Filtert ausschließlich lokale aktive Auktionsdaten.", false, () -> { cycleAuctionCategory(); refreshAuctionRows(); rebuildWidgets(); });
         addControl(x + w / 2 + 3, y + 28, w / 2 - 3, 23, () -> "Sortierung: " + auctionSortLabel() + (auctionSortDescending ? " ↓" : " ↑"), () -> false,
             () -> "Lokale Sortierung: Name, Gebot, Sofortkauf oder Ablauf.", false, () -> { auctionSort = (auctionSort + 1) % 4; auctionSortDescending = false; refreshAuctionRows(); rebuildWidgets(); });
-        contentEnd = y + 55;
+        addControl(x, y + 56, w / 2 - 3, 23, () -> mod.getAuctionSyncService().isSnapshotLoading()
+                ? "Auktionen werden geladen …" : "Auktionen jetzt aktualisieren",
+            () -> false, () -> "Lädt Kategorien und /auctions/active. Nur diese ausdrückliche Aktion fragt den Snapshot ab.", true,
+            () -> {
+                mod.getAuctionSyncService().refreshSnapshot();
+                setStatus("Auktions-Snapshot angefragt; die Ansicht aktualisiert sich nach der Antwort.");
+            });
+        addToggle(x + w / 2 + 3, y + 56, w / 2 - 3, "Auktions-Liveupdates",
+            () -> cfg.auctionLiveUpdatesEnabled, value -> cfg.auctionLiveUpdatesEnabled = value,
+            "Optionaler SSE-Stream nach einem /active-Abgleich. Die Änderung wird erst mit Speichern wirksam; Standard: AUS.", false);
+        contentEnd = y + 81;
     }
     private void buildAlerts(int x, int y, int w) {
         alertItemSearch = null;
@@ -1521,14 +1572,32 @@ public abstract class IngameUxScreenBase extends Screen {
                 && !material.toLowerCase(Locale.ROOT).contains(query) && !String.valueOf(auction.category()).toLowerCase(Locale.ROOT).contains(query)) continue;
             auctionRows.add(auction);
         }
-        Comparator<Auction> comparator = switch (auctionSort) {
-            case 1 -> Comparator.comparingDouble(Auction::currentBid);
-            case 2 -> Comparator.comparing(a -> a.instantBuyPrice() == null ? Double.POSITIVE_INFINITY : a.instantBuyPrice());
-            case 3 -> Comparator.comparing(a -> a.endTime() == null ? java.time.Instant.MAX : a.endTime());
-            default -> Comparator.comparing(a -> a.item() == null || a.item().displayName() == null ? "" : a.item().displayName(), String.CASE_INSENSITIVE_ORDER);
-        };
-        if (auctionSortDescending) comparator = comparator.reversed();
+        Comparator<Auction> comparator;
+        if (auctionSort == 2) {
+            comparator = Comparator.comparing((Auction a) -> a.instantBuyPrice() == null)
+                .thenComparing((a, b) -> auctionSortDescending
+                    ? compareNullable(b.instantBuyPrice(), a.instantBuyPrice())
+                    : compareNullable(a.instantBuyPrice(), b.instantBuyPrice()));
+        } else if (auctionSort == 3) {
+            comparator = Comparator.comparing((Auction a) -> a.endTime() == null)
+                .thenComparing((a, b) -> auctionSortDescending
+                    ? compareNullable(b.endTime(), a.endTime())
+                    : compareNullable(a.endTime(), b.endTime()));
+        } else {
+            comparator = switch (auctionSort) {
+                case 1 -> Comparator.comparingDouble(Auction::currentBid);
+                default -> Comparator.comparing(a -> a.item() == null || a.item().displayName() == null ? "" : a.item().displayName(), String.CASE_INSENSITIVE_ORDER);
+            };
+            if (auctionSortDescending) comparator = comparator.reversed();
+        }
         auctionRows.sort(comparator);
+    }
+
+    private static <T extends Comparable<? super T>> int compareNullable(T first, T second) {
+        if (first == second) return 0;
+        if (first == null) return 1;
+        if (second == null) return -1;
+        return first.compareTo(second);
     }
 
     private String auctionCategoryLabel() {
@@ -1777,6 +1846,11 @@ public abstract class IngameUxScreenBase extends Screen {
     private void drawTooltip(IngameUxCanvas c, String value, int mouseX, int mouseY) {
         int maxWidth = Math.min(310, Math.max(120, width - 20));
         List<String> lines = wrapTooltip(c, value, maxWidth - 12);
+        int maxLines = Math.max(1, (height - 20) / Math.max(1, c.lineHeight()));
+        if (lines.size() > maxLines) {
+            lines = new ArrayList<>(lines.subList(0, maxLines));
+            lines.set(maxLines - 1, fit(c, "… weitere Details in der Web-UX", maxWidth - 12));
+        }
         int boxW = Math.min(maxWidth, lines.stream().mapToInt(c::textWidth).max().orElse(0) + 12);
         int boxH = lines.size() * c.lineHeight() + 10;
         int x = clamp(mouseX + 12, 5, width - boxW - 5);

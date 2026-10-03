@@ -57,7 +57,7 @@ public final class ConfigManager {
             migrateLegacySettings = toml.contains("modus") || toml.contains("anzeige") || toml.contains("schutz") || toml.contains("netzwerk")
                 || hasLegacyFlatSettings(toml) || toml.contains("features.enableDiscordRpc")
                 || toml.contains("features.discordApplicationId") || toml.contains("features.saveDiscordScreenshotsLocally")
-                || toml.contains("features.verboseDiscordScreenshotLogging");
+                || toml.contains("features.verboseDiscordScreenshotLogging") || !toml.contains("auctions.liveUpdatesEnabled");
             VisotarisConfig c = new VisotarisConfig();
             // ── Modus ─────────────────────────────────────────────────────────────────
             c.observerModeOnly = bool(toml, "mode.observerModeOnly", "modus.observerModeOnly", "observerModeOnly", c.observerModeOnly);
@@ -75,6 +75,7 @@ public final class ConfigManager {
             c.tooltipShowStaleData = bool(toml, "tooltips.showStaleData", "", "", c.tooltipShowStaleData);
             c.tooltipMaxAgeSeconds = intValue(toml, "tooltips.maxAgeSeconds", c.tooltipMaxAgeSeconds);
             c.priceAlertsEnabled = bool(toml, "priceAlerts.enabled", "", "", c.priceAlertsEnabled);
+            c.auctionLiveUpdatesEnabled = bool(toml, "auctions.liveUpdatesEnabled", "", "", c.auctionLiveUpdatesEnabled);
             Object storedRules = toml.get("priceAlerts.rules");
             if (storedRules instanceof java.util.List<?> list) for (Object entry : list) {
                 try {
@@ -204,6 +205,8 @@ public final class ConfigManager {
             toml.setComment("priceAlerts", "Client-side market observation only; no trades or server actions");
             toml.set("priceAlerts.enabled", c.priceAlertsEnabled);
             toml.set("priceAlerts.rules", c.priceAlertRules.stream().map(rule -> GSON.toJson(rule.toMap())).toList());
+            toml.setComment("auctions", "Read-only auction snapshots; live updates are opt-in");
+            toml.set("auctions.liveUpdatesEnabled", c.auctionLiveUpdatesEnabled);
             toml.setComment("protection", "Client-side safety features");
             toml.set("protection.enableRenameProtection", c.enableRenameProtection);
             toml.set("protection.enableSignProtection", c.enableSignProtection);

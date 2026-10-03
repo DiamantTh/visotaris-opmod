@@ -1,8 +1,39 @@
-# Visotaris OPMod 1.2.0-pre.3 — Vorabversion
+# Release Notes
+
+## Visotaris OPMod 1.2.0-pre.4 — Vorabversion (aktuelle Entwicklungsfassung)
+
+Diese Fassung baut auf dem gesicherten pre.3-Stand auf und bleibt ausdrücklich eine
+Vorabversion. Zielplattform ist Minecraft 26.x (aktuell 26.2); ein stabiler 1.2.0-
+Release oder Release-Tag wird hierdurch nicht erstellt.
+
+### Änderungen in pre.4
+
+- Auktions-Liveupdates sind bei Neuinstallationen AUS. Ein bewusster Refresh lädt
+  Kategorien und `/auctions/active`; erst die gespeicherte gemeinsame Einstellung
+  oder `VISOTARIS_AUCTIONS_STREAM_DEV=true` startet danach SSE.
+- Die SSE-Verbindung fordert `text/event-stream` an, hat kein kurzes JSON-Read-Timeout,
+  ignoriert Keepalive-Kommentare und verarbeitet Events über die fachliche Auction-UID.
+- Gebote und Updates führen vollständige bzw. zusammengeführte Snapshots derselben UID;
+  `endTime` wird aktualisiert. Abschlussereignisse verlassen den aktiven Bestand, ihre
+  Details bleiben begrenzt für spätere lokale Historie verfügbar.
+- Ingame- und geschützte Web-Einstellungen schreiben denselben ConfigManager-Wert;
+  Ingame-Änderungen bleiben bis zum ausdrücklichen Speichern Entwurf.
+
+### Vor dem stabilen 1.2.0-Release prüfen
+
+- Alle neuen Eventtypen und Header-/Config-Fälle automatisiert testen.
+- Manuelle Web-/Client-Aktualisierung, Live-Stream und Cache-Synchronität praktisch
+  prüfen; tatsächlich beobachtete und nur simulierte Events getrennt dokumentieren.
+- Cachepersistenz, Spielerprofilnamen und API-Icons im Minecraft- und Web-Client
+  praktisch verifizieren, sobald diese Pre.4-Teile fertiggestellt sind.
+
+---
+
+## Visotaris OPMod 1.2.0-pre.3 — gesicherter Vorabstand
 
 Diese Entwicklungsfassung bereitet Visotaris OPMod 1.2.0 vor. Sie ist **kein stabiler Release**. Visotaris 1.2.0+ unterstützt Minecraft 26.x (derzeit 26.2). Ältere veröffentlichte 1.1.x-Versionen behalten ihre damalige Kompatibilität.
 
-## Neu in der Vorabversion
+### Im pre.3-Stand enthalten
 
 ### Korrekturen für pre.3
 

@@ -28,6 +28,7 @@ public final class VisotarisConfig {
         tooltipShowStaleData = source.tooltipShowStaleData;
         tooltipMaxAgeSeconds = source.tooltipMaxAgeSeconds;
         priceAlertsEnabled = source.priceAlertsEnabled;
+        auctionLiveUpdatesEnabled = source.auctionLiveUpdatesEnabled;
         priceAlertRules = new java.util.ArrayList<>();
         for (PriceAlertRule rule : source.priceAlertRules) priceAlertRules.add(PriceAlertRule.fromMap(rule.toMap()));
         enableRenameProtection = source.enableRenameProtection;
@@ -91,6 +92,10 @@ public final class VisotarisConfig {
     // ── Client-side price alerts ─────────────────────────────────────────────
     public boolean priceAlertsEnabled = true;
     public java.util.List<PriceAlertRule> priceAlertRules = new java.util.ArrayList<>();
+
+    // ── Auction house ────────────────────────────────────────────────────────
+    /** Optional live updates; manual snapshot refresh remains available when disabled. */
+    public boolean auctionLiveUpdatesEnabled = false;
 
     // ── Schutz ────────────────────────────────────────────────────────────────
     public boolean enableRenameProtection = true;

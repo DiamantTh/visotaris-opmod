@@ -27,4 +27,13 @@ class AuctionCacheTest {
         cache.setLastEventId("event-42");
         assertEquals("event-42", cache.getLastEventId());
     }
+
+    @Test void activeEndpointTerminalStatesAreNotPresentedAsActive() {
+        AuctionCache cache = new AuctionCache();
+        Auction cancelled = new Auction("cancelled", "seller", new AuctionItem("PAPER", null, 1, null, List.of(), Map.of()),
+            "custom_items", "CANCELLED", 1, null, 1, null, Map.of(), Instant.EPOCH, Instant.MAX);
+        cache.replaceActive(List.of(auction("active", 5), cancelled));
+        assertEquals(java.util.Set.of("active"), cache.snapshot().keySet());
+        assertEquals(cancelled, cache.finalizedSnapshot().get("cancelled"));
+    }
 }
