@@ -26,11 +26,17 @@ def build26xTask = tasks.register('build-26.x') {
     group       = 'visotaris'
     description = 'Baut nur die aktuelle MC-26.x-Zielversion und kopiert den JAR nach ./out/'
     dependsOn   ':26.x:shadowJar'
-    doLast {
-        outDir.mkdirs()
-        def jar = project('26.x').tasks.getByName('shadowJar').archiveFile.get().asFile
-        copy { from jar; into outDir }
-        logger.lifecycle("  → out/${jar.name}")
+}
+
+gradle.projectsEvaluated {
+    def shadowJarArchive = project(':26.x').tasks.named('shadowJar').map { it.archiveFile.get().asFile }
+    build26xTask.configure {
+        doLast {
+            outDir.mkdirs()
+            def jarFile = shadowJarArchive.get()
+            copy { from jarFile; into outDir }
+            logger.lifecycle("  → out/${jarFile.name}")
+        }
     }
 }
 
@@ -130,16 +136,21 @@ subprojects {
         // Web-UI muss vor den Ressourcen gebaut sein
         tasks.named('processResources') { dependsOn(':npmBuildWebui') }
 
+        // Resource-Expansion während der Konfiguration auflösen. In Task-Aktionen
+        // darf Gradle 10 nicht mehr über Task.project erreicht werden.
+        def resourceVersion = project.version
+        def resourceDiscordApplicationId = rootProject.findProperty('discord_application_id') ?: ''
+
         // ${version} in fabric.mod.json ersetzen
         processResources {
-            inputs.property 'version', project.version
-            inputs.property 'discordApplicationId', rootProject.findProperty('discord_application_id') ?: ''
-            filteringCharset 'UTF-8'
+            inputs.property 'version', resourceVersion
+            inputs.property 'discordApplicationId', resourceDiscordApplicationId
+            filteringCharset = 'UTF-8'
             filesMatching('fabric.mod.json') {
-                expand version: project.version
+                expand version: resourceVersion
             }
             filesMatching('visotaris_opmod.properties') {
-                expand discordApplicationId: rootProject.findProperty('discord_application_id') ?: ''
+                expand discordApplicationId: resourceDiscordApplicationId
             }
         }
 

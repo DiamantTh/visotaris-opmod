@@ -1,17 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { fade } from 'svelte/transition'
-  import * as echarts from 'echarts/core'
-  import { LineChart, BarChart } from 'echarts/charts'
-  import { GridComponent, TooltipComponent } from 'echarts/components'
-  import { CanvasRenderer } from 'echarts/renderers'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
   import { fmtItem, fmtInt, fmt, fmtCompact, itemIcon, hideOnError } from '../../lib/utils.js'
-
-  // Nur die verwendeten ECharts-Bausteine registrieren. Das hält den History-
-  // Download deutlich kleiner als der vollständige "echarts"-Import.
-  echarts.use([LineChart, BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
   const LS_RECENT = 'visotaris_history_recent'
 
@@ -23,6 +15,7 @@
   let granularity     = $state('DAILY')
   let loading         = $state(false)
   let error           = $state(null)
+  let chartError      = $state(null)
   let recent          = $state([])
 
   // bind:this – Chart-Container-Referenzen
@@ -31,6 +24,7 @@
   let chartItemsEl = $state(null)
 
   let chartInstances = {}
+  let chartEnginePromise = null
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const currentPoints = $derived(history ? (history[granularity] ?? []) : [])
@@ -65,6 +59,18 @@
     chartInstances = {}
   }
 
+  // Die History-Seite startet häufig zunächst ohne Item/Verlaufsdaten. ECharts
+  // erst laden, wenn Diagramme tatsächlich gerendert werden müssen.
+  function loadChartEngine() {
+    if (!chartEnginePromise) {
+      chartEnginePromise = import('../../lib/historyCharts.js').then(module => module.echarts).catch(cause => {
+        chartEnginePromise = null
+        throw cause
+      })
+    }
+    return chartEnginePromise
+  }
+
   // Neuzeichnen wenn Datenpunkte, Granularität oder DOM-Referenzen sich ändern
   $effect(() => {
     const pts  = currentPoints   // reaktive Abhängigkeit
@@ -75,9 +81,24 @@
 
     if (!pts.length || !e1 || !e2 || !e3) { destroyCharts(); return }
     // requestAnimationFrame stellt sicher, dass der Container korrekte Breite hat
-    requestAnimationFrame(() => renderCharts(pts, gran))
+    let cancelled = false
+    const frame = requestAnimationFrame(async () => {
+      try {
+        const echarts = await loadChartEngine()
+        if (!cancelled) {
+          chartError = null
+          renderCharts(pts, gran, echarts)
+        }
+      } catch (cause) {
+        if (!cancelled) chartError = 'Diagramme konnten nicht geladen werden: ' + cause.message
+      }
+    })
 
-    return destroyCharts   // Cleanup beim Unmount / nächstem Re-run
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+      destroyCharts()
+    }
   })
 
   // ── Daten laden ─────────────────────────────────────────────────────────────
@@ -89,6 +110,7 @@
     currentMaterial = mat
     history         = null
     live            = null
+    chartError      = null
     destroyCharts()
     try {
       const [histRes, liveRes] = await Promise.all([
@@ -110,7 +132,7 @@
   }
 
   // ── Charts rendern ──────────────────────────────────────────────────────────
-  function renderCharts(points, gran) {
+  function renderCharts(points, gran, echarts) {
     destroyCharts()
     const css = getComputedStyle(document.documentElement)
     const color = name => css.getPropertyValue(name).trim()
@@ -325,6 +347,10 @@
   {#if error && !loading}
     <div class="vi-alert-error mb-3"
          transition:fade>{error}</div>
+  {/if}
+
+  {#if chartError && !loading}
+    <div class="vi-alert-error mb-3" transition:fade>{chartError}</div>
   {/if}
 
   <!-- ── Leerer Zustand ────────────────────────────────────────────────────── -->
