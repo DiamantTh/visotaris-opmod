@@ -3,10 +3,10 @@
 Eine **freie, quelloffene** Fabric-Client-Mod für Minecraft mit Fokus auf den
 [OPSUCHT](https://opsucht.net)-Server.
 
-Lizenz: [AGPLv3+](LICENSE) · Minecraft: 1.21.11 / 26.x (aktuell 26.2) · Loader: Fabric
+Lizenz: [AGPLv3+](LICENSE) · Minecraft: 26.x (aktuell 26.2) · Loader: Fabric
 
 Aktueller Entwicklungsstand: **Visotaris OPMod 1.2.0-pre.3 (Vorabversion)**.
-Die Mod-Version ist unabhängig von den unterstützten Minecraft-Versionen.
+Visotaris **1.2.0+ unterstützt Minecraft 26.x**. Ältere veröffentlichte 1.1.x-Versionen behalten ihre damalige Minecraft-Kompatibilität. Für 26.2 wird MaLiLib 0.29.3 separat benötigt.
 Änderungen und noch offene Prüfungen: [Release-Notizen](docs/RELEASE_NOTES.md).
 
 ---
@@ -18,6 +18,7 @@ die speziell auf die Spielmechaniken von OPSUCHT ausgelegt sind.
 
 | Funktion | Beschreibung |
 |---|---|
+| **Auktionshaus** | Getrennter lesender AuctionCache, Kategorien, Suche und lokale Sortierung; Live-Änderungen über SSE, Details in [AUCTIONS.md](docs/AUCTIONS.md) |
 | **Marktpreis-Tooltips** | Zeigt aktuelle Kauf- und Verkaufspreise direkt im Item-Tooltip an |
 | **Merchant- & Shard-Werte** | Lädt Händler- und Splitter-Kurse und rechnet sie in Item-Bewertungen ein |
 | **Container-Overlay** | Zeigt den Gesamtwert von Kisten- und Shulker-Inhalten im Screen |
@@ -36,7 +37,7 @@ die speziell auf die Spielmechaniken von OPSUCHT ausgelegt sind.
 | **Preisalarme** | Clientseitige Schwellenalarme für Kauf-, Verkaufs- und Spannenpreise aus dem synchronisierten Markt-Cache |
 | **Web-UX: Preisalarme** | Geschützter Bereich zum Verwalten und Beobachten einzelner Alarmregeln |
 | **Web-UX: Einstellungen** | Geschützter Bereich für Tooltip-Gruppen, Frischegrenze und Anzeige veralteter Cache-Daten |
-| **Native Ingame-UX (1.2.0-pre.3)** | Kompaktes Client-Menü mit Übersicht, Markt, Shard & Händler, Tooltips, Preisalarmen, Schutz & Komfort und System; öffnet sich über MaLiLib (Standard Alt+V) |
+| **Native Ingame-UX (1.2.0-pre.3)** | Kompaktes Client-Menü mit Übersicht, Markt, Shard & Händler, Tooltips, Preisalarmen, Schutz & Komfort, System und Auktionshaus; öffnet sich über MaLiLib (Standard Alt+V) |
 
 ---
 
@@ -116,21 +117,20 @@ wie `[anzeige]` und `[netzwerk]` werden beim Laden übernommen und atomar in die
 englischen Namen migriert. Unter POSIX-Systemen wird die Config-Datei mit Modus `0600`
 geschrieben; unter Windows gelten die ACLs des Konfigurationsordners.
 
-Voraussetzungen: Java 21 für 1.21.11, Java 25 für 26.x, Gradle (Wrapper inklusive)
+Voraussetzungen: Java 25, Gradle (Wrapper inklusive), Fabric für Minecraft 26.2.
 
 ```bash
-# Beide Mod-JARs bauen
+# Auslieferbaren Minecraft-26.x-JAR bauen
 ./gradlew buildAll
-
-# Einzelne Targets bauen
-./gradlew :1.21.11:remapJar
-./gradlew :26.x:shadowJar
+# Erhaltene Service-/API-/Config-Tests auf der 26.x-Plattform
+./gradlew :26.x:test
+# Nativen Entwicklungsclient mit Mod Menu starten
+./gradlew runClient
 ```
 
-JARs landen in `1.21.11/build/libs/` bzw. `26.x/build/libs/`.
-`./gradlew buildAll` kopiert die auslieferbaren Dateien nach `out/`:
-`visotaris_opmod-1.2.0-pre.1+mc1.21.11.jar` und
-`visotaris_opmod-1.2.0-pre.1+mc26.2.jar`.
+Der finale JAR liegt in `26.x/build/libs/`; `buildAll` kopiert ihn nach
+`out/visotaris_opmod-1.2.0-pre.3+mc26.2.jar`. Alle Quellen und Tests liegen zentral
+unter `src/main/` und `src/test/`. Es gibt keinen aktiven 1.21.11-Buildpfad.
 
 ---
 

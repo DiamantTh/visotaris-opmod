@@ -1,15 +1,15 @@
 package systems.diath.visotaris_opmod.config;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
+import org.lwjgl.glfw.GLFW;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 import systems.diath.visotaris_opmod.ui.IngameUxScreenBase;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Predicate;
 
@@ -19,6 +19,12 @@ import java.util.function.Predicate;
  * <p>Wird aus {@link VisotarisConfigScreen} geöffnet.
  * Änderungen landen ausschließlich im geteilten UI-Entwurf. Erst der explizite
  * Speichern-Button übergibt diesen an den gemeinsamen ConfigManager.
+ *
+ * MC 26.x: GuiGraphics → GuiGraphicsExtractor, render() → extractRenderState(),
+ * this.minecraft.setScreen() → this.minecraft.gui.setScreen(). {@code EditBox.setFilter(...)}
+ * wurde ersatzlos gestrichen – die vorhandene setResponder()-Validierung verhindert bereits,
+ * dass ungültige Werte in die Config übernommen werden (nur die Zeichenfilterung beim Tippen
+ * selbst entfällt).
  */
 public final class NetworkSettingsScreen extends Screen {
 
@@ -80,7 +86,6 @@ public final class NetworkSettingsScreen extends Screen {
         fieldWebUiPort = new EditBox(this.font, fx, y, fw, FIELD_H,
             Component.literal("Web-Interface-Port"));
         fieldWebUiPort.setMaxLength(5);
-        fieldWebUiPort.setFilter(s -> s.isEmpty() || s.matches("\\d{1,5}"));
         fieldWebUiPort.setValue(String.valueOf(cfg.webUiPort));
         fieldWebUiPort.setResponder(s -> {
             Integer port = parsePort(s);
@@ -125,8 +130,6 @@ public final class NetworkSettingsScreen extends Screen {
             Component.literal("Port"));
         fieldProxyPort.setMaxLength(5);
         fieldProxyPort.setSuggestion("Port");
-        // Nur Ziffern erlauben
-        fieldProxyPort.setFilter(s -> s.isEmpty() || s.matches("\\d{1,5}"));
         fieldProxyPort.setValue(cfg.proxyPort > 0 ? String.valueOf(cfg.proxyPort) : "");
         fieldProxyPort.setResponder(s -> {
             if (s.isEmpty()) {
@@ -173,7 +176,7 @@ public final class NetworkSettingsScreen extends Screen {
                 Integer webUiPort = parsePort(fieldWebUiPort.getValue());
                 if (webUiPort == null) { fieldWebUiPort.setSuggestion("Ungültiger Port"); return; }
                 cfg.webUiPort = webUiPort;
-                if (saveDraft.test(cfg)) { closing = true; this.minecraft.setScreen(parent); }
+                if (saveDraft.test(cfg)) { closing = true; this.minecraft.gui.setScreen(parent); }
             }
         ).bounds(bx, by, bw, bh).build());
 
@@ -199,32 +202,32 @@ public final class NetworkSettingsScreen extends Screen {
     // ════════════════════════════════════════════════════════════════════════
 
     @Override
-    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
-        super.render(ctx, mouseX, mouseY, delta);
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
 
         // Titel
         ctx.fill(0, 0, this.width, 26, 0xAA0D1B3E);
-        ctx.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
+        ctx.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
         ctx.fill(this.width / 2 - 110, 20, this.width / 2 + 110, 21, 0x66AAAAAA);
-        ctx.drawCenteredString(this.font,
+        ctx.centeredText(this.font,
             Component.literal("\u00a7eOPSucht-API, lokales Web-Interface und Proxy"),
             this.width / 2, 28, 0xFFFFFF);
 
         // Feld-Labels (oberhalb der jeweiligen EditBoxs)
         int lColor = 0xAAAAAA;
-        ctx.drawString(this.font,
+        ctx.text(this.font,
             Component.literal("OPSucht-API User-Agent"),
             MARGIN, fieldUserAgent.getY() - 10 - GAP_LABEL, lColor);
-        ctx.drawString(this.font,
+        ctx.text(this.font,
             Component.literal("Web-Interface-Port (localhost)"),
             MARGIN, fieldWebUiPort.getY() - 10 - GAP_LABEL, lColor);
-        ctx.drawString(this.font,
+        ctx.text(this.font,
             Component.literal("Proxy-Typ"),
             proxyTypeButton.getX(), proxyTypeButton.getY() - 10 - GAP_LABEL, lColor);
-        ctx.drawString(this.font,
+        ctx.text(this.font,
             Component.literal("Proxy-Host für OPSucht-API"),
             fieldProxyHost.getX(), fieldProxyHost.getY() - 10 - GAP_LABEL, lColor);
-        ctx.drawString(this.font,
+        ctx.text(this.font,
             Component.literal("Proxy-Port"),
             fieldProxyPort.getX(), fieldProxyPort.getY() - 10 - GAP_LABEL, lColor);
 
@@ -237,13 +240,13 @@ public final class NetworkSettingsScreen extends Screen {
         // Bei der kleinsten Minecraft-GUI-Höhe belegen die Footer-Buttons den
         // unteren Bereich. Zusätzliche Hinweise würden dort überlappen.
         if (this.height >= 300) {
-            ctx.drawCenteredString(this.font,
+            ctx.centeredText(this.font,
                 Component.literal("\u00a77Port und Web-Interface werden erst nach Speichern angewendet."),
                 this.width / 2, noteY + this.font.lineHeight + 2, 0xFFFFFF);
-            ctx.drawCenteredString(this.font,
+            ctx.centeredText(this.font,
                 Component.literal("\u00a77HTTPS-Proxy: TLS zum Proxy; Ziel-HTTPS via CONNECT."),
                 this.width / 2, noteY + (this.font.lineHeight + 2) * 2, 0xFFFFFF);
-            ctx.drawCenteredString(this.font,
+            ctx.centeredText(this.font,
                 Component.literal("\u00a77Web-Interface: nur lokaler Port."),
                 this.width / 2, noteY + (this.font.lineHeight + 2) * 3, 0xFFFFFF);
         }
@@ -287,7 +290,7 @@ public final class NetworkSettingsScreen extends Screen {
         return server != null && server.isRunning();
     }
 
-    private void renderWebInterfaceStatus(GuiGraphics ctx, int y, int mouseX, int mouseY) {
+    private void renderWebInterfaceStatus(GuiGraphicsExtractor ctx, int y, int mouseX, int mouseY) {
         var server = VisotarisModClient.getInstance().getWebServer();
         boolean running = server != null && server.isRunning();
         int port = server != null ? server.getPort() : cfg.webUiPort;
@@ -297,7 +300,7 @@ public final class NetworkSettingsScreen extends Screen {
         int x = (this.width - textW) / 2;
         int dotX = Math.max(MARGIN, x - 12);
         ctx.fill(dotX, y + 2, dotX + 7, y + 9, running ? 0xFF39FF14 : 0xFFFF4040);
-        ctx.drawString(this.font, status, x, y, 0xFFFFFF, true);
+        ctx.text(this.font, status, x, y, 0xFFFFFF, true);
         if (mouseX >= dotX && mouseX <= x + textW && mouseY >= y - 2 && mouseY <= y + this.font.lineHeight + 2) {
             renderSimpleTooltip(ctx, makeWebUiStatusTooltip(), mouseX, mouseY);
         }
@@ -320,14 +323,14 @@ public final class NetworkSettingsScreen extends Screen {
         return Component.literal("Start fehlgeschlagen: " + reason);
     }
 
-    private void renderSimpleTooltip(GuiGraphics ctx, Component text, int mouseX, int mouseY) {
+    private void renderSimpleTooltip(GuiGraphicsExtractor ctx, Component text, int mouseX, int mouseY) {
         int padding = 4;
         int tw = this.font.width(text);
         int x = Math.max(4, Math.min(mouseX + 10, this.width - tw - padding * 2 - 4));
         int y = Math.max(4, mouseY - this.font.lineHeight - padding * 2 - 4);
         ctx.fill(x - 1, y - 1, x + tw + padding * 2 + 1, y + this.font.lineHeight + padding * 2 + 1, 0xEE000000);
         ctx.fill(x, y, x + tw + padding * 2, y + this.font.lineHeight + padding * 2, 0xEE18294A);
-        ctx.drawString(this.font, text, x + padding, y + padding, 0xFFFFFFFF, false);
+        ctx.text(this.font, text, x + padding, y + padding, 0xFFFFFFFF, false);
     }
 
     private static Integer parsePort(String value) {

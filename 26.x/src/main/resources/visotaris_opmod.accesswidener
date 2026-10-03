@@ -1,6 +1,0 @@
-accessWidener	v2	official
-
-# In MC 26.x (Mojang-Namespace): Inventory.selected war in 1.21.11 private gemacht.
-# Klasse: net/minecraft/world/entity/player/Inventory  (Mojang-Name für PlayerInventory)
-# Feld:   selected  (Mojang-Name für selectedSlot)
-accessible	field	net/minecraft/world/entity/player/Inventory	selected	I

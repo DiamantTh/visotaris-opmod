@@ -1,6 +1,6 @@
 package systems.diath.visotaris_opmod.config;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
+/**
+ * MC 26.x: GuiGraphics → GuiGraphicsExtractor, render() → extractRenderState(),
+ * this.minecraft.setScreen() → this.minecraft.gui.setScreen() (Gui-Refactoring).
+ */
 public final class DiscordScreenshotSettingsScreen extends Screen {
 
     private static final int FIELD_H = 18;
@@ -103,7 +107,7 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
         this.addRenderableWidget(Button.builder(
             Component.literal("Speichern"),
             b -> {
-                if (saveDraft.test(cfg)) { closing = true; this.minecraft.setScreen(parent); }
+                if (saveDraft.test(cfg)) { closing = true; this.minecraft.gui.setScreen(parent); }
             }
         ).bounds(bx, by, bw, bh).build());
         this.addRenderableWidget(Button.builder(
@@ -124,13 +128,13 @@ public final class DiscordScreenshotSettingsScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
-        super.render(ctx, mouseX, mouseY, delta);
-        ctx.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
+        ctx.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
         ctx.fill(this.width / 2 - 110, 20, this.width / 2 + 110, 21, 0x66AAAAAA);
         for (int i = 0; i < targetButtons.size(); i++) {
             Button button = targetButtons.get(i);
-            ctx.drawString(this.font, Component.literal("Ziel " + (i + 1)),
+            ctx.text(this.font, Component.literal("Ziel " + (i + 1)),
                 MARGIN, button.getY() - 10, 0xAAAAAA);
         }
     }

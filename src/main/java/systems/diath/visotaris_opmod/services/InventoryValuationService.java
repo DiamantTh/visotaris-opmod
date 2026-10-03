@@ -26,6 +26,11 @@ import java.util.Optional;
  *
  * Shulker-Inhalte werden rekursiv mitgerechnet (via {@code DataComponents.CONTAINER}).
  * Der Aufruf darf vom Render-Thread erfolgen (kein Netzwerk, kein Blocking).
+ *
+ * MC 26.x: {@code ItemContainerContents.nonEmptyItems()} liefert seit 26.2
+ * {@code Iterable<ItemStackTemplate>} statt {@code Iterable<ItemStack>} (Mojang hat
+ * Container-Inhalte von echten ItemStacks entkoppelt). Für die Bewertung reicht
+ * {@code nonEmptyItemCopyStream()}, das direkt einen {@code Stream<ItemStack>} liefert.
  */
 public final class InventoryValuationService {
 
@@ -76,7 +81,7 @@ public final class InventoryValuationService {
                 ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
                 if (contents != null) {
                     hasShulkers = true;
-                    InventoryValuation inner = evaluate(contents.nonEmptyItems());
+                    InventoryValuation inner = evaluate(contents.nonEmptyItemCopyStream().toList());
                     buy  += inner.getBuyTotal();
                     sell += inner.getSellTotal();
                     shard += inner.getShardTotal();
@@ -88,8 +93,7 @@ public final class InventoryValuationService {
             }
 
             String key = itemKey(stack);
-            // A named/lore/CMD OPSUCHT item may use the same vanilla carrier as
-            // a normal market item. Do not assign it that carrier's market value.
+            // Named/lore/CMD OP items must not inherit their vanilla carrier's market price.
             Optional<MarketPrice> price = StackClassification.isCustomVariant(stack)
                 ? Optional.empty() : marketCache.get(key);
 

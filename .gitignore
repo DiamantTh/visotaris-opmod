@@ -20,8 +20,7 @@ out/
 # Fabric Loom Run-Verzeichnis
 run/
 **/run/
-1.21.11/tmp/visotaris-malilib-hotkey-test/
-26.x/tmp/visotaris-malilib-hotkey-test/
+**/tmp/visotaris-malilib-hotkey-test/
 
 # OS
 .DS_Store

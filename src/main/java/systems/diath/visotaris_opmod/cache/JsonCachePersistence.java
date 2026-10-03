@@ -28,7 +28,7 @@ import java.util.List;
  *     "savedAtMs":  1744122731000,             // Epoch-ms – für isStale()-Prüfung
  *     "source":     "https://...",
  *     "entryCount": 312,
- *     "modVersion": "0.3.0+mc1.21.11"
+ *     "modVersion": "1.2.0-pre.3+mc26.2"
  *   },
  *   "entries": [ ... ]
  * }

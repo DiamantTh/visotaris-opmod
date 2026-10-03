@@ -1,6 +1,6 @@
 package systems.diath.visotaris_opmod.ui;
 
-/** Small drawing surface shared by the Minecraft 1.21 and 26 screen APIs. */
+/** Drawing surface for the native Minecraft 26.x menu. */
 public interface IngameUxCanvas {
     void fill(int left, int top, int right, int bottom, int color);
     void item(String registryKey, int x, int y);

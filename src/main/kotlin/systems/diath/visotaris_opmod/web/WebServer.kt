@@ -13,7 +13,6 @@ import io.ktor.server.routing.*
 import net.minecraft.client.Minecraft
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.resources.Identifier
-import net.minecraft.server.packs.resources.ResourceManager
 import systems.diath.visotaris_opmod.VisotarisLogger
 import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.AuctionCache
@@ -25,31 +24,13 @@ import systems.diath.visotaris_opmod.services.PriceAlertEngine
 import systems.diath.visotaris_opmod.services.PriceAlertService
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
 import java.util.Arrays
-import java.io.InputStream
 
 /**
- * Eingebetteter HTTP-Server für das Visotaris Web-UI.
+ * MC 26.x – Mojang-Klassen: Minecraft (statt MinecraftClient), Identifier für Ressourcenpfade.
  *
+ * Eingebetteter HTTP-Server für das Visotaris Web-UI.
  * Läuft auf localhost:[port] (Standard: 7780).
  * Alle Anfragen bleiben lokal – es werden keine Daten an externe Dienste gesendet.
- *
- * Routen:
- *  GET /              → index.html (Marktpreise)
- *  GET /history       → history.html (Preisverlauf-Charts)
- *  GET /shard         → shard.html (Shardkurse)
- *  GET /redcoins      → redcoins.html (Redcoin-Händlerkurse)
- *  GET /merchant      → merchant.html (alle Händlerwährungen)
- *  GET /system        → system.html (lokaler Status und sichere Optionsübersicht)
- *  GET /static/...    → statische Dateien aus JAR-Classpath
- *  GET /api/market    → JSON: alle Marktpreise aus MarketCache
- *  GET /api/market/{material} → JSON: einzelner Marktpreis
- *  GET /api/history/{material}→ JSON: Preisverlauf (lazy fetch)
- *  GET /api/shard     → JSON: alle Shardkurse aus ShardCache
- *  GET /api/redcoins  → JSON: alle Redcoin-Kurse aus ShardCache
- *  GET /api/merchant  → JSON: alle Merchant-Kurse, nach Zielwährung gruppiert
- *  GET /api/merchant/{target} → JSON: Kurse einer beliebigen Zielwährung
- *  GET /api/meta      → Zeitstempel und Frische der lokalen Caches
- *  GET /api/system    → Java-/Systemdaten sowie nicht-sensitive Optionen
  */
 class WebServer(
     val port: Int,
@@ -71,7 +52,6 @@ class WebServer(
         lastFailureReason = ""
         val failures = mutableListOf<String>()
 
-        // Beide Stacks starten – IPv6 zuerst (moderner Standard), IPv4 für "localhost"-Kompatibilität
         for (host in listOf("::1", "127.0.0.1")) {
             try {
                 servers += buildServer(host).start(wait = false)
@@ -137,8 +117,7 @@ class WebServer(
             get("/settings") { call.respondRedirect("/system/settings") }
             get("/system/settings") { serveResource(call, "assets/webui/settings.html", ContentType.Text.Html) }
             get("/system/price-alerts") { serveResource(call, "assets/webui/settings.html", ContentType.Text.Html) }
-            // Die Seite selbst enthält keine Daten und dient vor dem ersten Abruf nur
-            // als lokaler Einrichtungs-/Login-Dialog. Alle Datenrouten sind geschützt.
+            // Statischer lokaler Einrichtungs-/Login-Dialog; die Datenrouten sind geschützt.
             get("/system") { serveResource(call, "assets/webui/system.html", ContentType.Text.Html) }
             get("/system/mcinfo") {
                 if (!systemAccess.authenticated(call.request.cookies[SystemAccessControl.COOKIE])) { call.respondRedirect("/system"); return@get }
@@ -234,8 +213,7 @@ class WebServer(
                 val confirmation = form["confirmation"]?.toCharArray() ?: charArrayOf()
                 try {
                     if (!password.contentEquals(confirmation)) { call.respond(HttpStatusCode.BadRequest, "Passwörter stimmen nicht überein"); return@post }
-                    val token = systemAccess.setup(password)
-                    setSystemCookie(call, token)
+                    val token = systemAccess.setup(password); setSystemCookie(call, token)
                     call.respondText("{}", ContentType.Application.Json)
                 } catch (e: IllegalArgumentException) { call.respond(HttpStatusCode.BadRequest, e.message ?: "Ungültiges Passwort") }
                 finally { Arrays.fill(password, '\u0000'); Arrays.fill(confirmation, '\u0000') }
@@ -250,14 +228,8 @@ class WebServer(
                     else { setSystemCookie(call, token); call.respondText("{}", ContentType.Application.Json) }
                 } finally { Arrays.fill(password, '\u0000') }
             }
-            post("/api/system/logout") {
-                if (!allowLocalWrite(call)) return@post
-                systemAccess.logout(call.request.cookies[SystemAccessControl.COOKIE])
-                clearSystemCookie(call); call.respond(HttpStatusCode.NoContent)
-            }
-            get("/api/system/status") {
-                call.respondText(gson.toJson(mapOf("configured" to systemAccess.configured())), ContentType.Application.Json)
-            }
+            post("/api/system/logout") { if (!allowLocalWrite(call)) return@post; systemAccess.logout(call.request.cookies[SystemAccessControl.COOKIE]); clearSystemCookie(call); call.respond(HttpStatusCode.NoContent) }
+            get("/api/system/status") { call.respondText(gson.toJson(mapOf("configured" to systemAccess.configured())), ContentType.Application.Json) }
             get("/api/system") {
                 if (!requireSystemAccess(call)) return@get
                 call.respondText(gson.toJson(systemSnapshot()), ContentType.Application.Json)
@@ -367,7 +339,6 @@ class WebServer(
 
             // ── Item-Icons aus dem MC-ResourceManager ────────────────────────────
             get("/api/icon/{material}") {
-                // Nur Anfragen die von einer lokalen Seite stammen (kein Direktaufruf)
                 val referer = call.request.header("Referer") ?: ""
                 val localPrefixes = listOf("http://localhost:", "http://127.0.0.1:", "http://[::1]:")
                 if (localPrefixes.none { referer.startsWith(it) }) {
@@ -380,22 +351,14 @@ class WebServer(
 
                 val rm = Minecraft.getInstance().resourceManager
 
-                // OPSUCHT-Custom-Items benötigen ihr fachliches Symbol; der
-                // Vanilla-Träger (z.B. PAPER) ist dafür kein passendes Icon.
-                var bytes = loadCustomItemIconBytes(rm, rawKey)
+                // Zuerst versuchen mit Original-Key (auch Custom Items wie "paper#626")
+                var bytes = loadItemIconBytes(rm, rawKey)
                 if (bytes != null) {
                     call.respondBytes(bytes, ContentType.Image.PNG)
                     return@get
                 }
 
-                // Reguläre Minecraft-Items zuerst exakt auflösen.
-                bytes = loadItemIconBytes(rm, rawKey)
-                if (bytes != null) {
-                    call.respondBytes(bytes, ContentType.Image.PNG)
-                    return@get
-                }
-
-                // Fallback: Custom Item? (paper#626 → paper) 
+                // Fallback: Custom Item? (paper#626 → paper)
                 val key = rawKey
                     .substringBefore('#')
                     .filter { it.isLetterOrDigit() || it == '_' }
@@ -408,6 +371,15 @@ class WebServer(
                         return@get
                     }
 
+                    // Zweiter Fallback: Custom-Item-Mapping (paper#626 → amethyst_shard, etc.)
+                    val fallbackKey = getCustomItemFallback(rawKey, key)
+                    if (fallbackKey != null) {
+                        bytes = loadItemIconBytes(rm, fallbackKey)
+                        if (bytes != null) {
+                            call.respondBytes(bytes, ContentType.Image.PNG)
+                            return@get
+                        }
+                    }
                 }
 
                 call.respond(HttpStatusCode.NotFound)
@@ -432,11 +404,7 @@ class WebServer(
         "stale" to (ageSeconds > 300)
     )
 
-    /**
-     * Schlanke Top-10 für die Marktübersicht. Das Ranking nutzt ausschließlich
-     * aktuelle offene Aufträge; Preisverläufe werden danach begrenzt und im
-     * Hintergrund nachgeladen, damit die große Tabelle keinen Request-Sturm auslöst.
-     */
+    /** Begrenzte, gecachte Top-10-Analyse für die Marktübersicht. */
     private fun topMarketActivity(): Map<String, Any> {
         val top = marketCache.snapshot().values
             .sortedWith(compareByDescending<systems.diath.visotaris_opmod.model.MarketPrice> {
@@ -465,14 +433,8 @@ class WebServer(
     }
 
     private suspend fun requireSystemAccess(call: ApplicationCall): Boolean {
-        if (!systemAccess.configured()) {
-            call.respond(HttpStatusCode(428, "Precondition Required"), "Systempasswort muss zuerst lokal eingerichtet werden")
-            return false
-        }
-        if (!systemAccess.authenticated(call.request.cookies[SystemAccessControl.COOKIE])) {
-            call.respond(HttpStatusCode.Unauthorized, "Systemanmeldung erforderlich")
-            return false
-        }
+        if (!systemAccess.configured()) { call.respond(HttpStatusCode(428, "Precondition Required"), "Systempasswort muss zuerst lokal eingerichtet werden"); return false }
+        if (!systemAccess.authenticated(call.request.cookies[SystemAccessControl.COOKIE])) { call.respond(HttpStatusCode.Unauthorized, "Systemanmeldung erforderlich"); return false }
         return true
     }
 
@@ -480,8 +442,7 @@ class WebServer(
         val origin = call.request.header(HttpHeaders.Origin)?.let { runCatching { Url(it) }.getOrNull() }
         val localHost = origin?.host?.lowercase() in setOf("localhost", "127.0.0.1", "::1", "[::1]")
         val safeOrigin = origin != null && origin.protocol.name == "http" && localHost && origin.port == port
-        val fetchSite = call.request.header("Sec-Fetch-Site")?.lowercase()
-        if (!safeOrigin || fetchSite == "cross-site") {
+        if (!safeOrigin || call.request.header("Sec-Fetch-Site")?.lowercase() == "cross-site") {
             call.respond(HttpStatusCode.Forbidden, "Local same-origin request required")
             return false
         }
@@ -506,15 +467,11 @@ class WebServer(
         PriceAlertInputValidator.create(itemKey, condition, threshold, flag("enabled", true) ?: return null,
             flag("repeat", false) ?: return null, cooldownDouble.toInt(), flag("rearmOnExit", true) ?: return null, notification)
     }.getOrNull()
-
     private fun setSystemCookie(call: ApplicationCall, token: String) {
-        call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, token, maxAge = SystemAccessControl.SESSION_SECONDS.toInt(),
-            path = "/", httpOnly = true, extensions = mapOf("SameSite" to "Strict")))
+        call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, token, maxAge = SystemAccessControl.SESSION_SECONDS.toInt(), path = "/", httpOnly = true, extensions = mapOf("SameSite" to "Strict")))
     }
-
     private fun clearSystemCookie(call: ApplicationCall) {
-        call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, "", maxAge = 0, path = "/", httpOnly = true,
-            extensions = mapOf("SameSite" to "Strict")))
+        call.response.cookies.append(Cookie(SystemAccessControl.COOKIE, "", maxAge = 0, path = "/", httpOnly = true, extensions = mapOf("SameSite" to "Strict")))
     }
 
     /** Keine Identifikatoren, Pfade, Proxy- oder Webhook-Daten an das Web-UI geben. */
@@ -567,34 +524,31 @@ class WebServer(
         )
     }
 
-    /** Versucht, das Icon-PNG für ein Item zu laden:
-     *  1. textures/item/{key}.png
-     *  2. textures/block/{key}.png
-     *  3. models/item/{key}.json → Textur-Referenz auflösen (folgt parent bis Tiefe 3)
-     *  4. models/block/{key}.json → gleiches Verfahren
+    /** Versucht, das Icon-PNG für ein Item zu laden.
+     *  MC 26.x: ResourceManager.getResource(Identifier) → Optional<Resource> → Resource.open()
      */
-    private fun loadItemIconBytes(rm: ResourceManager, key: String): ByteArray? {
+    private fun loadItemIconBytes(rm: net.minecraft.server.packs.resources.ResourceManager, key: String): ByteArray? {
         for (prefix in listOf("item", "block")) {
             runCatching {
-                return openResource(rm, "minecraft", "textures/$prefix/$key.png").use { it.readBytes() }
+                return rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "textures/$prefix/$key.png"))
+                    .orElseThrow().open().use { it.readBytes() }
             }
         }
         for (modelType in listOf("item", "block")) {
             runCatching {
-                val model = openResource(rm, "minecraft", "models/$modelType/$key.json")
-                    .use { JsonParser.parseReader(it.reader()).asJsonObject }
+                val model = rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "models/$modelType/$key.json"))
+                    .orElseThrow().open().use { JsonParser.parseReader(it.reader()).asJsonObject }
                 val texPath = resolveTextureInModel(rm, model, 0) ?: return@runCatching
-                return openResource(rm, "minecraft", "textures/$texPath.png").use { it.readBytes() }
+                return rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "textures/$texPath.png"))
+                    .orElseThrow().open().use { it.readBytes() }
             }
         }
         return null
     }
 
-    /** Extrahiert den ersten konkreten Texturpfad aus einem Model-JSON.
-     *  Folgt bei Bedarf dem parent-Feld rekursiv (max. Tiefe 3).
-     */
+    /** Extrahiert den ersten konkreten Texturpfad aus einem Model-JSON. */
     private fun resolveTextureInModel(
-        rm: ResourceManager,
+        rm: net.minecraft.server.packs.resources.ResourceManager,
         model: JsonObject,
         depth: Int
     ): String? {
@@ -612,34 +566,27 @@ class WebServer(
         val parent = model.get("parent")?.asString ?: return null
         val parentPath = if (parent.contains(":")) parent.substringAfter(":") else parent
         return runCatching {
-            val parentModel = openResource(rm, "minecraft", "models/$parentPath.json")
-                .use { JsonParser.parseReader(it.reader()).asJsonObject }
+            val parentModel = rm.getResource(Identifier.fromNamespaceAndPath("minecraft", "models/$parentPath.json"))
+                .orElseThrow().open().use { JsonParser.parseReader(it.reader()).asJsonObject }
             resolveTextureInModel(rm, parentModel, depth + 1)
         }.getOrNull()
     }
 
-    private fun openResource(rm: ResourceManager, namespace: String, path: String): InputStream {
-        val id = Identifier.fromNamespaceAndPath(namespace, path)
-        return rm.getResource(id).orElseThrow().open()
-    }
+    /** Fallback-Icon für bekannte Custom Items.
+     *  Nutzt visotaris-spezifische Custom-ModelData-Items und mappt sie auf bessere Icons.
+     *  Daten aus https://api.opsucht.net/merchant/rates
+     */
+    private fun getCustomItemFallback(rawKey: String, baseKey: String): String? {
+        if (baseKey != "paper") return null  // Nur für Paper-basierte Custom Items
 
-    private fun createResourceId(namespace: String, path: String): Identifier {
-        return Identifier.fromNamespaceAndPath(namespace, path)
-    }
-
-    /** Echte OPSUCHT-Symbole für bekannte Paper-basierte Shard-Angebote. */
-    private fun loadCustomItemIconBytes(rm: ResourceManager, rawKey: String): ByteArray? {
-        if (!rawKey.substringBefore('#').equals("paper", ignoreCase = true)) return null
-        val texture = when (rawKey.substringAfter('#', "").toIntOrNull()) {
-            625 -> "holzbuendel.png"
-            626 -> "graebergemisch.png"
-            635 -> "steinplatten.png"
-            else -> return null
+        // Custom ModelData → Fallback Icon Mapping (OPSUCHT Shardhändler Items)
+        val customModelData = rawKey.substringAfter('#').takeIf { it.isNotEmpty() }?.toIntOrNull()
+        return when (customModelData) {
+            625 -> "stick"                 // Holzbündel - braunes Icon
+            626 -> "amethyst_shard"        // Gräbergemisch - violettes Icon
+            635 -> "stone"                 // Steinplatten - graues Icon
+            else -> null
         }
-        return runCatching {
-            openResource(rm, "visotaris_opmod", "textures/item/shard/$texture")
-                .use { it.readBytes() }
-        }.getOrNull()
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {

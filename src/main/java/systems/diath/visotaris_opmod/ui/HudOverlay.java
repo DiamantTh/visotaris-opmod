@@ -2,8 +2,9 @@ package systems.diath.visotaris_opmod.ui;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.DeltaTracker;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.JobSnapshot;
@@ -22,9 +23,14 @@ import java.util.Locale;
  *
  * Rendern läuft auf dem Client-Render-Thread; kein Netzwerk, kein Blocking.
  * Alle Daten kommen aus {@link JobTrackerService} (atomar gelesen).
+ *
+ * MC 26.x: {@code HudRenderCallback} (fabric-rendering-v1) wurde durch das
+ * {@code HudElement}/{@code HudElementRegistry}-System ersetzt; {@code GuiGraphics}
+ * heißt jetzt {@code GuiGraphicsExtractor} und die Render-Methode extrahiert nur noch
+ * Zeichenzustand (extractRenderState) statt direkt zu zeichnen.
  */
 @Environment(EnvType.CLIENT)
-public final class HudOverlay {
+public final class HudOverlay implements HudElement {
 
     private static final int COLOR_LABEL = 0xFFAAAAAA;
     private static final int COLOR_VALUE = 0xFFFFFFFF;
@@ -55,11 +61,12 @@ public final class HudOverlay {
         this.alertNotifications = alertNotifications;
     }
 
-    /** Wird per HudRenderCallback.EVENT registriert. */
-    public void render(GuiGraphics ctx, DeltaTracker tickCounter) {
+    /** Wird per HudElementRegistry.addLast(...) registriert. */
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor ctx, DeltaTracker tickCounter) {
         var cfg = config.getConfig();
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.options.hideGui) return;
+        if (mc.player == null || mc.gui.hud.isHidden()) return;
 
         if (cfg.priceAlertsEnabled) renderPriceAlert(ctx, mc);
         else alertNotifications.clear();
@@ -71,7 +78,7 @@ public final class HudOverlay {
     }
 
     /** Short-lived price alert card; independent of the persistent job/inventory HUD. */
-    private void renderPriceAlert(GuiGraphics ctx, Minecraft mc) {
+    private void renderPriceAlert(GuiGraphicsExtractor ctx, Minecraft mc) {
         PriceAlertService.Event alert = alertNotifications.current(System.currentTimeMillis());
         if (alert == null) { displayedAlert = null; return; }
         if (alert != displayedAlert) {
@@ -87,16 +94,16 @@ public final class HudOverlay {
         ctx.fill(x, y, x + width, y + 54, 0xE9132030);
         ctx.fill(x, y, x + 3, y + 54, 0xFFA3E635);
         ctx.fill(x + 3, y, x + width, y + 1, 0xFF375773);
-        ctx.drawString(mc.font, "PREISALARM", x + 9, y + 5, 0xFFA3E635, true);
+        ctx.text(mc.font, "PREISALARM", x + 9, y + 5, 0xFFA3E635, true);
         int more = alertNotifications.pendingCount();
         if (more > 0) {
             String count = "+" + more;
-            ctx.drawString(mc.font, count, x + width - mc.font.width(count) - 8, y + 5, 0xFFB7C9D9, true);
+            ctx.text(mc.font, count, x + width - mc.font.width(count) - 8, y + 5, 0xFFB7C9D9, true);
         }
         int textWidth = Math.max(0, width - 18);
-        ctx.drawString(mc.font, fitAlertText(mc, alertItem, textWidth), x + 9, y + 17, 0xFFE5EDF2, true);
-        ctx.drawString(mc.font, fitAlertText(mc, alertCondition, textWidth), x + 9, y + 29, 0xFFB7C9D9, true);
-        ctx.drawString(mc.font, fitAlertText(mc, alertValue, textWidth), x + 9, y + 41, 0xFFA3E635, true);
+        ctx.text(mc.font, fitAlertText(mc, alertItem, textWidth), x + 9, y + 17, 0xFFE5EDF2, true);
+        ctx.text(mc.font, fitAlertText(mc, alertCondition, textWidth), x + 9, y + 29, 0xFFB7C9D9, true);
+        ctx.text(mc.font, fitAlertText(mc, alertValue, textWidth), x + 9, y + 41, 0xFFA3E635, true);
     }
 
     private static String formatAlertPrice(double price) {
@@ -111,7 +118,7 @@ public final class HudOverlay {
 
     // ── Job-Info ────────────────────────────────────────────────────────────
 
-    private int renderJobInfo(GuiGraphics ctx, Minecraft mc) {
+    private int renderJobInfo(GuiGraphicsExtractor ctx, Minecraft mc) {
         JobSnapshot snap = jobTracker.getSnapshot();
         if (snap.getJobName().isBlank()) return posY;
 
@@ -120,20 +127,20 @@ public final class HudOverlay {
         int y = posY;
         int lineH = font.lineHeight + 2;
 
-        ctx.drawString(font, "§6" + snap.getJobName().toUpperCase(), x, y, COLOR_JOB, true);
+        ctx.text(font, "§6" + snap.getJobName().toUpperCase(), x, y, COLOR_JOB, true);
         y += lineH;
-        ctx.drawString(font,
+        ctx.text(font,
             "Level " + snap.getLevel() + "  §7(" + String.format("%.1f", snap.getPercent()) + "%)",
             x, y, COLOR_VALUE, true);
         y += lineH;
-        ctx.drawString(font, "XP/h: §f" + formatShort(snap.getXpPerHour()),  x, y, COLOR_LABEL, true);
+        ctx.text(font, "XP/h: §f" + formatShort(snap.getXpPerHour()),  x, y, COLOR_LABEL, true);
         y += lineH;
-        ctx.drawString(font, "$/h: §f"  + formatShort(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
+        ctx.text(font, "$/h: §f"  + formatShort(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
         return y + lineH + 1;
     }
 
     /** Zeigt den Markt-/Händlerwert des Spielerinventars, höchstens zweimal pro Sekunde neu berechnet. */
-    private void renderInventoryValue(GuiGraphics ctx, Minecraft mc, int y) {
+    private void renderInventoryValue(GuiGraphicsExtractor ctx, Minecraft mc, int y) {
         long now = System.currentTimeMillis();
         if (now - lastInventoryEvaluationMs >= 500L) {
             cachedInventoryValue = valuation.evaluatePlayerInventory();
@@ -148,12 +155,12 @@ public final class HudOverlay {
         if (value.getBuyTotal() > 0) line.append(" §aK ").append(formatShort(value.getBuyTotal()));
         if (value.hasShards()) line.append(" §bS ").append(formatShort(value.getShardTotal()));
         if (value.hasRedcoins()) line.append(" §6R ").append(formatShort(value.getRedcoinTotal()));
-        ctx.drawString(mc.font, line.toString(), posX, y, COLOR_LABEL, true);
+        ctx.text(mc.font, line.toString(), posX, y, COLOR_LABEL, true);
     }
 
     // ── Inventar-voll-Warnung ───────────────────────────────────────────────
 
-    private void renderInventoryWarning(GuiGraphics ctx, Minecraft mc) {
+    private void renderInventoryWarning(GuiGraphicsExtractor ctx, Minecraft mc) {
         if (mc.player == null) return;
         var inv = mc.player.getInventory();
         // Slots 0–35: Haupt-Inventar + Hotbar
@@ -174,7 +181,7 @@ public final class HudOverlay {
         // 2 Zeilen über dem Hotbar-Bereich (Hotbar ≈ 22 px vom unteren Rand)
         int y  = mc.getWindow().getGuiScaledHeight() - 22 - font.lineHeight * 2 - 4;
 
-        ctx.drawString(font, text, x, y, color, true);
+        ctx.text(font, text, x, y, color, true);
     }
 
     private static String formatShort(double value) {

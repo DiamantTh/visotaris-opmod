@@ -8,9 +8,8 @@ und wird weder in die Visotaris-JARs kopiert noch verändert.
 
 - Quelle und Lizenz: <https://github.com/maruohon/malilib>
 - Projekt und aktuelle Downloads: <https://modrinth.com/mod/malilib>
-- Minecraft 1.21.11: MaLiLib 0.27.16
 - Minecraft 26.2: MaLiLib 0.29.3
 
 Diese Bibliothek muss separat im Client installiert sein. Die konkrete
-Kompatibilitätsanforderung steht zusätzlich in den jeweiligen
-`fabric.mod.json`-Metadaten. Visotaris selbst bleibt unter AGPL-3.0-or-later.
+Kompatibilitätsanforderung steht zusätzlich in den
+`src/main/resources/fabric.mod.json`-Metadaten für 26.x. Visotaris selbst bleibt unter AGPL-3.0-or-later.

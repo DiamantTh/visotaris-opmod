@@ -14,6 +14,5 @@ pluginManagement {
 
 rootProject.name = 'visotaris_opmod'
 
-// Versionsspezifische Subprojekte
-include '1.21.11'
+// Visotaris 1.2.x supports Minecraft 26.x only.
 include '26.x'

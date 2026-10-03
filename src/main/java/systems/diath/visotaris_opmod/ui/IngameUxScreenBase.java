@@ -934,11 +934,10 @@ public abstract class IngameUxScreenBase extends Screen {
 
     private void drawAuctions(IngameUxCanvas c, int x, int y, int w, int mouseX, int mouseY) {
         drawInput(c, auctionSearch, "Auktion suchen …");
-        c.text(fit(c, "Aktiv · " + auctionRows.size() + " Auktionen · " + ageText(auctionCache.getLastUpdatedMs()), w - 12), x + 6, y + 50, MUTED, false);
-        int rowsY = y + 68;
+        c.text(fit(c, "Aktiv · " + auctionRows.size() + " Auktionen · " + ageText(auctionCache.getLastUpdatedMs()), w - 12), x + 6, y + 58, MUTED, false);
+        int rowsY = y + 78;
         int rh = 38;
         int available = Math.max(30, window.contentBottom() - rowsY - c.lineHeight() - 8);
-        int count = Math.max(1, available / rh);
         if (auctionRows.isEmpty()) {
             drawEmptyState(c, x + 5, rowsY + 10, w - 10,
                 auctionCache.snapshot().isEmpty() ? "Noch keine aktiven Auktionen synchronisiert." : "Keine Auktionen passen zu Suche oder Kategorie.",
@@ -953,6 +952,7 @@ public abstract class IngameUxScreenBase extends Screen {
         double fraction = auctionScrollPosition - auctionScroll;
         int start = auctionScroll;
         int end = Math.min(auctionRows.size(), start + visibleAuctionRows + (fraction > 0.01 ? 1 : 0));
+        c.enableScissor(x, rowsY, x + w, rowsY + available);
         for (int i = start; i < end; i++) {
             Auction auction = auctionRows.get(i);
             int ry = rowsY + (int) Math.round((i - start - fraction) * rh);
@@ -964,7 +964,8 @@ public abstract class IngameUxScreenBase extends Screen {
             String price = "Gebot " + formatMoney(auction.currentBid());
             if (auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0) price += " · Sofort " + formatMoney(auction.instantBuyPrice());
             c.text(fit(c, price, Math.max(50, w - 42)), x + 30, ry + c.lineHeight() + 6, INFO, false);
-            if (mouseX >= x && mouseX <= x + w && mouseY >= ry && mouseY < ry + rh - 2) {
+            if (mouseX >= x && mouseX <= x + w && mouseY >= rowsY && mouseY < rowsY + available
+                && mouseY >= ry && mouseY < ry + rh - 2) {
                 hoveredRow = i;
                 hoveredDetails = name + "\nKategorie: " + auction.category() + "\nStatus: " + auction.state()
                     + "\nAktuelles Gebot: " + formatMoney(auction.currentBid())
@@ -973,6 +974,7 @@ public abstract class IngameUxScreenBase extends Screen {
                 c.fill(x + 2, ry, x + 4, ry + rh - 2, ICE);
             }
         }
+        c.disableScissor();
     }
 
     private void drawTooltipSummary(IngameUxCanvas c, int x, int y, int w) {

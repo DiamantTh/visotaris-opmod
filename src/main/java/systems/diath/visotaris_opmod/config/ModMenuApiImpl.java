@@ -9,8 +9,7 @@ import net.fabricmc.api.Environment;
  * Mod Menu Integration.
  * Registriert den Config-Screen in der Mod Menu Oberfläche.
  *
- * Wird im "modmenu"-Entrypoint in fabric.mod.json eingetragen und öffnet den
- * vollständigen VisotarisConfigScreen.
+ * Wird im "modmenu"-Entrypoint in fabric.mod.json eingetragen.
  */
 @Environment(EnvType.CLIENT)
 public final class ModMenuApiImpl implements ModMenuApi {

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Visotaris – Minecraft 26.x (ehemals 1.21.11+, neues Mojang-Versionsschema)
+// Visotaris – Minecraft 26.x
 // ─────────────────────────────────────────────────────────────────────────────────
 plugins {
     id 'fabric-loom'                        version '1.17-SNAPSHOT'
@@ -10,7 +10,7 @@ plugins {
 // Exakte MC-Version – wird für JAR-Name genutzt.
 // Beim nächsten MC-Update hier und in den dependencies anpassen.
 ext.mcVersion  = '26.2'
-ext.javaVersion = 25    // MC 26.x + ModMenu 18.x erfordert Java 25.
+ext.javaVersion = 25    // Minecraft 26.x requires Java 25.
 // Finaler, ausgelieferter Mod-JAR (kein Remapping nötig, MC 26.x ist unobfuskiert) – Maven-Publish.
 ext.publishTaskName = 'shadowJar'
 
@@ -76,11 +76,13 @@ dependencies {
         exclude group: 'org.jetbrains.kotlinx'
         exclude group: 'org.slf4j'
     }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.12.2'
 }
 
 loom {
     // 26.x hat eigene AW-Datei mit official-Namespace (Mojang-Klassennamen)
-    accessWidenerPath = project.file("src/main/resources/visotaris_opmod.accesswidener")
+    accessWidenerPath = rootProject.file("src/main/resources/visotaris_opmod.accesswidener")
     runs {
         client {
             client()
@@ -108,54 +110,8 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     }
 }
 
-// Gemeinsamen Kotlin-Quellpfad einhängen.
-// Dateien in project/src/main/kotlin ÜBERSCHREIBEN gleichnamige aus dem Root.
-// Root-afterEvaluate hängt rootProject/src/main/kotlin als plain srcDir ein;
-// unser eigenes afterEvaluate (läuft danach) ersetzt es durch einen gefilterten FileTree.
-def ktOverrides = [
-    'systems/diath/visotaris_opmod/web/WebServer.kt',
-]
-
-def java26Excludes = [
-    'systems/diath/visotaris_opmod/commands/VisotarisCommands.java',
-    'systems/diath/visotaris_opmod/config/DiscordScreenshotSettingsScreen.java',
-    'systems/diath/visotaris_opmod/config/ModMenuApiImpl.java',
-    'systems/diath/visotaris_opmod/config/NetworkSettingsScreen.java',
-    'systems/diath/visotaris_opmod/config/VisotarisConfigScreen.java',
-    'systems/diath/visotaris_opmod/hooks/HandledScreenMixin.java',
-    'systems/diath/visotaris_opmod/services/InventoryValuationService.java',
-    'systems/diath/visotaris_opmod/ui/HudOverlay.java',
-]
-
-sourceSets {
-    main {
-        kotlin {
-            // Nur 26-spezifische Sources hier; Root-Quellen werden in afterEvaluate eingebunden.
-            srcDir project.file('src/main/kotlin')
-        }
-        java {
-            srcDir project.file('src/main/java')
-        }
-    }
-}
-
-// Root-afterEvaluate fügt rootProject/src/main/kotlin als plain srcDir hinzu.
-// Wir laufen danach und filtern die überschriebenen Dateien via exclude() am Task-Level
-// (SourceTask.exclude ist ein Spec-Filter, kein Property-Read → funktioniert mit write-only source).
-afterEvaluate {
-    def toExclude = ktOverrides.collect { f ->
-        rootProject.file("src/main/kotlin/$f").canonicalPath
-    }.toSet()
-    tasks.named('compileKotlin') {
-        exclude { fte -> toExclude.contains(fte.file.canonicalPath) }
-    }
-    def javaToExclude = java26Excludes.collect { f ->
-        rootProject.file("src/main/java/$f").canonicalPath
-    }.toSet()
-    tasks.named('compileJava') {
-        exclude { fte -> javaToExclude.contains(fte.file.canonicalPath) }
-    }
-}
+// All production sources and preserved service tests are in root src/.
+tasks.named('test') { useJUnitPlatform() }
 
 // ── Shadow-JAR-Pipeline (kein remapJar im disableObfuscation-Modus) ──────────
 // MC 26.x ist nicht obfuskiert → kein remapJar-Schritt nötig.
@@ -178,9 +134,3 @@ shadowJar {
 }
 
 assemble.dependsOn shadowJar
-
-// processResources: das Root-AW (named-Namespace) kollidiert mit dem 26-spezifischen AW
-// (official-Namespace). EXCLUDE → das zuerst gefundene Projekt-AW gewinnt.
-processResources {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}

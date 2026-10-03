@@ -1,4 +1,6 @@
-accessWidener	v2	named
+accessWidener	v2	official
 
-# Inventory.selected ist in MC 1.21.11 private und wird für den Offhand-Blocker benötigt.
+# Inventory.selected is private and used by the offhand blocker.
+# Klasse: net/minecraft/world/entity/player/Inventory  (Mojang-Name für PlayerInventory)
+# Feld:   selected  (Mojang-Name für selectedSlot)
 accessible	field	net/minecraft/world/entity/player/Inventory	selected	I

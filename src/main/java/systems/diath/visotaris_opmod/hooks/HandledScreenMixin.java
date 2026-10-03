@@ -3,7 +3,7 @@ package systems.diath.visotaris_opmod.hooks;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -27,6 +27,10 @@ import java.util.List;
  * Mixin in AbstractContainerScreen:
  *   - Container-Preis-Overlay  (Phase 2): zeigt Verkaufs-/Kaufwert aller Slots
  *   - Schnellzugriff-Buttons   (Phase 2): 3 OPSUCHT-Commands unterhalb des Hintergrunds
+ *
+ * MC 26.x: {@code GuiGraphics} → {@code GuiGraphicsExtractor}; die gerenderte Methode
+ * heißt jetzt {@code extractRenderState} statt {@code render} (Mojangs Trennung von
+ * Zustands-Extraktion und tatsächlichem Rendering auf dem Render-Thread).
  */
 @Environment(EnvType.CLIENT)
 @Mixin(AbstractContainerScreen.class)
@@ -78,8 +82,8 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
     //  RENDER
     // ════════════════════════════════════════════════════════════════════════
 
-    @Inject(method = "render", at = @At("TAIL"))
-    private void onRender(GuiGraphics ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void onRender(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         VisotarisModClient mod = VisotarisModClient.getInstance();
         if (mod == null) return;
 
@@ -102,11 +106,9 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
     //  PRIVATE HELPERS
     // ════════════════════════════════════════════════════════════════════════
 
-    private void renderContainerOverlay(GuiGraphics ctx, VisotarisModClient mod) {
-        // Server-Menüs wie /markt zeigen oben fremde Angebots-Slots und unten
-        // das echte Spielerinventar. Nur Letzteres ist Besitz des Spielers.
-        // Physische Kisten/Shulker bleiben hingegen als Container vollständig
-        // bewertbar.
+    private void renderContainerOverlay(GuiGraphicsExtractor ctx, VisotarisModClient mod) {
+        // In Server-Menüs wie /markt sind nur Slots des Spielerinventars Besitz.
+        // Angebots-, Händler- und Menüs-Slots werden nie in den Wert eingerechnet.
         T handler = getMenu();
         if (handler.slots == null) return;
         List<ItemStack> stacks = new ArrayList<>(handler.slots.size());
@@ -125,7 +127,7 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
         String line = buildValueLine(val);
 
         // Oberhlab des Screen-Hintergrunds in der Titelzeile rendern
-        ctx.drawString(mc.font, line,
+        ctx.text(mc.font, line,
             leftPos + 4, topPos - mc.font.lineHeight - 2,
             0xFFFFFFFF, true);
     }
@@ -136,7 +138,7 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
             || title.contains("händler") || title.contains("merchant") || title.contains("shop");
     }
 
-    private void renderQuickButtons(GuiGraphics ctx, int mouseX, int mouseY) {
+    private void renderQuickButtons(GuiGraphicsExtractor ctx, int mouseX, int mouseY) {
         int total  = HandledScreenButtons.BTN_LABELS.length * HandledScreenButtons.BTN_W
                    + (HandledScreenButtons.BTN_LABELS.length - 1) * HandledScreenButtons.BTN_GAP;
         int startX = leftPos + (imageWidth - total) / 2;
@@ -164,7 +166,7 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
             int tw = mc.font.width(HandledScreenButtons.BTN_LABELS[i]);
             int tx = bx + (HandledScreenButtons.BTN_W - tw) / 2;
             int ty = rowY + (HandledScreenButtons.BTN_H - mc.font.lineHeight) / 2;
-            ctx.drawString(mc.font, HandledScreenButtons.BTN_LABELS[i], tx, ty, 0xFFFFFFFF, false);
+            ctx.text(mc.font, HandledScreenButtons.BTN_LABELS[i], tx, ty, 0xFFFFFFFF, false);
         }
     }
 

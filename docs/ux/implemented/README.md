@@ -1,5 +1,8 @@
 # Umgesetzte Visotaris-Ingame-UX
 
+Aktuelle 26.2-Prüfung für Visotaris 1.2.x: [Hauptmenü, Runtime-Registry und Auktionshaus](26.2-mainmenu-registry-check.md).
+Visotaris 1.2.0+ unterstützt Minecraft 26.x. Die folgenden 1.21.11-Aufnahmen bleiben als historische UX-Dokumentation erhalten.
+
 Die folgenden PNGs sind Screenshots der **laufenden nativen Minecraft-Oberfläche** (nicht HTML-Mockups). Aufgenommen mit Minecraft 1.21.11, deutscher Minecraft-Sprache, einer isolierten lokalen Entwicklungsinstanz und den dort geladenen Cache-Snapshots. Die angezeigten Kurse/Auftragszahlen stammen aus dem lokalen Cache; sie sind keine fest codierten Beispieldaten und können sich ändern. Die Web-UX war in dieser Testinstanz deaktiviert, daher zeigt die Alarmseite den echten Leerzustand und verweist auf System-Einstellungen.
 
 | Bereich | Screenshot |

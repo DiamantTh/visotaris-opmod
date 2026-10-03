@@ -1,7 +1,7 @@
 # Visotaris OPMod – Abhängigkeiten und Lizenzen
 
 Dieses Dokument listet alle direkten Abhängigkeiten des Projekts mit ihren jeweiligen Lizenzen auf.
-Zuletzt aktualisiert: 2026-09-27
+Zuletzt aktualisiert: 2026-10-03. Gültig für Visotaris 1.2.x / Minecraft 26.x (aktuell 26.2).
 
 ---
 
@@ -9,8 +9,8 @@ Zuletzt aktualisiert: 2026-09-27
 
 | Abhängigkeit | Version | Lizenz | SPDX-ID |
 |---|---|---|---|
-| [Fabric Loom](https://github.com/FabricMC/fabric-loom) | 1.16.3 (1.21.11); 1.17-SNAPSHOT (26.2) | MIT License | `MIT` |
-| [Kotlin JVM Gradle Plugin](https://kotlinlang.org/) | 2.2.21 | Apache License 2.0 | `Apache-2.0` |
+| [Fabric Loom](https://github.com/FabricMC/fabric-loom) | 1.17-SNAPSHOT (26.2) | MIT License | `MIT` |
+| [Kotlin JVM Gradle Plugin](https://kotlinlang.org/) | 2.4.20 | Apache License 2.0 | `Apache-2.0` |
 | [Shadow (GradleUp)](https://github.com/GradleUp/shadow) | 9.4.1 | Apache License 2.0 | `Apache-2.0` |
 
 ---
@@ -19,24 +19,22 @@ Zuletzt aktualisiert: 2026-09-27
 
 ### Minecraft & Plattform
 
-| Abhängigkeit | Version (1.21.11) | Version (26.x, aktuell 26.2) | Lizenz | SPDX-ID |
-|---|---|---|---|---|
-| [Minecraft](https://www.minecraft.net/de-de/eula) | 1.21.11 | 26.2 | Minecraft EULA (proprietär) | — |
-| [Yarn Mappings](https://github.com/FabricMC/yarn) | 1.21.11+build.1 | nicht benötigt | Creative Commons Zero v1.0 (CC0) | `CC0-1.0` |
-| [Fabric Loader](https://github.com/FabricMC/fabric-loader) | 0.18.5 | 0.19.3 | Apache License 2.0 | `Apache-2.0` |
-| [Fabric API](https://github.com/FabricMC/fabric) | 0.141.3+1.21.11 | 0.155.2+26.2 | Apache License 2.0 | `Apache-2.0` |
+| Abhängigkeit | Version (26.x, aktuell 26.2) | Lizenz | SPDX-ID |
+|---|---|---|---|
+| [Minecraft](https://www.minecraft.net/de-de/eula) | 26.2 | Minecraft EULA (proprietär) | — |
+| [Fabric Loader](https://github.com/FabricMC/fabric-loader) | 0.19.3 | Apache License 2.0 | `Apache-2.0` |
+| [Fabric API](https://github.com/FabricMC/fabric) | 0.155.2+26.2 | Apache License 2.0 | `Apache-2.0` |
 
-### Mod-Abhängigkeiten (modImplementation)
+### Separate Mod-Abhängigkeiten (26.x: implementation)
 
-| Abhängigkeit | Version (1.21.11) | Version (26.x, aktuell 26.2) | Lizenz | SPDX-ID |
-|---|---|---|---|---|
-| [Mod Menu](https://github.com/TerraformersMC/ModMenu) | 17.0.0 | 18.0.0-alpha.8 | MIT License | `MIT` |
-| [fabric-language-kotlin](https://github.com/FabricMC/fabric-language-kotlin) | 1.13.7+kotlin.2.2.21 | 1.13.7+kotlin.2.2.21 | Apache License 2.0 | `Apache-2.0` |
-| [MaLiLib](https://modrinth.com/mod/malilib) | 0.27.16 (1.21.11) | 0.29.3 (26.2) | GNU Lesser General Public License v3.0 only | `LGPL-3.0-only` |
+| Abhängigkeit | Version (26.x, aktuell 26.2) | Lizenz | SPDX-ID |
+|---|---|---|---|
+| [Mod Menu](https://github.com/TerraformersMC/ModMenu) | 20.0.1 | MIT License | `MIT` |
+| [fabric-language-kotlin](https://github.com/FabricMC/fabric-language-kotlin) | 1.13.14+kotlin.2.4.20 | Apache License 2.0 | `Apache-2.0` |
+| [MaLiLib](https://modrinth.com/mod/malilib) | 0.29.3 | GNU Lesser General Public License v3.0 only | `LGPL-3.0-only` |
 
 MaLiLib wird als separate, erforderliche Client-Mod für den konfigurierbaren
-Mehrfach-Tasten-Hotkey des Ingame-Menüs verwendet. Die gezielte Version ist je
-Minecraft-Build unterschiedlich. MaLiLib wird nicht in Visotaris-JARs eingebettet
+Mehrfach-Tasten-Hotkey des Ingame-Menüs verwendet. Die gezielte Version ist für Minecraft 26.2 festgelegt. MaLiLib wird nicht in Visotaris-JARs eingebettet
 oder verändert. Der Hotkey ist über MaLiLibs Hotkeyverwaltung deaktivierbar.
 Siehe auch [Dritthersteller-Hinweise](THIRD_PARTY_NOTICES.md).
 
@@ -73,7 +71,7 @@ Entsprechende `exclude group: 'org.jetbrains.kotlin'`-Direktiven sind in den Bui
 
 | Bereitgestellt durch | Enthält | Lizenz |
 |---|---|---|
-| fabric-language-kotlin 1.13.7+kotlin.2.2.21 | kotlin-stdlib 2.2.21, kotlin-coroutines | Apache License 2.0 |
+| fabric-language-kotlin 1.13.14+kotlin.2.4.20 | kotlin-stdlib 2.4.20, kotlin-coroutines | Apache License 2.0 |
 
 ---
 
