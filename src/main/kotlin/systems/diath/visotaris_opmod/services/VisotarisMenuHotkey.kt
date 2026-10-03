@@ -11,12 +11,16 @@ import fi.dy.masa.malilib.config.gui.GuiModConfigs
 import fi.dy.masa.malilib.config.options.ConfigHotkey
 import fi.dy.masa.malilib.event.InputEventHandler
 import fi.dy.masa.malilib.gui.GuiBase
+import fi.dy.masa.malilib.gui.button.ButtonGeneric
 import fi.dy.masa.malilib.hotkeys.IHotkey
 import fi.dy.masa.malilib.hotkeys.IKeybindManager
 import fi.dy.masa.malilib.hotkeys.IKeybindProvider
 import fi.dy.masa.malilib.hotkeys.KeyAction
 import fi.dy.masa.malilib.hotkeys.KeybindSettings
+import fi.dy.masa.malilib.registry.Registry
 import fi.dy.masa.malilib.util.KeyCodes
+import fi.dy.masa.malilib.util.data.ModInfo
+import net.minecraft.client.Minecraft
 import net.fabricmc.loader.api.FabricLoader
 import systems.diath.visotaris_opmod.VisotarisLogger
 import java.nio.file.AtomicMoveNotSupportedException
@@ -52,6 +56,9 @@ class VisotarisMenuHotkey(private val openMenu: () -> Unit) {
 
     init {
         instance = this
+        Registry.CONFIG_SCREEN.registerConfigScreenFactory(
+            ModInfo("visotaris_opmod", "Visotaris OPMod") { createHotkeyConfigScreen() },
+        )
         val hadHotkeyConfig = Files.exists(configPath)
         ConfigManager.getInstance().registerConfigHandler("visotaris_opmod", configHandler)
         configHandler.load()
@@ -75,17 +82,40 @@ class VisotarisMenuHotkey(private val openMenu: () -> Unit) {
 
     /** Uses MaLiLib's own keybind editor, scoped to Visotaris' menu shortcut only. */
     private fun showConfigScreen() {
-        val screen = object : GuiModConfigs(
-            "visotaris_opmod",
-            listOf(hotkey),
-            "visotaris_opmod.hotkeys.title",
-        ) {
-            override fun onSettingsChanged() {
-                configHandler.save()
-                InputEventHandler.getKeybindManager().updateUsedKeys()
-            }
+        GuiBase.openGui(createHotkeyConfigScreen())
+    }
+
+    private fun createHotkeyConfigScreen(): HotkeyConfigScreen {
+        val parent = Minecraft.getInstance().gui.screen()
+        return HotkeyConfigScreen().apply {
+            if (parent != null) setParent(parent)
         }
-        GuiBase.openGui(screen)
+    }
+
+    private inner class HotkeyConfigScreen : GuiModConfigs(
+        "visotaris_opmod",
+        listOf(hotkey),
+        "visotaris_opmod.hotkeys.title",
+    ) {
+        override fun onSettingsChanged() {
+            configHandler.save()
+            InputEventHandler.getKeybindManager().updateUsedKeys()
+        }
+
+        override fun initGui() {
+            super.initGui()
+            val parent = getParent() ?: return
+            val label = "visotaris_opmod.hotkeys.back"
+            val buttonWidth = 168
+            val button = ButtonGeneric(
+                (getScreenWidth() - buttonWidth) / 2,
+                getScreenHeight() - 30,
+                buttonWidth,
+                false,
+                label,
+            )
+            addButton(button) { _, _ -> GuiBase.openGui(parent) }
+        }
     }
 
     private fun migrateLegacyBinding(): String? {

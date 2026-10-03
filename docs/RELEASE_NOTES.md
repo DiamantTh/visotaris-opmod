@@ -1,5 +1,14 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.5 — Vorabversion
+
+- Der MaLiLib-Hotkeyeditor zeigt in der Mod-Auswahl jetzt den Anzeigenamen
+  „Visotaris OPMod“ und nicht mehr die technische Mod-ID.
+- Der Editor kehrt per Esc oder über den sichtbaren Button „Zurück zu Visotaris“
+  zur genau zuvor geöffneten Visotaris-Seite zurück.
+- Der Shortcut bleibt über MaLiLib konfigurierbar; seine Speicherung und die
+  Behandlung einer absichtlich leeren Belegung bleiben unverändert.
+
 ## Visotaris OPMod 1.2.0-pre.4 — Vorabversion (aktuelle Entwicklungsfassung)
 
 Diese Fassung baut auf dem gesicherten pre.3-Stand auf und bleibt ausdrücklich eine
