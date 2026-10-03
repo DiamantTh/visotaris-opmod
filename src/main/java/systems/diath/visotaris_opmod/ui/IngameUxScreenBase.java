@@ -4,6 +4,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 import com.google.gson.Gson;
@@ -97,6 +98,8 @@ public abstract class IngameUxScreenBase extends Screen {
     private final List<MarketPrice> marketRows = new ArrayList<>();
     private final List<ShardRate> shardRows = new ArrayList<>();
     private final List<Auction> auctionRows = new ArrayList<>();
+    private record AuctionRowHitbox(String uid, int x, int y, int width, int height) { }
+    private final List<AuctionRowHitbox> auctionRowHitboxes = new ArrayList<>();
     private final List<Button> navigation = new ArrayList<>();
     private final ArrayDeque<Integer> pageHistory = new ArrayDeque<>();
     private Button footerBackButton;
@@ -149,6 +152,7 @@ public abstract class IngameUxScreenBase extends Screen {
     private String shardQuery = "";
     private String auctionQuery = "";
     private String auctionCategory = "";
+    private String selectedAuctionUid;
     private int auctionSort;
     private boolean auctionSortDescending;
     private int shardSort;
@@ -593,6 +597,11 @@ public abstract class IngameUxScreenBase extends Screen {
             if (event.key() == GLFW.GLFW_KEY_S) { resolveUnsavedDialog(true); return true; }
             if (event.key() == GLFW.GLFW_KEY_D) { resolveUnsavedDialog(false); return true; }
         }
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE && selectedAuctionUid != null) {
+            selectedAuctionUid = null;
+            auctionRowHitboxes.clear();
+            return true;
+        }
         if (event.key() == GLFW.GLFW_KEY_ESCAPE && activePage == 4 && alertDraft != null) {
             requestBack();
             return true;
@@ -606,6 +615,36 @@ public abstract class IngameUxScreenBase extends Screen {
             return true;
         }
         return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (selectedAuctionUid != null) {
+            if (button == 0 && window != null) {
+                int panelX = window.contentX() + 8;
+                int panelY = window.bodyTop() + 6;
+                int panelWidth = window.contentWidth() - 16;
+                if (mouseX >= panelX + panelWidth - 28 && mouseX <= panelX + panelWidth - 6
+                    && mouseY >= panelY + 4 && mouseY <= panelY + 24) {
+                    selectedAuctionUid = null;
+                    auctionRowHitboxes.clear();
+                }
+            }
+            return true;
+        }
+        if (button == 0 && activePage == 7) {
+            for (AuctionRowHitbox hitbox : auctionRowHitboxes) {
+                if (mouseX >= hitbox.x() && mouseX < hitbox.x() + hitbox.width()
+                    && mouseY >= hitbox.y() && mouseY < hitbox.y() + hitbox.height()) {
+                    selectedAuctionUid = hitbox.uid();
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -666,6 +705,10 @@ public abstract class IngameUxScreenBase extends Screen {
         drawFooter(canvas);
         if (showUnsavedDialog) {
             drawUnsavedDialog(canvas);
+            return;
+        }
+        if (selectedAuctionUid != null) {
+            drawAuctionDetails(canvas);
             return;
         }
         if (hoveredRow >= 0 && !hoveredDetails.isBlank()) {
@@ -943,6 +986,7 @@ public abstract class IngameUxScreenBase extends Screen {
     }
 
     private void drawAuctions(IngameUxCanvas c, int x, int y, int w, int mouseX, int mouseY) {
+        auctionRowHitboxes.clear();
         drawInput(c, auctionSearch, "Auktion suchen …");
         boolean auctionSettingDraft = cfg.auctionLiveUpdatesEnabled != savedConfig.auctionLiveUpdatesEnabled;
         String streamStatus = auctionSettingDraft ? " · Änderung erst nach Speichern" :
@@ -971,6 +1015,7 @@ public abstract class IngameUxScreenBase extends Screen {
         for (int i = start; i < end; i++) {
             Auction auction = auctionRows.get(i);
             int ry = rowsY + (int) Math.round((i - start - fraction) * rh);
+            if (auction.uid() != null) auctionRowHitboxes.add(new AuctionRowHitbox(auction.uid(), x + 2, ry, w - 4, rh - 2));
             card(c, x + 2, ry, w - 4, rh - 2);
             String material = auction.item() == null || auction.item().material() == null
                 ? "barrier" : auction.item().material().toLowerCase(Locale.ROOT);
@@ -1017,6 +1062,84 @@ public abstract class IngameUxScreenBase extends Screen {
         }
         c.disableScissor();
     }
+
+    private void drawAuctionDetails(IngameUxCanvas c) {
+        int x = window.contentX() + 8;
+        int y = window.bodyTop() + 6;
+        int w = window.contentWidth() - 16;
+        int bottom = window.bodyBottom() - 3;
+        c.enableScissor(x, y, x + w, bottom);
+        card(c, x, y, w, bottom - y);
+        outline(c, x, y, w, bottom - y, INFO);
+        c.text("Auktionsdetails", x + 9, y + 7, WHITE, true);
+        card(c, x + w - 25, y + 4, 19, 18);
+        c.text("×", x + w - 20, y + 7, WHITE, true);
+
+        Auction auction = auctionCache.get(selectedAuctionUid);
+        if (auction == null) auction = auctionCache.finalizedSnapshot().get(selectedAuctionUid);
+        if (auction == null) {
+            c.text(fit(c, "Diese Auktion ist nicht mehr im lokalen Cache.", w - 20), x + 9, y + 34, MUTED, false);
+            c.text(fit(c, "ESC oder × · Zurück zur Liste", w - 20), x + 9, y + 51, INFO, false);
+            c.disableScissor();
+            return;
+        }
+
+        int iconX = x + 9;
+        int iconY = y + 28;
+        String material = auction.item() == null || auction.item().material() == null
+            ? "barrier" : auction.item().material().toLowerCase(Locale.ROOT);
+        String iconUrl = auction.item() == null ? null : auction.item().icon();
+        byte[] icon = mod.getAuctionIconCache().getCached(iconUrl);
+        if (icon == null && iconUrl != null) mod.getAuctionIconCache().request(iconUrl);
+        String iconKey = systems.diath.visotaris_opmod.services.AuctionIconCache.cacheId(iconUrl);
+        if (icon == null || iconKey == null || !c.image(iconKey, icon, iconX, iconY, 16)) c.item(material, iconX, iconY);
+        int textX = x + 31;
+        int textW = w - 42;
+        String itemName = auction.item() == null || auction.item().displayName() == null
+            ? material : auction.item().displayName();
+        c.text(fit(c, itemName + " · " + (auction.item() == null ? 1 : auction.item().amount()) + "×", textW),
+            textX, y + 31, WHITE, true);
+        int lineY = y + 52;
+        c.text(fit(c, "Kategorie: " + safeAuctionText(auction.category()) + " · Status: " + safeAuctionText(auction.state()), w - 18),
+            x + 9, lineY, MUTED, false);
+        lineY += c.lineHeight() + 3;
+        String prices = "Start " + formatMoney(auction.startBid()) + " · Gebot " + formatMoney(auction.currentBid());
+        if (auction.instantBuyPrice() != null) prices += " · Sofort " + formatMoney(auction.instantBuyPrice());
+        c.text(fit(c, prices, w - 18), x + 9, lineY, INFO, false);
+        lineY += c.lineHeight() + 3;
+        String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
+        String bidder = auction.highestBidder() == null ? "–" : mod.getProfileCache().getDisplayName(auction.highestBidder());
+        if (auction.seller() != null) mod.getProfileCache().resolve(auction.seller());
+        if (auction.highestBidder() != null) mod.getProfileCache().resolve(auction.highestBidder());
+        c.text(fit(c, "Verkäufer: " + seller, w - 18), x + 9, lineY, WHITE, false);
+        lineY += c.lineHeight() + 3;
+        c.text(fit(c, "Höchstbietender: " + bidder, w - 18), x + 9, lineY, WHITE, false);
+        lineY += c.lineHeight() + 3;
+        int bidCount = auction.bids() == null ? 0 : auction.bids().size();
+        c.text(fit(c, "Gebote: " + bidCount, w - 18), x + 9, lineY, MUTED, false);
+        lineY += c.lineHeight() + 3;
+        c.text(fit(c, "Start: " + (auction.startTime() == null ? "–" : auction.startTime()), w - 18), x + 9, lineY, MUTED, false);
+        lineY += c.lineHeight() + 3;
+        c.text(fit(c, "Ende: " + (auction.endTime() == null ? "–" : auction.endTime()), w - 18), x + 9, lineY, MUTED, false);
+        lineY += c.lineHeight() + 4;
+        String lore = auction.item() == null || auction.item().lore() == null ? "" : String.join(" · ", auction.item().lore());
+        if (!lore.isBlank()) {
+            c.text("Beschreibung", x + 9, lineY, WHITE, true);
+            lineY += c.lineHeight() + 2;
+            drawWrapped(c, lore, x + 9, lineY, w - 18, MUTED);
+            lineY += c.lineHeight() * 3 + 3;
+        }
+        if (auction.item() != null && auction.item().enchantments() != null && !auction.item().enchantments().isEmpty()
+            && lineY < bottom - c.lineHeight()) {
+            String enchantments = auction.item().enchantments().entrySet().stream().limit(6)
+                .map(entry -> entry.getKey().substring(entry.getKey().lastIndexOf(':') + 1).replace('_', ' ') + " " + entry.getValue())
+                .collect(java.util.stream.Collectors.joining(", "));
+            c.text(fit(c, "Verzauberungen: " + enchantments, w - 18), x + 9, lineY, MUTED, false);
+        }
+        c.disableScissor();
+    }
+
+    private static String safeAuctionText(String value) { return value == null || value.isBlank() ? "–" : value; }
 
     private void drawTooltipSummary(IngameUxCanvas c, int x, int y, int w) {
         drawInfoBox(c, x, y, w, 42,
