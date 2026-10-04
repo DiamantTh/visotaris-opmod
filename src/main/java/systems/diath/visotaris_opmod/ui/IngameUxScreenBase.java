@@ -23,6 +23,8 @@ import systems.diath.visotaris_opmod.model.ShardRate;
 import systems.diath.visotaris_opmod.services.PriceAlertEngine;
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator;
 import systems.diath.visotaris_opmod.services.PriceAlertService;
+import systems.diath.visotaris_opmod.util.AuctionItemNames;
+import systems.diath.visotaris_opmod.util.AuctionSearch;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
 
 import java.util.ArrayList;
@@ -162,6 +164,7 @@ public abstract class IngameUxScreenBase extends Screen {
     private long lastMarketUpdate;
     private long lastShardUpdate;
     private long lastAuctionUpdate;
+    private long lastProfileNameVersion;
     private long lastAlertEvent;
     private String transientStatus = "";
     private long transientStatusAt;
@@ -194,6 +197,7 @@ public abstract class IngameUxScreenBase extends Screen {
         this.lastMarketUpdate = marketCache.getLastUpdatedMs();
         this.lastShardUpdate = shardCache.getLastUpdatedMs();
         this.lastAuctionUpdate = auctionCache.getLastUpdatedMs();
+        this.lastProfileNameVersion = mod.getProfileCache().getNameVersion();
         this.lastAlertEvent = latestAlertTimestamp();
         refreshMarketRows();
         refreshShardRows();
@@ -577,6 +581,7 @@ public abstract class IngameUxScreenBase extends Screen {
         long marketUpdated = marketCache.getLastUpdatedMs();
         long shardUpdated = shardCache.getLastUpdatedMs();
         long auctionUpdated = auctionCache.getLastUpdatedMs();
+        long profileNamesUpdated = mod.getProfileCache().getNameVersion();
         long eventUpdated = latestAlertTimestamp();
         if (marketUpdated != lastMarketUpdate || shardUpdated != lastShardUpdate || auctionUpdated != lastAuctionUpdate || eventUpdated != lastAlertEvent) {
             lastMarketUpdate = marketUpdated;
@@ -587,6 +592,10 @@ public abstract class IngameUxScreenBase extends Screen {
             refreshShardRows();
             refreshAuctionRows();
             rebuildWidgets();
+        }
+        if (profileNamesUpdated != lastProfileNameVersion) {
+            lastProfileNameVersion = profileNamesUpdated;
+            refreshAuctionRows();
         }
     }
 
@@ -640,6 +649,7 @@ public abstract class IngameUxScreenBase extends Screen {
                 if (mouseX >= hitbox.x() && mouseX < hitbox.x() + hitbox.width()
                     && mouseY >= hitbox.y() && mouseY < hitbox.y() + hitbox.height()) {
                     selectedAuctionUid = hitbox.uid();
+                    requestAuctionDetailProfiles(auctionCache.get(selectedAuctionUid));
                     return true;
                 }
             }
@@ -995,7 +1005,7 @@ public abstract class IngameUxScreenBase extends Screen {
             cfg.auctionLiveUpdatesEnabled ? " · Liveupdates verbinden …" : " · manuell";
         c.text(fit(c, "Aktiv · " + auctionRows.size() + " Auktionen · " + ageText(auctionCache.getLastUpdatedMs()) + streamStatus, w - 12), x + 6, y + 84, MUTED, false);
         int rowsY = y + 103;
-        int rh = 38;
+        int rh = 42;
         int available = Math.max(30, window.contentBottom() - rowsY - c.lineHeight() - 8);
         if (auctionRows.isEmpty()) {
             drawEmptyState(c, x + 5, rowsY + 10, w - 10,
@@ -1017,30 +1027,30 @@ public abstract class IngameUxScreenBase extends Screen {
             int ry = rowsY + (int) Math.round((i - start - fraction) * rh);
             if (auction.uid() != null) auctionRowHitboxes.add(new AuctionRowHitbox(auction.uid(), x + 2, ry, w - 4, rh - 2));
             card(c, x + 2, ry, w - 4, rh - 2);
-            String material = auction.item() == null || auction.item().material() == null
-                ? "barrier" : auction.item().material().toLowerCase(Locale.ROOT);
+            String material = AuctionItemNames.fallbackMaterial(auction).toLowerCase(Locale.ROOT);
             String iconUrl = auction.item() == null ? null : auction.item().icon();
             byte[] icon = mod.getAuctionIconCache().getCached(iconUrl);
             if (icon == null && iconUrl != null) mod.getAuctionIconCache().request(iconUrl);
             String iconKey = systems.diath.visotaris_opmod.services.AuctionIconCache.cacheId(iconUrl);
             if (icon == null || iconKey == null || !c.image(iconKey, icon, x + 7, ry + 5, 16)) c.item(material, x + 7, ry + 5);
-            String name = auction.item() == null || auction.item().displayName() == null ? material : auction.item().displayName();
-            c.text(fit(c, name, Math.max(50, w - 150)), x + 30, ry + 4, WHITE, false);
+            String name = AuctionItemNames.visibleName(auction.item());
+            int textWidth = Math.max(48, w - 40);
+            c.text(fit(c, name, textWidth), x + 30, ry + 3, WHITE, false);
+            String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
+            int priceColumn = Math.min(128, Math.max(72, w * 2 / 5));
+            int priceX = x + w - priceColumn - 7;
+            int sellerWidth = Math.max(48, priceX - x - 38);
+            c.text(fit(c, "Verkäufer: " + seller, sellerWidth), x + 30, ry + c.lineHeight() + 3, MUTED, false);
             String price = "Gebot " + formatMoney(auction.currentBid());
             if (auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0) price += " · Sofort " + formatMoney(auction.instantBuyPrice());
-            c.text(fit(c, price, Math.max(50, w - 42)), x + 30, ry + c.lineHeight() + 6, INFO, false);
+            c.text(fit(c, price, priceColumn), priceX, ry + c.lineHeight() + 3, INFO, false);
             if (mouseX >= x && mouseX <= x + w && mouseY >= rowsY && mouseY < rowsY + available
                 && mouseY >= ry && mouseY < ry + rh - 2) {
                 hoveredRow = i;
-                String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
                 String bidder = auction.highestBidder() == null ? "–" : mod.getProfileCache().getDisplayName(auction.highestBidder());
-                if (auction.seller() != null) mod.getProfileCache().resolve(auction.seller());
-                if (auction.highestBidder() != null) mod.getProfileCache().resolve(auction.highestBidder());
                 String bidDetails = auction.bids() == null ? "" : auction.bids().entrySet().stream().limit(3)
-                    .map(entry -> {
-                        mod.getProfileCache().resolve(entry.getKey());
-                        return mod.getProfileCache().getDisplayName(entry.getKey()) + ": " + formatMoney(entry.getValue());
-                    }).collect(java.util.stream.Collectors.joining(" · "));
+                    .map(entry -> mod.getProfileCache().getDisplayName(entry.getKey()) + ": " + formatMoney(entry.getValue()))
+                    .collect(java.util.stream.Collectors.joining(" · "));
                 hoveredDetails = name + " · " + (auction.item() == null ? 1 : auction.item().amount()) + "×"
                     + "\nKategorie: " + auction.category() + " · Status: " + auction.state()
                     + "\nStartgebot: " + formatMoney(auction.startBid()) + " · Aktuell: " + formatMoney(auction.currentBid())
@@ -1086,8 +1096,7 @@ public abstract class IngameUxScreenBase extends Screen {
 
         int iconX = x + 9;
         int iconY = y + 28;
-        String material = auction.item() == null || auction.item().material() == null
-            ? "barrier" : auction.item().material().toLowerCase(Locale.ROOT);
+        String material = AuctionItemNames.fallbackMaterial(auction).toLowerCase(Locale.ROOT);
         String iconUrl = auction.item() == null ? null : auction.item().icon();
         byte[] icon = mod.getAuctionIconCache().getCached(iconUrl);
         if (icon == null && iconUrl != null) mod.getAuctionIconCache().request(iconUrl);
@@ -1095,8 +1104,7 @@ public abstract class IngameUxScreenBase extends Screen {
         if (icon == null || iconKey == null || !c.image(iconKey, icon, iconX, iconY, 16)) c.item(material, iconX, iconY);
         int textX = x + 31;
         int textW = w - 42;
-        String itemName = auction.item() == null || auction.item().displayName() == null
-            ? material : auction.item().displayName();
+        String itemName = AuctionItemNames.visibleName(auction.item());
         c.text(fit(c, itemName + " · " + (auction.item() == null ? 1 : auction.item().amount()) + "×", textW),
             textX, y + 31, WHITE, true);
         int lineY = y + 52;
@@ -1109,8 +1117,6 @@ public abstract class IngameUxScreenBase extends Screen {
         lineY += c.lineHeight() + 3;
         String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
         String bidder = auction.highestBidder() == null ? "–" : mod.getProfileCache().getDisplayName(auction.highestBidder());
-        if (auction.seller() != null) mod.getProfileCache().resolve(auction.seller());
-        if (auction.highestBidder() != null) mod.getProfileCache().resolve(auction.highestBidder());
         c.text(fit(c, "Verkäufer: " + seller, w - 18), x + 9, lineY, WHITE, false);
         lineY += c.lineHeight() + 3;
         c.text(fit(c, "Höchstbietender: " + bidder, w - 18), x + 9, lineY, WHITE, false);
@@ -1140,6 +1146,12 @@ public abstract class IngameUxScreenBase extends Screen {
     }
 
     private static String safeAuctionText(String value) { return value == null || value.isBlank() ? "–" : value; }
+
+    private void requestAuctionDetailProfiles(Auction auction) {
+        if (auction == null) return;
+        if (auction.highestBidder() != null) mod.getProfileCache().resolve(auction.highestBidder());
+        if (auction.bids() != null) auction.bids().keySet().stream().limit(50).forEach(mod.getProfileCache()::resolve);
+    }
 
     private void drawTooltipSummary(IngameUxCanvas c, int x, int y, int w) {
         drawInfoBox(c, x, y, w, 42,
@@ -1689,10 +1701,9 @@ public abstract class IngameUxScreenBase extends Screen {
         String query = auctionQuery.toLowerCase(Locale.ROOT).trim();
         for (Auction auction : auctionCache.snapshot().values()) {
             if (!auctionCategory.isEmpty() && !auctionCategory.equalsIgnoreCase(auction.category())) continue;
-            String itemName = auction.item() == null || auction.item().displayName() == null ? "" : auction.item().displayName();
-            String material = auction.item() == null || auction.item().material() == null ? "" : auction.item().material();
-            if (!query.isEmpty() && !itemName.toLowerCase(Locale.ROOT).contains(query)
-                && !material.toLowerCase(Locale.ROOT).contains(query) && !String.valueOf(auction.category()).toLowerCase(Locale.ROOT).contains(query)) continue;
+            String itemName = AuctionItemNames.visibleName(auction.item());
+            String sellerName = auction.seller() == null ? null : mod.getProfileCache().getCachedName(auction.seller());
+            if (!AuctionSearch.matches(auction, sellerName, itemName, query)) continue;
             auctionRows.add(auction);
         }
         Comparator<Auction> comparator;
@@ -1709,7 +1720,7 @@ public abstract class IngameUxScreenBase extends Screen {
         } else {
             comparator = switch (auctionSort) {
                 case 1 -> Comparator.comparingDouble(Auction::currentBid);
-                default -> Comparator.comparing(a -> a.item() == null || a.item().displayName() == null ? "" : a.item().displayName(), String.CASE_INSENSITIVE_ORDER);
+                default -> Comparator.comparing(a -> AuctionItemNames.visibleName(a.item()), String.CASE_INSENSITIVE_ORDER);
             };
             if (auctionSortDescending) comparator = comparator.reversed();
         }

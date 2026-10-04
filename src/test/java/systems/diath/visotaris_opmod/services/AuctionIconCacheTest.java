@@ -50,6 +50,7 @@ class AuctionIconCacheTest {
             assertNull(AuctionIconCache.normalizeUrl("https://localhost/item.png"));
             assertNull(AuctionIconCache.normalizeUrl("https://evil.mc-api.io/item.png"));
             assertNotNull(AuctionIconCache.normalizeUrl("https://img.mc-api.io/item.png"));
+            assertNotNull(AuctionIconCache.normalizeUrl("https://items.opsucht.net/J3j9Ss0K1JL6.png"));
             assertNotNull(AuctionIconCache.normalizeUrl("/icons/item.png"));
         }
     }

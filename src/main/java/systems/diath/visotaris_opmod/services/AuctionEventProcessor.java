@@ -6,6 +6,8 @@ import systems.diath.visotaris_opmod.api.AuctionApiClient;
 import systems.diath.visotaris_opmod.cache.AuctionCache;
 import systems.diath.visotaris_opmod.model.Auction;
 
+import java.util.function.Consumer;
+
 /** Applies public auction events to the single UID-keyed local cache. */
 public final class AuctionEventProcessor {
     public enum Result { IGNORED, UPDATED, REMOVED, FINALIZED, RESET }
@@ -19,8 +21,14 @@ public final class AuctionEventProcessor {
     );
 
     private final AuctionCache cache;
+    private final Consumer<Auction> auctionObserved;
 
-    public AuctionEventProcessor(AuctionCache cache) { this.cache = cache; }
+    public AuctionEventProcessor(AuctionCache cache) { this(cache, ignored -> { }); }
+
+    public AuctionEventProcessor(AuctionCache cache, Consumer<Auction> auctionObserved) {
+        this.cache = cache;
+        this.auctionObserved = auctionObserved == null ? ignored -> { } : auctionObserved;
+    }
 
     public Result apply(String event, String data) {
         if (!EVENTS.contains(event)) return Result.IGNORED;
@@ -47,13 +55,20 @@ public final class AuctionEventProcessor {
             if (auction == null || auction.uid() == null || auction.uid().isBlank()) return Result.IGNORED;
             if (TERMINAL_EVENTS.contains(event) || AuctionCache.isTerminalState(auction.state())) {
                 cache.finish(auction);
+                notifyObserved(auction);
                 return Result.FINALIZED;
             }
             cache.upsert(auction);
+            notifyObserved(auction);
             return Result.UPDATED;
         } catch (RuntimeException invalidPayload) {
             return Result.IGNORED;
         }
+    }
+
+    private void notifyObserved(Auction auction) {
+        try { auctionObserved.accept(auction); }
+        catch (RuntimeException ignored) { /* Profile prefetch must never invalidate an auction update. */ }
     }
 
     private static JsonObject auctionObject(JsonElement envelope) {

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
-  import { fmt, fmtInt } from '../../lib/utils.js'
+  import { fmt, fmtInt, itemIcon } from '../../lib/utils.js'
 
   let auctions = $state([])
   let categories = $state([])
@@ -24,10 +24,8 @@
   const filtered = $derived.by(() => {
     const query = search.trim().toLocaleLowerCase('de')
     const values = auctions.filter(auction => {
-      const item = auction.item || {}
       const matchesCategory = !category || auction.category === category
-      const matchesText = !query || [item.displayName, item.material, auction.seller, auction.highestBidder, auction.uid]
-        .filter(Boolean).some(value => String(value).toLocaleLowerCase('de').includes(query))
+      const matchesText = !query || String(auction.searchText || '').toLocaleLowerCase('de').includes(query)
       return matchesCategory && matchesText
     })
     const direction = descending ? -1 : 1
@@ -45,7 +43,19 @@
     })
   })
 
-  function itemName(auction) { return auction?.item?.displayName || auction?.item?.material || 'Unbekanntes Item' }
+  function itemName(auction) { return auction?.item?.visibleName || auction?.item?.displayName || auction?.item?.material || 'Unbekanntes Item' }
+  function sellerName(auction) { return auction?.sellerName || playerName(auction?.seller) }
+  function fallbackMaterial(auction) {
+    const item = auction?.item || {}
+    const category = String(auction?.category || '').toLowerCase()
+    if (category.startsWith('custom_') || category.startsWith('op_') || /items\.opsucht\.net/i.test(item.icon || '')) return 'barrier'
+    return item.material || 'barrier'
+  }
+  function auctionIconLoaded(event) {
+    const fallback = event.currentTarget.previousElementSibling
+    if (fallback) fallback.hidden = true
+  }
+  function hideFallbackIcon(event) { event.currentTarget.hidden = true }
   function shortId(value) { return value ? `${value.slice(0, 8)}…${value.slice(-4)}` : 'unbekannt' }
   function canonicalUuid(value) {
     const compact = String(value || '').replaceAll('-', '').toLowerCase()
@@ -86,7 +96,6 @@
       categories = categoryResponse.ok ? await categoryResponse.json() : []
       meta = metaResponse.ok ? (await metaResponse.json()).auctions : null
       if (selectedUid && !auctions.some(auction => auction.uid === selectedUid)) selectedUid = ''
-      resolveProfiles(auctions.slice(0, 20))
       error = ''
     } catch (exception) { error = exception.message || 'Lokaler AuctionCache nicht erreichbar.' }
     finally { loading = false }
@@ -95,7 +104,6 @@
   async function resolveProfiles(rows, includeBids = false) {
     const ids = new Set()
     for (const auction of rows) {
-      if (auction.seller) ids.add(auction.seller)
       if (includeBids) {
         if (auction.highestBidder) ids.add(auction.highestBidder)
         Object.keys(auction.bids || {}).slice(0, 50).forEach(id => ids.add(id))
@@ -140,7 +148,7 @@
   {#if error}<div class="vi-alert-error" role="alert">{error}</div>{/if}
   {#if notice}<div class="auction-notice" role="status">{notice}</div>{/if}
   <section class="auction-toolbar vi-card">
-    <label class="auction-search"><Icon icon="lucide:search" width={15} /><input bind:value={search} placeholder="Item, Verkäufer oder UID suchen …" /></label>
+    <label class="auction-search"><Icon icon="lucide:search" width={15} /><input bind:value={search} placeholder="Item oder Verkäufer suchen …" /></label>
     <select bind:value={category} aria-label="Kategorie"><option value="">Alle Kategorien</option>{#each categories as entry}<option value={entry.name}>{entry.displayName || entry.name}</option>{/each}</select>
     <button class="btn-outline" onclick={() => cycleSort(sortKey)} aria-label="Sortierrichtung umschalten">Sortierung: {sortLabel()} {descending ? '↓' : '↑'}</button>
     <select bind:value={sortKey} aria-label="Sortieren nach"><option value="ending">Ablauf</option><option value="name">Name</option><option value="current">Gebot</option><option value="instant">Sofortkauf</option></select>
@@ -156,8 +164,11 @@
       <section class="auction-list" aria-label="Aktive Auktionen">
         {#each filtered as auction (auction.uid)}
           <button class="auction-row" class:selected={selectedUid === auction.uid} onclick={() => { selectedUid = auction.uid; resolveProfiles([auction], true) }}>
-            <img src={`/api/auctions/${encodeURIComponent(auction.uid)}/icon`} data-uid={auction.uid} alt="" loading="lazy" onerror={retryAuctionIcon} />
-            <span class="auction-row-main"><strong>{itemName(auction)}</strong><small>{auction.item?.amount || 1}× · {auction.category || 'Ohne Kategorie'} · Verkäufer {playerName(auction.seller)}</small></span>
+            <span class="auction-icons" aria-hidden="true">
+              <img class="auction-icon-fallback" src={itemIcon(fallbackMaterial(auction))} alt="" loading="lazy" onerror={hideFallbackIcon} />
+              <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(auction.uid)}/icon`} data-uid={auction.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
+            </span>
+            <span class="auction-row-main"><strong>{itemName(auction)}</strong><small>{auction.item?.amount || 1}× · {auction.category || 'Ohne Kategorie'} · Verkäufer {sellerName(auction)}</small></span>
             <span class="auction-price"><strong>{fmt(auction.currentBid)} OPS</strong><small>{auction.instantBuyPrice == null ? 'kein Sofortkauf' : `Sofort ${fmt(auction.instantBuyPrice)} OPS`}</small></span>
             <span class="auction-time"><strong>{remaining(auction.endTime)}</strong><small>Restzeit</small></span>
           </button>
@@ -166,7 +177,13 @@
 
       {#if selected}
         <aside class="auction-detail vi-card">
-          <div class="auction-detail-head"><div><p class="auction-kicker">ANGEBOTSDETAILS</p><h2>{itemName(selected)}</h2></div><button class="btn-outline" onclick={() => selectedUid = ''} aria-label="Details schließen">×</button></div>
+          <div class="auction-detail-head">
+            <span class="auction-icons auction-detail-icons" aria-hidden="true">
+              <img class="auction-icon-fallback" src={itemIcon(fallbackMaterial(selected))} alt="" loading="lazy" onerror={hideFallbackIcon} />
+              <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(selected.uid)}/icon`} data-uid={selected.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
+            </span>
+            <div><p class="auction-kicker">ANGEBOTSDETAILS</p><h2>{itemName(selected)}</h2></div><button class="btn-outline" onclick={() => selectedUid = ''} aria-label="Details schließen">×</button>
+          </div>
           <dl>
             <div><dt>Menge</dt><dd>{fmtInt(selected.item?.amount || 1)}</dd></div>
             <div><dt>Kategorie</dt><dd>{selected.category || '–'}</dd></div>
@@ -174,7 +191,7 @@
             <div><dt>Startgebot</dt><dd>{fmt(selected.startBid)} OPS</dd></div>
             <div><dt>Aktuelles Gebot</dt><dd>{fmt(selected.currentBid)} OPS</dd></div>
             <div><dt>Sofortkauf</dt><dd>{selected.instantBuyPrice == null ? '–' : `${fmt(selected.instantBuyPrice)} OPS`}</dd></div>
-            <div><dt>Verkäufer</dt><dd>{playerName(selected.seller)}</dd></div>
+            <div><dt>Verkäufer</dt><dd>{sellerName(selected)}</dd></div>
             <div><dt>Höchstbietender</dt><dd>{playerName(selected.highestBidder)}</dd></div>
             <div><dt>Gebote</dt><dd>{bidCount(selected)}</dd></div>
             <div><dt>Startzeit</dt><dd>{date(selected.startTime)}</dd></div>
@@ -193,4 +210,5 @@
 
 <style>
   .auction-page{max-width:1440px}.auction-heading{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin:.6rem 0 1.2rem}.auction-heading h1{margin:.12rem 0;font-size:clamp(1.7rem,4vw,2.25rem)}.auction-heading p{color:var(--vi-text-muted);max-width:46rem}.auction-kicker{color:var(--vi-accent)!important;font:600 .68rem var(--vi-font-data);letter-spacing:.09em;margin:0}.auction-heading .btn-primary{display:flex;align-items:center;gap:.45rem;white-space:nowrap}.auction-toolbar{display:flex;align-items:center;gap:.55rem;padding:.65rem;margin:.8rem 0}.auction-search{display:flex;align-items:center;gap:.5rem;flex:1;min-width:12rem;color:var(--vi-text-muted)}.auction-search input,.auction-toolbar select{border:1px solid var(--vi-border);background:var(--vi-bg-input);color:var(--vi-text);border-radius:.35rem;padding:.5rem .6rem;min-width:0}.auction-search input{width:100%}.auction-meta{color:var(--vi-text-muted);font-size:.78rem;margin:.5rem .1rem}.auction-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(18rem,.9fr);gap:.8rem;align-items:start}.auction-list{display:grid;gap:.4rem}.auction-row{display:grid;grid-template-columns:2rem minmax(0,1fr) minmax(8rem,auto) minmax(4.4rem,auto);align-items:center;gap:.6rem;width:100%;text-align:left;padding:.55rem .65rem;border:1px solid var(--vi-border);border-radius:.45rem;background:var(--vi-bg-card);color:var(--vi-text);cursor:pointer}.auction-row:hover,.auction-row.selected{border-color:var(--vi-accent);background:var(--vi-bg-elevated)}.auction-row img{width:2rem;height:2rem;object-fit:contain;image-rendering:pixelated}.auction-row-main,.auction-price,.auction-time{display:grid;gap:.12rem;min-width:0}.auction-row-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auction-row small,.auction-price small,.auction-time small{font-size:.7rem;color:var(--vi-text-muted)}.auction-price{text-align:right}.auction-time{text-align:right}.auction-detail{padding:1rem;position:sticky;top:5rem}.auction-detail-head{display:flex;align-items:start;justify-content:space-between;gap:.8rem}.auction-detail h2{font-size:1.2rem;margin:.15rem 0 .8rem;overflow-wrap:anywhere}.auction-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem .8rem}.auction-detail dl div{min-width:0}.auction-detail dt{font-size:.68rem;color:var(--vi-text-muted)}.auction-detail dd{margin:.1rem 0 0;overflow-wrap:anywhere;font-size:.82rem}.auction-detail .mono{font-family:var(--vi-font-data);font-size:.7rem}.auction-detail h3{font-size:.82rem;margin:.9rem 0 .3rem}.auction-detail ul{padding-left:1rem;margin:.25rem 0;color:var(--vi-text-muted);font-size:.78rem}.auction-readonly{display:block;margin-top:1rem;color:var(--vi-text-muted)}.auction-empty{display:grid;gap:.35rem;padding:2rem;text-align:center;border:1px dashed var(--vi-border);border-radius:.5rem;color:var(--vi-text-muted)}.auction-empty strong{color:var(--vi-text)}.auction-notice{padding:.65rem .8rem;border:1px solid var(--vi-accent);border-radius:.4rem;color:var(--vi-text)}@media(max-width:850px){.auction-layout{grid-template-columns:1fr}.auction-detail{position:static}}@media(max-width:650px){.auction-heading{align-items:start;flex-direction:column}.auction-toolbar{align-items:stretch;flex-direction:column}.auction-row{grid-template-columns:2rem minmax(0,1fr) auto}.auction-time{display:none}}
+  .auction-icons{position:relative;display:block;width:2rem;height:2rem;flex:none}.auction-icons img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}.auction-icon-api{z-index:1}.auction-detail-icons{width:3rem;height:3rem}
 </style>

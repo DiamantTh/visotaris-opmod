@@ -88,7 +88,7 @@ public class VisotarisModClient implements ClientModInitializer {
         marketSyncService         = new MarketSyncService(marketCache, configManager);
         auctionIconCache          = new AuctionIconCache(configManager);
         profileCache              = new ProfileCache(configManager);
-        auctionSyncService        = new AuctionSyncService(auctionCache, configManager);
+        auctionSyncService        = new AuctionSyncService(auctionCache, configManager, profileCache);
         merchantSyncService       = new MerchantSyncService(shardCache, configManager);
         tooltipValueService       = new TooltipValueService(marketCache, shardCache, configManager);
         alertNotifications        = new PriceAlertNotificationQueue();

@@ -6,6 +6,7 @@ import systems.diath.visotaris_opmod.VisotarisLogger;
 import systems.diath.visotaris_opmod.api.AuctionApiClient;
 import systems.diath.visotaris_opmod.cache.AuctionCache;
 import systems.diath.visotaris_opmod.cache.AuctionCachePersistence;
+import systems.diath.visotaris_opmod.cache.ProfileCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.Auction;
 
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Manual auction snapshots by default; optional live SSE only updates the shared local cache. */
 public final class AuctionSyncService {
     private final AuctionCache cache;
+    private final ProfileCache profiles;
     private final ConfigManager config;
     private final AuctionApiClient api;
     private final AuctionEventProcessor eventProcessor;
@@ -44,12 +46,14 @@ public final class AuctionSyncService {
     private volatile int reconnectSeconds = 2;
     private ScheduledFuture<?> pendingCacheWrite;
 
-    public AuctionSyncService(AuctionCache cache, ConfigManager config) {
+    public AuctionSyncService(AuctionCache cache, ConfigManager config, ProfileCache profiles) {
         this.cache = cache;
+        this.profiles = profiles;
         this.config = config;
         this.api = new AuctionApiClient(config);
-        this.eventProcessor = new AuctionEventProcessor(cache);
+        this.eventProcessor = new AuctionEventProcessor(cache, this::prefetchSeller);
         persistence.loadInto(cache);
+        prefetchSellers(cache.snapshot().values());
     }
 
     private static Thread daemon(Runnable task, String name) {
@@ -118,6 +122,7 @@ public final class AuctionSyncService {
                     catch (IOException e) { VisotarisLogger.warn("Auction-API Kategorien nicht erreichbar: {}", e.getMessage()); }
                     List<Auction> active = api.fetchActive();
                     cache.replaceActive(active);
+                    prefetchSellers(active);
                     scheduleCacheWrite();
                     loaded = true;
                 } catch (IOException e) {
@@ -207,7 +212,10 @@ public final class AuctionSyncService {
                 boolean repeatReset;
                 synchronized (resetReconcileLock) {
                     if (categories != null) cache.replaceCategories(categories);
-                    if (active != null) cache.replaceActive(active);
+                    if (active != null) {
+                        cache.replaceActive(active);
+                        prefetchSellers(active);
+                    }
                     ServerSentEventParser.Message queued;
                     while ((queued = eventsDuringReset.poll()) != null) {
                         if ("stream.reset".equals(queued.event())) continue;
@@ -237,6 +245,16 @@ public final class AuctionSyncService {
         if (pendingCacheWrite != null) pendingCacheWrite.cancel(false);
         try { pendingCacheWrite = persistenceExecutor.schedule(() -> persistence.save(cache), 750, TimeUnit.MILLISECONDS); }
         catch (java.util.concurrent.RejectedExecutionException ignored) { }
+    }
+
+    private void prefetchSellers(Iterable<Auction> auctions) {
+        if (auctions == null) return;
+        for (Auction auction : auctions) prefetchSeller(auction);
+    }
+
+    private void prefetchSeller(Auction auction) {
+        if (auction == null || auction.seller() == null || auction.seller().isBlank()) return;
+        profiles.resolve(auction.seller());
     }
 
     private void persistCache() { persistence.save(cache); }

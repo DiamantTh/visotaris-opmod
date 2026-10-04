@@ -42,6 +42,7 @@ public final class ProfileCache implements AutoCloseable {
     });
     private final Map<String, Entry> entries = new ConcurrentHashMap<>();
     private final Map<String, CompletableFuture<String>> inFlight = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong nameVersion = new java.util.concurrent.atomic.AtomicLong();
 
     public ProfileCache(ConfigManager config) {
         this(VisotarisConst.getCacheDir("profiles").toPath().resolve("players.json"),
@@ -73,9 +74,20 @@ public final class ProfileCache implements AutoCloseable {
     public String getDisplayName(String rawUuid) {
         String uuid = canonicalUuid(rawUuid);
         if (uuid == null) return shortUuid(rawUuid);
-        Entry entry = entries.get(uuid);
-        return entry != null && entry.name != null && !entry.name.isBlank() ? entry.name : shortUuid(uuid);
+        String name = getCachedName(uuid);
+        return name == null ? shortUuid(uuid) : name;
     }
+
+    /** Returns only a resolved, locally cached name; never starts a lookup. */
+    public String getCachedName(String rawUuid) {
+        String uuid = canonicalUuid(rawUuid);
+        if (uuid == null) return null;
+        Entry entry = entries.get(uuid);
+        return entry != null && entry.name != null && !entry.name.isBlank() ? entry.name : null;
+    }
+
+    /** Increments when a resolved name is loaded or changes, for local UI-index refreshes. */
+    public long getNameVersion() { return nameVersion.get(); }
 
     public int size() { return entries.size(); }
 
@@ -94,7 +106,10 @@ public final class ProfileCache implements AutoCloseable {
                 }
                 if (name == null) entries.put(uuid, new Entry(uuid, null, System.currentTimeMillis(),
                     System.currentTimeMillis() + NEGATIVE_TTL_MS));
-                else entries.put(uuid, new Entry(uuid, name, System.currentTimeMillis(), 0));
+                else {
+                    Entry previous = entries.put(uuid, new Entry(uuid, name, System.currentTimeMillis(), 0));
+                    if (previous == null || !name.equals(previous.name)) nameVersion.incrementAndGet();
+                }
                 save();
                 candidate.complete(name == null ? shortUuid(uuid) : name);
                 inFlight.remove(uuid, candidate);
@@ -152,8 +167,10 @@ public final class ProfileCache implements AutoCloseable {
             Entry[] stored = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), Entry[].class);
             if (stored != null) for (Entry entry : stored) {
                 String uuid = entry == null ? null : canonicalUuid(entry.uuid);
-                if (uuid != null && ((entry.name != null && validName(entry.name) != null) || entry.retryAfterMs > 0))
+                if (uuid != null && ((entry.name != null && validName(entry.name) != null) || entry.retryAfterMs > 0)) {
                     entries.put(uuid, entry);
+                    if (entry.name != null && validName(entry.name) != null) nameVersion.incrementAndGet();
+                }
             }
         } catch (Exception ignored) { /* A corrupt local profile cache is rebuilt on demand. */ }
     }

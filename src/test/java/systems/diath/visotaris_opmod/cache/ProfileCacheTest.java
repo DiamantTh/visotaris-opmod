@@ -37,6 +37,8 @@ class ProfileCacheTest {
         try (ProfileCache reopened = new ProfileCache(file, uuid -> fail("persisted cache should be used"),
             uuid -> fail("persisted cache should avoid fallback"))) {
             assertEquals("DiamondTh", reopened.getDisplayName(UUID));
+            assertEquals("DiamondTh", reopened.getCachedName(UUID));
+            assertTrue(reopened.getNameVersion() > 0, "loading a persisted name invalidates local search views");
         }
     }
 

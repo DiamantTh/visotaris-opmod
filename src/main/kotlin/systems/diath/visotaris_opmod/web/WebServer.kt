@@ -27,6 +27,8 @@ import systems.diath.visotaris_opmod.services.AuctionIconCache
 import systems.diath.visotaris_opmod.services.PriceAlertEngine
 import systems.diath.visotaris_opmod.services.PriceAlertService
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
+import systems.diath.visotaris_opmod.util.AuctionItemNames
+import systems.diath.visotaris_opmod.util.AuctionSearch
 import java.util.Arrays
 
 /**
@@ -155,7 +157,17 @@ class WebServer(
                 call.respondText(gson.toJson(marketCache.snapshot()), ContentType.Application.Json)
             }
             get("/api/auctions") {
-                call.respondText(gson.toJson(auctionCache.snapshot().values), ContentType.Application.Json)
+                val values = auctionCache.snapshot().values.map { auction ->
+                    val json = JsonParser.parseString(gson.toJson(auction)).asJsonObject
+                    val item = auction.item()
+                    val visibleItemName = AuctionItemNames.visibleName(item)
+                    val sellerName = profileCache.getCachedName(auction.seller())
+                    json.addProperty("sellerName", sellerName)
+                    json.addProperty("searchText", AuctionSearch.searchableText(auction, sellerName, visibleItemName))
+                    json.get("item")?.takeIf { it.isJsonObject }?.asJsonObject?.addProperty("visibleName", visibleItemName)
+                    json
+                }
+                call.respondText(gson.toJson(values), ContentType.Application.Json)
             }
             get("/api/auctions/categories") {
                 call.respondText(gson.toJson(auctionCache.categories()), ContentType.Application.Json)
@@ -169,7 +181,10 @@ class WebServer(
                     call.respond(HttpStatusCode.NotFound); return@get
                 }
                 val cached = auctionIcons.getCached(iconUrl)
-                if (cached != null) call.respondBytes(cached, ContentType.Image.PNG)
+                if (cached != null) {
+                    call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=3600")
+                    call.respondBytes(cached, ContentType.Image.PNG)
+                }
                 else {
                     auctionIcons.request(iconUrl)
                     call.response.headers.append(HttpHeaders.RetryAfter, "2")

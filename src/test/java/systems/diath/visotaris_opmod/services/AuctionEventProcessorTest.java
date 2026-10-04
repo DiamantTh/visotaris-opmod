@@ -31,6 +31,14 @@ class AuctionEventProcessorTest {
         assertEquals(1, updated.bids().size());
     }
 
+    @Test void observerReceivesAuctionSellerAfterSnapshotAndStreamUpdates() {
+        java.util.List<String> sellers = new java.util.ArrayList<>();
+        AuctionEventProcessor processor = new AuctionEventProcessor(new AuctionCache(), auction -> sellers.add(auction.seller()));
+        processor.apply("auction.created", SNAPSHOT);
+        processor.apply("auction.updated", "{\"uid\":\"" + UID + "\",\"auction\":{\"uid\":\"" + UID + "\",\"currentBid\":4.0}}");
+        assertEquals(java.util.List.of("seller-uuid", "seller-uuid"), sellers);
+    }
+
     @Test void updatedEventReplacesDataForSameUid() {
         AuctionCache cache = new AuctionCache();
         AuctionEventProcessor processor = new AuctionEventProcessor(cache);
