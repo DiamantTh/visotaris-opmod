@@ -56,11 +56,26 @@ public abstract class IngameUxScreenBase extends Screen {
     private static final int YELLOW = 0xFFE8C878;
     private static final int OFF = 0xFF86939A;
 
+    // Page identifiers retain their original semantic values. Navigation order is deliberately
+    // separate so direct page references and the in-menu return history stay stable.
+    private static final int PAGE_OVERVIEW = 0;
+    private static final int PAGE_MARKET = 1;
+    private static final int PAGE_SHARDS = 2;
+    private static final int PAGE_TOOLTIPS = 3;
+    private static final int PAGE_ALERTS = 4;
+    private static final int PAGE_PROTECTION = 5;
+    private static final int PAGE_SYSTEM = 6;
+    private static final int PAGE_AUCTIONS = 7;
+
     private static final String[] PAGE_TITLES = {
         "Übersicht", "Markt", "Shard & Händler", "Tooltips", "Preisalarme", "Schutz & Komfort", "System", "Auktionshaus"
     };
     private static final String[] PAGE_SHORT = {
         "Übersicht", "Markt", "Shard/Händler", "Tooltips", "Preisalarme", "Schutz/Komfort", "System", "Auktionshaus"
+    };
+    private static final int[] NAVIGATION_ORDER = {
+        PAGE_OVERVIEW, PAGE_AUCTIONS, PAGE_MARKET, PAGE_ALERTS,
+        PAGE_PROTECTION, PAGE_SHARDS, PAGE_SYSTEM, PAGE_TOOLTIPS
     };
 
     protected record Window(int x, int y, int width, int height, int navWidth, int bodyTop, int bodyBottom,
@@ -103,6 +118,7 @@ public abstract class IngameUxScreenBase extends Screen {
     private record AuctionRowHitbox(String uid, int x, int y, int width, int height) { }
     private final List<AuctionRowHitbox> auctionRowHitboxes = new ArrayList<>();
     private final List<Button> navigation = new ArrayList<>();
+    private final List<Integer> navigationPages = new ArrayList<>();
     private final ArrayDeque<Integer> pageHistory = new ArrayDeque<>();
     private Button footerBackButton;
     private Button footerSaveButton;
@@ -210,6 +226,7 @@ public abstract class IngameUxScreenBase extends Screen {
     protected void init() {
         controls.clear();
         navigation.clear();
+        navigationPages.clear();
         modalButtons.clear();
         shardSearch = null;
         auctionSearch = null;
@@ -224,27 +241,28 @@ public abstract class IngameUxScreenBase extends Screen {
         int navGap = Math.max(1, Math.min(4, (window.bodyBottom() - window.bodyTop() - PAGE_TITLES.length * navHeight) / (PAGE_TITLES.length + 1)));
         int navX = window.x() + 10;
         int navW = window.navWidth() - 20;
-        for (int i = 0; i < PAGE_TITLES.length; i++) {
-            final int page = i;
+        for (int i = 0; i < NAVIGATION_ORDER.length; i++) {
+            final int page = NAVIGATION_ORDER[i];
             int y = window.bodyTop() + 8 + i * (navHeight + navGap);
-            Button button = addInvisibleButton(PAGE_SHORT[i], navX, y, navW, navHeight,
+            Button button = addInvisibleButton(PAGE_SHORT[page], navX, y, navW, navHeight,
                 () -> selectPage(page));
             navigation.add(button);
+            navigationPages.add(page);
         }
-        if (getFocused() == null && !navigation.isEmpty()) navigation.get(activePage).setFocused(true);
+        if (getFocused() == null && !navigation.isEmpty()) navigation.get(navigationPages.indexOf(activePage)).setFocused(true);
 
         int x = window.contentX() + 14;
         int w = window.contentWidth() - 28;
         int y = window.bodyTop() + 36;
         switch (activePage) {
-            case 0 -> buildOverview(x, y, w);
-            case 1 -> buildMarket(x, y, w);
-            case 2 -> buildShards(x, y, w);
-            case 3 -> buildTooltips(x, y, w);
-            case 4 -> buildAlerts(x, y, w);
-            case 5 -> buildProtection(x, y, w);
-            case 6 -> buildSystem(x, y, w);
-            case 7 -> buildAuctions(x, y, w);
+            case PAGE_OVERVIEW -> buildOverview(x, y, w);
+            case PAGE_MARKET -> buildMarket(x, y, w);
+            case PAGE_SHARDS -> buildShards(x, y, w);
+            case PAGE_TOOLTIPS -> buildTooltips(x, y, w);
+            case PAGE_ALERTS -> buildAlerts(x, y, w);
+            case PAGE_PROTECTION -> buildProtection(x, y, w);
+            case PAGE_SYSTEM -> buildSystem(x, y, w);
+            case PAGE_AUCTIONS -> buildAuctions(x, y, w);
             default -> { }
         }
         contentEnd = Math.max(contentEnd, y);
@@ -428,7 +446,7 @@ public abstract class IngameUxScreenBase extends Screen {
 
     private void requestBack() {
         if (hasUnsavedChanges()) {
-            pendingBackAction = activePage == 4 && alertDraft != null ? this::returnToAlerts : this::navigateBackNow;
+            pendingBackAction = activePage == PAGE_ALERTS && alertDraft != null ? this::returnToAlerts : this::navigateBackNow;
             showUnsavedDialog = true;
             rebuildWidgets();
         } else navigateBackNow();
@@ -455,8 +473,8 @@ public abstract class IngameUxScreenBase extends Screen {
             systemActionsView = false;
             pageScroll = pageScrollTarget = 0;
             rebuildWidgets();
-        } else if (activePage != 0) {
-            activePage = 0;
+        } else if (activePage != PAGE_OVERVIEW) {
+            activePage = PAGE_OVERVIEW;
             systemActionsView = false;
             pageScroll = pageScrollTarget = 0;
             rebuildWidgets();
@@ -535,7 +553,7 @@ public abstract class IngameUxScreenBase extends Screen {
         int contentBottom = scrollViewportBottom();
         for (Control control : controls) {
             int y = control.fixed ? control.y : control.y - pageScroll;
-            if (activePage == 4 && alertDraft == null && y >= listTop)
+            if (activePage == PAGE_ALERTS && alertDraft == null && y >= listTop)
                 y -= (int) Math.round((alertScrollPosition - alertScroll) * 43);
             control.widget.setY(y);
             int lowerBound = control.fixed ? window.bodyBottom() : contentBottom;
@@ -557,15 +575,16 @@ public abstract class IngameUxScreenBase extends Screen {
     }
 
     private int scrollViewportBottom() {
-        if (activePage == 4 && alertDraft != null)
+        if (activePage == PAGE_ALERTS && alertDraft != null)
             return Math.max(interactiveContentTop() + 1, Math.min(window.contentBottom(), window.bodyBottom() - 4));
         return window.contentBottom();
     }
 
     private int interactiveContentTop() {
-        if (activePage == 4 && alertDraft != null)
+        if (activePage == PAGE_ALERTS && alertDraft != null)
             return Math.min(window.bodyTop() + 61, window.bodyBottom() - 29);
-        if (activePage == 3 || activePage == 5 || activePage == 6 && systemActionsView) return window.bodyTop() + 82;
+        if (activePage == PAGE_TOOLTIPS || activePage == PAGE_PROTECTION
+            || activePage == PAGE_SYSTEM && systemActionsView) return window.bodyTop() + 82;
         return window.bodyTop() + 32;
     }
 
@@ -611,7 +630,7 @@ public abstract class IngameUxScreenBase extends Screen {
             auctionRowHitboxes.clear();
             return true;
         }
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE && activePage == 4 && alertDraft != null) {
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE && activePage == PAGE_ALERTS && alertDraft != null) {
             requestBack();
             return true;
         }
@@ -644,7 +663,7 @@ public abstract class IngameUxScreenBase extends Screen {
             }
             return true;
         }
-        if (button == 0 && activePage == 7) {
+        if (button == 0 && activePage == PAGE_AUCTIONS) {
             for (AuctionRowHitbox hitbox : auctionRowHitboxes) {
                 if (mouseX >= hitbox.x() && mouseX < hitbox.x() + hitbox.width()
                     && mouseY >= hitbox.y() && mouseY < hitbox.y() + hitbox.height()) {
@@ -661,22 +680,22 @@ public abstract class IngameUxScreenBase extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (window != null && mouseX >= window.contentX() && mouseX < window.contentX() + window.contentWidth()
             && mouseY >= interactiveContentTop() && mouseY < scrollViewportBottom()) {
-            if (activePage == 1) {
+            if (activePage == PAGE_MARKET) {
                 marketScrollTarget = clamp(marketScrollTarget - verticalAmount * 3, 0,
                     Math.max(0, marketRows.size() - visibleMarketRows));
                 return true;
             }
-            if (activePage == 2) {
+            if (activePage == PAGE_SHARDS) {
                 shardScrollTarget = clamp(shardScrollTarget - verticalAmount * 3, 0,
                     Math.max(0, shardRows.size() - visibleShardRows));
                 return true;
             }
-            if (activePage == 7) {
+            if (activePage == PAGE_AUCTIONS) {
                 auctionScrollTarget = clamp(auctionScrollTarget - verticalAmount * 3, 0,
                     Math.max(0, auctionRows.size() - visibleAuctionRows));
                 return true;
             }
-            if (activePage == 4) {
+            if (activePage == PAGE_ALERTS) {
                 if (alertDraft != null) {
                     pageScrollTarget = clamp(pageScrollTarget - (int) Math.round(verticalAmount * 36), 0, pageMaxScroll);
                     return true;
@@ -734,8 +753,9 @@ public abstract class IngameUxScreenBase extends Screen {
             if (hoveredRow < 0) {
                 for (int i = 0; i < navigation.size(); i++) {
                     Button nav = navigation.get(i);
-                    if (nav.visible && nav.isHovered() && nav.getWidth() < canvas.textWidth(PAGE_TITLES[i]) + 14) {
-                        drawTooltip(canvas, PAGE_TITLES[i], mouseX, mouseY);
+                    int page = navigationPages.get(i);
+                    if (nav.visible && nav.isHovered() && nav.getWidth() < canvas.textWidth(PAGE_TITLES[page]) + 14) {
+                        drawTooltip(canvas, PAGE_TITLES[page], mouseX, mouseY);
                         break;
                     }
                 }
@@ -765,7 +785,7 @@ public abstract class IngameUxScreenBase extends Screen {
         if (nextAlertScroll != alertScroll) {
             alertScroll = nextAlertScroll;
             rebuildWidgets();
-        } else if (priorAlertPosition != alertScrollPosition && activePage == 4 && alertDraft == null) {
+        } else if (priorAlertPosition != alertScrollPosition && activePage == PAGE_ALERTS && alertDraft == null) {
             updateControlVisibility();
         }
         marketScroll = (int) Math.floor(marketScrollPosition);
@@ -809,11 +829,12 @@ public abstract class IngameUxScreenBase extends Screen {
         for (int i = 0; i < navigation.size(); i++) {
             Button nav = navigation.get(i);
             if (!nav.visible) continue;
-            int color = i == activePage ? ICE : (nav.isHovered() ? 0xFF3D4C5B : CARD);
+            int page = navigationPages.get(i);
+            int color = page == activePage ? ICE : (nav.isHovered() ? 0xFF3D4C5B : CARD);
             c.fill(nav.getX(), nav.getY(), nav.getX() + nav.getWidth(), nav.getY() + nav.getHeight(), color);
-            c.fill(nav.getX(), nav.getY(), nav.getX() + 2, nav.getY() + nav.getHeight(), i == activePage ? INFO : LINE);
-            int textColor = i == activePage ? NAVY[0] : WHITE;
-            String label = fit(c, PAGE_SHORT[i], nav.getWidth() - 14);
+            c.fill(nav.getX(), nav.getY(), nav.getX() + 2, nav.getY() + nav.getHeight(), page == activePage ? INFO : LINE);
+            int textColor = page == activePage ? NAVY[0] : WHITE;
+            String label = fit(c, PAGE_SHORT[page], nav.getWidth() - 14);
             int ty = nav.getY() + Math.max(1, (nav.getHeight() - c.lineHeight()) / 2);
             c.text(label, nav.getX() + 7, ty, textColor, false);
             if (nav.isFocused()) outline(c, nav.getX(), nav.getY(), nav.getWidth(), nav.getHeight(), INFO);
@@ -827,21 +848,21 @@ public abstract class IngameUxScreenBase extends Screen {
         int w = window.contentWidth() - 16;
         drawSectionTitle(c, PAGE_TITLES[activePage], x, y);
         switch (activePage) {
-            case 0 -> drawOverview(c, x, y + 23, w);
-            case 1 -> drawMarket(c, x, y + 24, w, mouseX, mouseY);
-            case 2 -> drawShards(c, x, y + 24, w, mouseX, mouseY);
-            case 3 -> drawTooltipSummary(c, x, y + 25, w);
-            case 4 -> {
+            case PAGE_OVERVIEW -> drawOverview(c, x, y + 23, w);
+            case PAGE_MARKET -> drawMarket(c, x, y + 24, w, mouseX, mouseY);
+            case PAGE_SHARDS -> drawShards(c, x, y + 24, w, mouseX, mouseY);
+            case PAGE_TOOLTIPS -> drawTooltipSummary(c, x, y + 25, w);
+            case PAGE_ALERTS -> {
                 if (alertDraft != null) drawAlertEditor(c, x, y + 24, w);
                 else drawAlerts(c, x, y + 24, w, mouseX, mouseY);
             }
-            case 5 -> drawProtectionSummary(c, x, y + 25, w);
-            case 6 -> {
+            case PAGE_PROTECTION -> drawProtectionSummary(c, x, y + 25, w);
+            case PAGE_SYSTEM -> {
                 if (systemActionsView) drawInfoBox(c, x, y + 24, w, 42,
                     "Nur die ausdrücklich gewählte Aktualisierung fragt öffentliche API-Daten ab. Andere Aktionen öffnen lokale Einstellungen.", INFO);
                 else drawSystem(c, x, y + 24, w);
             }
-            case 7 -> drawAuctions(c, x, y + 24, w, mouseX, mouseY);
+            case PAGE_AUCTIONS -> drawAuctions(c, x, y + 24, w, mouseX, mouseY);
             default -> { }
         }
     }
