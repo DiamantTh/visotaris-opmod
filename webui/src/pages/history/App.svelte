@@ -17,6 +17,7 @@
   let error           = $state(null)
   let chartError      = $state(null)
   let recent          = $state([])
+  let namesByMaterial = $state({})
 
   // bind:this – Chart-Container-Referenzen
   let chartPriceEl = $state(null)
@@ -28,6 +29,7 @@
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const currentPoints = $derived(history ? (history[granularity] ?? []) : [])
+  const currentName = $derived(live?.visibleName || fmtItem(currentMaterial))
   // Aggregierte Kennzahlen über die aktuelle Granularität (für Stat-Karten)
   const stats = $derived.by(() => {
     const pts = currentPoints
@@ -120,6 +122,7 @@
       if (!histRes.ok) throw new Error('HTTP ' + histRes.status)
       history = await histRes.json()
       live    = liveRes.ok ? await liveRes.json() : null
+      if (live?.visibleName) namesByMaterial = { ...namesByMaterial, [mat]: live.visibleName }
       if (!recent.includes(mat)) {
         recent = [mat, ...recent].slice(0, 8)
         try { localStorage.setItem(LS_RECENT, JSON.stringify(recent)) } catch(_) {}
@@ -298,7 +301,7 @@
           class="btn-outline btn-xs"
           onclick={() => { materialInput = m; loadHistory() }}
         >
-          {fmtItem(m)}
+          {namesByMaterial[m] || fmtItem(m)}
         </button>
       {/each}
     </div>
@@ -311,7 +314,7 @@
         <div class="flex items-center gap-3">
           <img src={itemIcon(currentMaterial)} class="item-icon-lg" alt="" onerror={hideOnError}>
           <div>
-            <div class="font-bold" style="font-size:1.15rem;line-height:1.2">{fmtItem(currentMaterial)}</div>
+            <div class="font-bold" style="font-size:1.15rem;line-height:1.2">{currentName}</div>
             <div class="text-xs mt-1" style="color:var(--vi-text-muted)">Historische Preis- und Transaktionsdaten</div>
           </div>
         </div>

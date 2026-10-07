@@ -50,14 +50,16 @@
     categories.map(name => ({ name, count: items.filter(item => item.category === name).length }))
   )
 
+  const itemName = item => item?.visibleName || fmtItem(item?.itemKey)
+
   const filteredItems = $derived.by(() => {
     let list = items
     if (category) list = list.filter(i => i.category === category)
     const q = search.toLowerCase().trim()
-    if (q) list = list.filter(i => i.itemKey.toLowerCase().includes(q))
+    if (q) list = list.filter(i => itemName(i).toLocaleLowerCase().includes(q))
     const dir = sortDir === 'asc' ? 1 : -1
     return [...list].sort((a, b) => {
-      if (sortKey === 'item')   return dir * a.itemKey.localeCompare(b.itemKey)
+      if (sortKey === 'item')   return dir * itemName(a).localeCompare(itemName(b), 'de')
       if (sortKey === 'buy')    return dir * (a.buy  - b.buy)
       if (sortKey === 'sell')   return dir * (a.sell - b.sell)
       if (sortKey === 'orders') return dir * (((a.buyOrders ?? 0) + (a.sellOrders ?? 0)) - ((b.buyOrders ?? 0) + (b.sellOrders ?? 0)))
@@ -190,8 +192,8 @@
       </div>
       <div class="market-top-grid">
         {#each topItems as item (item.itemKey)}
-          <a class="market-top-card" href="/history?m={encodeURIComponent(item.itemKey)}" title="{fmtItem(item.itemKey)} analysieren">
-            <div class="market-top-item"><img src={itemIcon(item.itemKey)} class="item-icon" alt="" loading="lazy" onerror={hideOnError}><strong>{fmtItem(item.itemKey)}</strong></div>
+          <a class="market-top-card" href="/history?m={encodeURIComponent(item.itemKey)}" title="{itemName(item)} analysieren">
+            <div class="market-top-item"><img src={itemIcon(item.itemKey)} class="item-icon" alt="" loading="lazy" onerror={hideOnError}><strong>{itemName(item)}</strong></div>
             {#if item.historyReady && item.sparkline.length > 1}
               <svg class="market-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none" aria-label="Preisverlauf der letzten sieben Tage"><polyline points={sparkline(item.sparkline)} /></svg>
             {:else}
@@ -263,7 +265,7 @@
           <div class="mc-head">
             <img src={itemIcon(item.itemKey)} class="mc-icon" alt="" loading="lazy" onerror={hideOnError}>
             <div>
-              <div class="mc-name">{fmtItem(item.itemKey)}</div>
+              <div class="mc-name">{itemName(item)}</div>
               {#if item.category}<div class="mc-cat">{item.category}</div>{/if}
             </div>
           </div>
@@ -329,7 +331,7 @@
                     <a href="/history?m={encodeURIComponent(item.itemKey)}"
                        class="font-medium no-underline transition-colors"
                        style="color:var(--vi-text)">
-                      {fmtItem(item.itemKey)}
+                      {itemName(item)}
                     </a>
                   </div>
                 </td>

@@ -49,10 +49,11 @@
         if (!itemsLoaded) {
           const response = await fetch('/api/market')
           const market = response.ok ? await response.json() : {}
-          items = Object.keys(market).sort((x, y) => fmtItem(x).localeCompare(fmtItem(y), 'de'))
+          items = Object.entries(market).map(([key, value]) => ({ key, visibleName: value?.visibleName || fmtItem(key) }))
+            .sort((x, y) => x.visibleName.localeCompare(y.visibleName, 'de'))
           itemsLoaded = true
         }
-        if (!form.itemKey && items.length) form.itemKey = items[0]
+        if (!form.itemKey && items.length) form.itemKey = items[0].key
         clearInterval(timer); timer = setInterval(refreshLive, 5000)
       } else {
         const [t, a] = await Promise.all([request('/api/system/tooltips'), request('/api/system/auctions')])
@@ -101,7 +102,7 @@
     form = { itemKey: r.itemKey, condition: r.condition, threshold: r.threshold, enabled: r.enabled, repeat: r.repeat, cooldownSeconds: r.cooldownSeconds, rearmOnExit: r.rearmOnExit, notification: r.notification === 'CHAT' ? 'HUD' : r.notification === 'BOTH' ? 'HUD_WEB' : r.notification }
     document.getElementById('alert-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
-  function resetForm() { editingId = ''; form = { itemKey: items[0] || '', condition: 'BUY_ABOVE', threshold: '', enabled: true, repeat: false, cooldownSeconds: 300, rearmOnExit: true, notification: 'HUD' } }
+  function resetForm() { editingId = ''; form = { itemKey: items[0]?.key || '', condition: 'BUY_ABOVE', threshold: '', enabled: true, repeat: false, cooldownSeconds: 300, rearmOnExit: true, notification: 'HUD' } }
   async function saveAlert(event) {
     event.preventDefault(); error = ''; notice = ''
     const threshold = Number(form.threshold)
@@ -127,7 +128,7 @@
     } catch (e) { error = e.message } finally { busy = false }
   }
   async function remove(row) {
-    if (!confirm(`Alarm für ${fmtItem(row.rule.itemKey)} löschen?`)) return
+    if (!confirm(`Alarm für ${row.visibleName || fmtItem(row.rule.itemKey)} löschen?`)) return
     try { await request(`/api/system/price-alerts/${encodeURIComponent(row.rule.id)}`, { method: 'DELETE' }); notice = 'Alarmregel gelöscht.'; await load() } catch (e) { error = e.message }
   }
   onMount(() => {
@@ -161,7 +162,7 @@
         <div class="settings-rule-list">
           {#each alerts as row (row.rule.id)}
             <article class="vi-card alert-card">
-              <div class="alert-card-main"><div><h3>{fmtItem(row.rule.itemKey)}</h3><p>{labels[row.rule.condition]} <strong>{numberText(row.rule.threshold)}</strong></p></div><span class="alert-state" data-state={row.state}>{stateLabel[row.state] || row.state}</span></div>
+              <div class="alert-card-main"><div><h3>{row.visibleName || fmtItem(row.rule.itemKey)}</h3><p>{labels[row.rule.condition]} <strong>{numberText(row.rule.threshold)}</strong></p></div><span class="alert-state" data-state={row.state}>{stateLabel[row.state] || row.state}</span></div>
               <div class="alert-meta"><span>Zuletzt bekannter Wert: {row.currentValue == null ? 'keine Daten' : numberText(row.currentValue)}</span><span>Datenstand: {row.lastUpdatedAtMs ? new Date(row.lastUpdatedAtMs).toLocaleString('de-DE') : 'noch nie synchronisiert'}</span><span>{row.rule.repeat ? `Wiederholung · ${row.rule.cooldownSeconds}s Cooldown` : 'Einmalig'}</span><span>Benachrichtigung: {channelLabel[row.rule.notification] || row.rule.notification}</span></div>
               <div class="alert-actions"><button class="btn-outline" onclick={() => toggle(row)}>{row.rule.enabled ? 'Pausieren' : 'Aktivieren'}</button><button class="btn-outline" onclick={() => edit(row)}>Bearbeiten</button><button class="btn-outline danger" onclick={() => remove(row)}>Entfernen</button></div>
             </article>
@@ -172,7 +173,7 @@
       <form id="alert-form" class="vi-card settings-form-card" onsubmit={saveAlert}>
         <div class="vi-card-header">{editingId ? 'Alarmregel bearbeiten' : 'Neuen Alarm anlegen'}</div>
         <div class="settings-form-grid">
-          <label>Marktitem<select bind:value={form.itemKey} required>{#each items as key}<option value={key}>{fmtItem(key)}</option>{/each}</select></label>
+          <label>Marktitem<select bind:value={form.itemKey} required>{#each items as item}<option value={item.key}>{item.visibleName}</option>{/each}</select></label>
           <label>Bedingung<select bind:value={form.condition}>{#each conditions as [value, label]}<option {value}>{label}</option>{/each}</select></label>
           <label>Schwellenwert<input type="number" step="any" bind:value={form.threshold} required /></label>
           <label>Benachrichtigung<select bind:value={form.notification}><option value="HUD">Minecraft-HUD</option><option value="WEB">Web-UI (solange offen)</option><option value="HUD_WEB">Minecraft-HUD und Web-UI</option></select></label>
@@ -184,7 +185,7 @@
         {#if !items.length}<p class="settings-help">Der Marktcache ist noch leer. Items sind nach der nächsten regulären Synchronisierung auswählbar.</p>{/if}
         <div class="settings-form-actions"><button class="btn-primary" disabled={busy || !items.length}>{editingId ? 'Änderungen speichern' : 'Alarm erstellen'}</button>{#if editingId}<button type="button" class="btn-outline" onclick={resetForm}>Abbrechen</button>{/if}</div>
       </form>
-      {#if events.length}<div class="settings-events"><h3>Zuletzt ausgelöst</h3>{#each events.slice(0, 8) as event}<p><time>{new Date(event.timestampMs).toLocaleTimeString('de-DE')}</time> · {fmtItem(event.itemKey)} — {labels[event.condition]} {numberText(event.currentValue)}</p>{/each}</div>{/if}
+      {#if events.length}<div class="settings-events"><h3>Zuletzt ausgelöst</h3>{#each events.slice(0, 8) as event}<p><time>{new Date(event.timestampMs).toLocaleTimeString('de-DE')}</time> · {event.visibleName || fmtItem(event.itemKey)} — {labels[event.condition]} {numberText(event.currentValue)}</p>{/each}</div>{/if}
     </section>
     {:else}
     <section class="settings-section" aria-labelledby="auction-title">

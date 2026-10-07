@@ -43,7 +43,7 @@
     const q  = search.toLowerCase().trim()
     if (q) list = list.filter(i =>
       i.source.toLowerCase().includes(q) ||
-      (i.displayName ?? '').toLowerCase().includes(q)
+      shardName(i).toLocaleLowerCase().includes(q)
     )
     const dir = sortDir === 'asc' ? 1 : -1
     return [...list].sort((a, b) => {
@@ -57,7 +57,7 @@
 
   /** Anzeigename: Custom-Name ("Gräbergemisch") falls vorhanden, sonst formatierter Key. */
   function shardName(item) {
-    return item.displayName || fmtItem(item.source)
+    return item.visibleName || item.displayName || fmtItem(item.source)
   }
 
   /** Abweichung des aktuellen Kurses vom Basiskurs in Prozent. */

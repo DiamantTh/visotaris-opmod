@@ -72,7 +72,7 @@
 </nav>
 {#if alert}
   <div class="vi-price-alert" role="status">
-    <strong>Preisalarm · {fmtItem(alert.itemKey)}</strong>
+    <strong>Preisalarm · {alert.visibleName || fmtItem(alert.itemKey)}</strong>
     <span>{labels[alert.condition] || alert.condition} {amount(alert.threshold)} · Aktuell: {amount(alert.currentValue)}</span>
     <button type="button" aria-label="Benachrichtigung schließen" onclick={() => { alert = null; clearTimeout(hideTimer) }}>×</button>
   </div>

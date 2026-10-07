@@ -27,8 +27,8 @@ import systems.diath.visotaris_opmod.services.AuctionIconCache
 import systems.diath.visotaris_opmod.services.PriceAlertEngine
 import systems.diath.visotaris_opmod.services.PriceAlertService
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
-import systems.diath.visotaris_opmod.util.AuctionItemNames
 import systems.diath.visotaris_opmod.util.AuctionSearch
+import systems.diath.visotaris_opmod.util.WebItemNameResolver
 import java.util.Arrays
 
 /**
@@ -154,13 +154,14 @@ class WebServer(
 
             // ── JSON-API ─────────────────────────────────────────────────────────
             get("/api/market") {
-                call.respondText(gson.toJson(marketCache.snapshot()), ContentType.Application.Json)
+                val prices = marketCache.snapshot().mapValues { (_, price) -> marketPriceView(price) }
+                call.respondText(gson.toJson(prices), ContentType.Application.Json)
             }
             get("/api/auctions") {
                 val values = auctionCache.snapshot().values.map { auction ->
                     val json = JsonParser.parseString(gson.toJson(auction)).asJsonObject
                     val item = auction.item()
-                    val visibleItemName = AuctionItemNames.visibleName(item)
+                    val visibleItemName = WebItemNameResolver.auctionName(auction)
                     val sellerName = profileCache.getCachedName(auction.seller())
                     json.addProperty("sellerName", sellerName)
                     json.addProperty("searchText", AuctionSearch.searchableText(auction, sellerName, visibleItemName))
@@ -216,9 +217,9 @@ class WebServer(
                 val key = call.parameters["material"]?.lowercase() ?: run {
                     call.respond(HttpStatusCode.BadRequest, "material fehlt"); return@get
                 }
-                val price = marketCache.get(key)
+                val price = marketCache.get(key).orElse(null)
                 if (price != null) {
-                    call.respondText(gson.toJson(price), ContentType.Application.Json)
+                    call.respondText(gson.toJson(marketPriceView(price)), ContentType.Application.Json)
                 } else {
                     call.respond(HttpStatusCode.NotFound, "Material nicht im Cache")
                 }
@@ -235,10 +236,10 @@ class WebServer(
                 call.respondText(gson.toJson(history), ContentType.Application.Json)
             }
             get("/api/shard") {
-                call.respondText(gson.toJson(merchantRatesFor("opshards")), ContentType.Application.Json)
+                call.respondText(gson.toJson(merchantRatesFor("opshards").map(::merchantRateView)), ContentType.Application.Json)
             }
             get("/api/redcoins") {
-                call.respondText(gson.toJson(merchantRatesFor("redcoins")), ContentType.Application.Json)
+                call.respondText(gson.toJson(merchantRatesFor("redcoins").map(::merchantRateView)), ContentType.Application.Json)
             }
             get("/api/merchant") {
                 call.respondText(gson.toJson(merchantRatesByTarget()), ContentType.Application.Json)
@@ -249,10 +250,11 @@ class WebServer(
                     call.respond(HttpStatusCode.BadRequest, "target fehlt")
                     return@get
                 }
-                call.respondText(gson.toJson(merchantRatesFor(target)), ContentType.Application.Json)
+                call.respondText(gson.toJson(merchantRatesFor(target).map(::merchantRateView)), ContentType.Application.Json)
             }
             get("/api/meta") {
                 call.respondText(gson.toJson(mapOf(
+                    "clientLanguage" to runCatching { Minecraft.getInstance().languageManager.selected }.getOrDefault("en_us"),
                     "market" to cacheMeta(marketCache.getLastUpdatedMs(), marketCache.getAgeSeconds()),
                     "merchant" to cacheMeta(shardCache.getLastUpdatedMs(), shardCache.getAgeSeconds()),
                     "auctions" to mapOf(
@@ -306,6 +308,7 @@ class WebServer(
                     cfg.priceAlertRules.map { rule ->
                     val p = marketCache.get(rule.itemKey).orElse(null)
                     mapOf("rule" to rule.toMap(), "currentValue" to p?.let { PriceAlertEngine.value(rule.condition, it) },
+                        "visibleName" to WebItemNameResolver.marketName(rule.itemKey),
                         "lastUpdatedAtMs" to marketCache.getLastUpdatedMs(), "dataAgeSeconds" to marketCache.getAgeSeconds(),
                         "state" to when {
                             !cfg.priceAlertsEnabled -> "globally_paused"; !rule.enabled -> "paused"; p == null -> "waiting_for_data"
@@ -368,7 +371,12 @@ class WebServer(
             }
             get("/api/system/price-alerts/events") {
                 if (!requireSystemAccess(call)) return@get
-                call.respondText(gson.toJson(priceAlerts.events()), ContentType.Application.Json)
+                val events = priceAlerts.events().map { event ->
+                    val json = JsonParser.parseString(gson.toJson(event)).asJsonObject
+                    json.addProperty("visibleName", WebItemNameResolver.marketName(event.itemKey()))
+                    json
+                }
+                call.respondText(gson.toJson(events), ContentType.Application.Json)
             }
             get("/api/system/tooltips") {
                 if (!requireSystemAccess(call)) return@get
@@ -479,6 +487,18 @@ class WebServer(
         .filter { target.equals(it.target, ignoreCase = true) }
         .sortedBy { it.source }
 
+    /** Adds a resolved name without changing the shared cache model or its persistence format. */
+    private fun marketPriceView(price: systems.diath.visotaris_opmod.model.MarketPrice): JsonObject =
+        JsonParser.parseString(gson.toJson(price)).asJsonObject.apply {
+            addProperty("visibleName", WebItemNameResolver.marketName(price.itemKey))
+        }
+
+    /** Merchant display names are custom names when supplied; otherwise they are vanilla client-language names. */
+    private fun merchantRateView(rate: systems.diath.visotaris_opmod.model.ShardRate): JsonObject =
+        JsonParser.parseString(gson.toJson(rate)).asJsonObject.apply {
+            addProperty("visibleName", WebItemNameResolver.merchantName(rate.source, rate.displayName))
+        }
+
     private fun isAuctionParticipant(uuid: String): Boolean {
         fun matches(value: String?) = ProfileCache.canonicalUuid(value) == uuid
         return (auctionCache.snapshot().values + auctionCache.finalizedSnapshot().values).any { auction ->
@@ -490,7 +510,7 @@ class WebServer(
     private fun merchantRatesByTarget() = shardCache.snapshot().values
         .groupBy { it.target?.lowercase() ?: "unknown" }
         .toSortedMap()
-        .mapValues { (_, rates) -> rates.sortedBy { it.source } }
+        .mapValues { (_, rates) -> rates.sortedBy { it.source }.map(::merchantRateView) }
 
     private fun cacheMeta(updatedAtMs: Long, ageSeconds: Long) = mapOf(
         "updatedAtMs" to updatedAtMs,
@@ -512,6 +532,7 @@ class WebServer(
             if (points.isEmpty()) { historyCache.warm(price.itemKey); warming++ }
             mapOf(
                 "itemKey" to price.itemKey,
+                "visibleName" to WebItemNameResolver.marketName(price.itemKey),
                 "buy" to price.buy,
                 "sell" to price.sell,
                 "buyOrders" to price.buyOrders,

@@ -2,6 +2,8 @@ package systems.diath.visotaris_opmod.util;
 
 import net.minecraft.locale.Language;
 
+import java.util.Locale;
+
 /**
  * Übersetzt englische API-Item-IDs (z.B. {@code "acacia_leaves"}) in den
  * lokalisierten Anzeigenamen der aktuellen Minecraft-Spielsprache.
@@ -77,5 +79,18 @@ public final class ItemNameResolver {
     public static String resolveOrFallback(String apiItemId, String fallback) {
         String result = resolve(apiItemId);
         return result.equals(apiItemId) ? fallback : result;
+    }
+
+    /**
+     * Resolves a known vanilla material name for the active Minecraft language.
+     * Unlike {@link #resolve(String)}, this returns {@code null} when the key
+     * is not represented by Minecraft's bundled language resources.
+     */
+    public static String resolveVanilla(String material) {
+        if (material == null || material.isBlank()) return null;
+
+        String normalized = material.trim().toLowerCase(Locale.ROOT);
+        String localized = resolve(normalized);
+        return localized.equals(normalized) ? null : localized;
     }
 }

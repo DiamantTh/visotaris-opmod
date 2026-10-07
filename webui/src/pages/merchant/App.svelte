@@ -16,11 +16,11 @@
   const filteredRates = $derived.by(() => {
     const query = search.trim().toLowerCase()
     return [...rates]
-      .filter(rate => !query || rate.source.toLowerCase().includes(query) || (rate.displayName ?? '').toLowerCase().includes(query))
+      .filter(rate => !query || displayName(rate).toLocaleLowerCase().includes(query))
       .sort((a, b) => displayName(a).localeCompare(displayName(b), 'de'))
   })
 
-  function displayName(rate) { return rate.displayName || fmtItem(rate.source) }
+  function displayName(rate) { return rate.visibleName || rate.displayName || fmtItem(rate.source) }
   function targetLabel(target) {
     if (target === 'opshards') return 'Shards'
     if (target === 'redcoins') return 'Redcoins'
