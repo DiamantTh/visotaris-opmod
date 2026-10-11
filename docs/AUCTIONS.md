@@ -30,6 +30,12 @@ Die lokale Web-API liest dieselbe `AuctionCache`; Web- und Ingameansichten bauen
 separate Datenbeschaffung oder Regelbasis auf. Änderungen am Cache werden von beiden
 Oberflächen beim nächsten lokalen Lesen sichtbar.
 
+In der WebUX verwendet `WebItemNameResolver` für Vanilla-Angebote den lokalisierten
+Namen aus der aktiven Minecraft-Sprache. `/api/meta` stellt die Client-Sprachkennung
+als `clientLanguage` bereit. Bei erkannten Custom-Angeboten hat der echte API-Name
+Vorrang vor dem technischen Trägermaterial. Suche und Sortierung orientieren sich am
+angezeigten Namen; die Namensauflösung selbst löst keine Netzwerkabfragen aus.
+
 Die API-URL `item.icon` ist die primäre Quelle für OPSUCHT-Custom-Icons. Visotaris lädt
 Icons asynchron und dedupliziert Downloads nach SHA-256 einer normalisierten HTTPS-URL
 von `opsucht.net`-Hosts oder dem beim Live-API-Abgleich beobachteten Bildhost

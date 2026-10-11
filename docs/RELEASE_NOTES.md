@@ -1,15 +1,48 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.6 — Vorabversion
+
+Diese Vorabversion baut auf pre.5 auf. Visotaris bleibt auf Minecraft 26.x
+(aktuell 26.2) ausgerichtet; dies ist kein stabiler 1.2.0-Release.
+
+### WebUX: Itemnamen in der aktiven Minecraft-Sprache
+
+- Vanilla-Itemnamen in den Web-Ansichten folgen der ausgewählten Sprache des
+  laufenden Minecraft-Clients. `/api/meta` stellt dafür `clientLanguage` bereit;
+  der gemeinsame `WebItemNameResolver` verwendet Minecrafts Sprachressourcen.
+- Mit `de_de` erscheinen beispielsweise `Dirt` als `Erde`, `Ender Pearl` als
+  `Enderperle`, `Carrot` als `Karotte`, `Deepslate` als `Tiefenschiefer`,
+  `Spruce Log` als `Fichtenstamm` und `Beacon` als `Leuchtfeuer`. Mit einem
+  englischen Client werden die englischen Vanilla-Namen verwendet.
+- OPSUCHT-Custom-Items behalten ihren API-Namen. Suche und Namenssortierung
+  verwenden die sichtbaren lokalisierten Namen; die Suche löst keine Requests aus.
+- Diese Änderung betrifft die WebUX-Namensdarstellung, nicht das Verhalten der
+  nativen Minecraft-UX.
+
+### Native Navigation
+
+Die sichtbare Reihenfolge lautet:
+
+`Übersicht → Auktionshaus → Markt → Preisalarme → Schutz & Komfort → Shard & Händler → System → Tooltips`
+
+Die fachlichen Page-IDs bleiben stabil; nur die separate `NAVIGATION_ORDER` legt
+die sichtbare Reihenfolge fest. Direkte Seitenwahl, aktive Markierung,
+Scrollzustände und MaLiLib-Rücknavigation bleiben an ihre Page-IDs gebunden.
+Der Vorwärts- und Rückwärtswechsel durch alle Seiten, die Auktionshaus-Wechsel,
+MaLiLib-Escape und der sichtbare Zurück-Button wurden im isolierten Client geprüft,
+auch bei kleiner Fenstergröße. Details stehen im [pre.6-Navigationsprüfbericht](ux/implemented/pre6-navigation-check.md).
+
 ## Visotaris OPMod 1.2.0-pre.5 — Vorabversion
 
 - Der MaLiLib-Hotkeyeditor zeigt in der Mod-Auswahl jetzt den Anzeigenamen
   „Visotaris OPMod“ und nicht mehr die technische Mod-ID.
 - Der Editor kehrt per Esc oder über den sichtbaren Button „Zurück zu Visotaris“
   zur genau zuvor geöffneten Visotaris-Seite zurück.
-- Der Shortcut bleibt über MaLiLib konfigurierbar; seine Speicherung und die
-  Behandlung einer absichtlich leeren Belegung bleiben unverändert.
+- Der Menüshortcut bleibt über MaLiLib konfigurierbar, speicherbar und deaktivierbar.
+  Eine vorhandene eigene Belegung wird bei der Migration nicht überschrieben; eine
+  absichtlich leere Belegung bleibt deaktiviert.
 
-## Visotaris OPMod 1.2.0-pre.4 — Vorabversion (aktuelle Entwicklungsfassung)
+## Visotaris OPMod 1.2.0-pre.4 — Vorabversion (historischer Entwicklungsstand)
 
 Diese Fassung baut auf dem gesicherten pre.3-Stand auf und bleibt ausdrücklich eine
 Vorabversion. Zielplattform ist Minecraft 26.x (aktuell 26.2); ein stabiler 1.2.0-
@@ -28,7 +61,7 @@ Release oder Release-Tag wird hierdurch nicht erstellt.
 - Ingame- und geschützte Web-Einstellungen schreiben denselben ConfigManager-Wert;
   Ingame-Änderungen bleiben bis zum ausdrücklichen Speichern Entwurf.
 
-### Vor dem stabilen 1.2.0-Release prüfen
+### Zum pre.4-Prüfzeitpunkt noch offen (historisch)
 
 - Alle neuen Eventtypen und Header-/Config-Fälle automatisiert testen.
 - Manuelle Web-/Client-Aktualisierung, Live-Stream und Cache-Synchronität praktisch
@@ -63,7 +96,7 @@ Diese Entwicklungsfassung bereitet Visotaris OPMod 1.2.0 vor. Sie ist **kein sta
 - Markt und Händlerkurse bieten lokale Suche, Filter und Sortierung. OPSUCHT-spezifische Shardmaterialien zeigen ihren API-Anzeigenamen statt des Vanilla-Trägermaterials Papier. Das Fenster nutzt stärkere Marine-/Eisblau-Flächen und einen gemessenen Footer ohne konkurrierende Texte.
 - Ein Minecraft-26.x-Renderer extrahiert die Renderzustände. Historische 1.21.11-Aufnahmen und aktuelle Prüfnachweise: [Ingame-UX](ux/implemented/README.md).
 
-## Vor dem stabilen 1.2.0-Release prüfen
+## Zum pre.3-Prüfzeitpunkt noch offen (historisch)
 
 - Bedienung und Skalierung bei verschiedenen GUI-Größen, Auflösungen und Eingaben praktisch testen.
 - Cache-Anzeigen, Datenalter, Leerzustände und gemeinsame Einstellungen im laufenden Client prüfen.
