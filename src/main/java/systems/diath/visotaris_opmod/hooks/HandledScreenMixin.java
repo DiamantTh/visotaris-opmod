@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import systems.diath.visotaris_opmod.VisotarisModClient;
 import systems.diath.visotaris_opmod.model.InventoryValuation;
 import systems.diath.visotaris_opmod.util.HandledScreenButtons;
+import systems.diath.visotaris_opmod.util.MoneyFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -173,19 +174,19 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> {
     private static String buildValueLine(InventoryValuation val) {
         StringBuilder sb = new StringBuilder();
         if (val.getSellTotal() > 0) {
-            sb.append("§7V: §f").append(fmtVal(val.getSellTotal()));
+            sb.append("§7V: §f").append(MoneyFormatter.formatCompact(val.getSellTotal()));
         }
         if (val.getBuyTotal() > 0) {
             if (sb.length() > 0) sb.append(" ");
-            sb.append("§7K: §a").append(fmtVal(val.getBuyTotal()));
+            sb.append("§7K: §a").append(MoneyFormatter.formatCompact(val.getBuyTotal()));
         }
         if (val.hasShards()) {
             if (sb.length() > 0) sb.append(" ");
-            sb.append("§7S: §b").append(fmtVal(val.getShardTotal()));
+            sb.append("§7S: §b").append(fmtVal(val.getShardTotal())).append(" OPShards");
         }
         if (val.hasRedcoins()) {
             if (sb.length() > 0) sb.append(" ");
-            sb.append("§7R: §6").append(fmtVal(val.getRedcoinTotal()));
+            sb.append("§7R: §6").append(fmtVal(val.getRedcoinTotal())).append(" Redcoins");
         }
         return sb.toString();
     }

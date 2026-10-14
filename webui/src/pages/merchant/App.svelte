@@ -22,9 +22,8 @@
 
   function displayName(rate) { return rate.visibleName || rate.displayName || fmtItem(rate.source) }
   function targetLabel(target) {
-    if (target === 'opshards') return 'Shards'
-    if (target === 'redcoins') return 'Redcoins'
-    return target.toUpperCase()
+    const rate = ratesByTarget[target]?.[0]
+    return rate?.targetDisplayUnit || target.replaceAll('_', ' ').replaceAll('-', ' ')
   }
   function fmtRate(value) { return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value ?? 0) }
   function diff(rate) { return rate.base > 0 ? ((rate.exchangeRate - rate.base) / rate.base) * 100 : null }

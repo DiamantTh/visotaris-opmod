@@ -3,7 +3,7 @@
   import { fade } from 'svelte/transition'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
-  import { fmtItem, fmtInt, fmt, fmtCompact, itemIcon, hideOnError } from '../../lib/utils.js'
+  import { fmtItem, fmtInt, fmtMoney, fmtCompact, itemIcon, hideOnError } from '../../lib/utils.js'
 
   const LS_RECENT = 'visotaris_history_recent'
 
@@ -158,7 +158,7 @@
         ? d.toLocaleString('de-DE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'2-digit' })
     }
-    const fmtNum = v => new Intl.NumberFormat('de-DE', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(v)
+  const fmtNum = v => fmtMoney(v)
     const axFmt  = v => v >= 1_000_000 ? (v/1_000_000).toFixed(1)+'M' : v >= 1_000 ? (v/1_000).toFixed(1)+'k' : v
 
     const labels = points.map(p => fmtTs(p.timestamp))
@@ -381,11 +381,11 @@
     <div class="stat-grid mb-3" transition:fade>
       {#if live}
         <div class="stat-card live" title="Aktueller Kaufpreis">
-          <div class="stat-value">{fmt(live.buy)}</div>
+          <div class="stat-value">{fmtMoney(live.buy)}</div>
           <div class="stat-label">Live Kaufpreis</div>
         </div>
         <div class="stat-card live" title="Aktueller Verkaufspreis">
-          <div class="stat-value">{fmt(live.sell)}</div>
+          <div class="stat-value">{fmtMoney(live.sell)}</div>
           <div class="stat-label">Live Verkaufspreis</div>
         </div>
         <div class="stat-card live" title="Aktive Kauf-Aufträge">
@@ -399,11 +399,11 @@
       {/if}
       {#if stats}
         <div class="stat-card" title="Höchster Preis im Zeitraum">
-          <div class="stat-value">{fmt(stats.maxPrice)}</div>
+          <div class="stat-value">{fmtMoney(stats.maxPrice)}</div>
           <div class="stat-label">Höchster Preis</div>
         </div>
         <div class="stat-card" title="Niedrigster Preis im Zeitraum">
-          <div class="stat-value">{fmt(stats.minPrice)}</div>
+          <div class="stat-value">{fmtMoney(stats.minPrice)}</div>
           <div class="stat-label">Niedrigster Preis</div>
         </div>
         <div class="stat-card" title="Summe aller Transaktionen im Zeitraum">

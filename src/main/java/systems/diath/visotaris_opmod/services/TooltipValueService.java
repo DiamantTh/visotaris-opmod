@@ -12,6 +12,7 @@ import systems.diath.visotaris_opmod.model.MarketPrice;
 import systems.diath.visotaris_opmod.model.MerchantCurrency;
 import systems.diath.visotaris_opmod.model.ShardRate;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
+import systems.diath.visotaris_opmod.util.MoneyFormatter;
 import systems.diath.visotaris_opmod.util.StackClassification;
 
 import java.util.List;
@@ -64,7 +65,7 @@ public final class TooltipValueService {
 
         // Händlerkurs: erst einfaches Lookup, dann mit custom_model_data.
         // Die Merchant-API liefert inzwischen neben OPSHARDS auch REDCOINS.
-        // Daher die Zielwährung aus der API anzeigen, statt jeden Kurs als OPS
+        // Daher die Zielwährung aus der API anzeigen, statt jeden Kurs als Marktgeld
         // auszugeben.
         Optional<ShardRate> foundRate = (shardCache.isStale(cfg.tooltipMaxAgeSeconds) && !cfg.tooltipShowStaleData)
             ? Optional.empty() : findShard(stack, baseKey);
@@ -73,13 +74,11 @@ public final class TooltipValueService {
             return currency == MerchantCurrency.OPSHARDS ? cfg.tooltipShowShardRates : cfg.tooltipShowMerchantRates;
         });
         merchantRate.ifPresent(rate -> {
-            String target = formatTarget(rate.getTarget());
             MerchantCurrency currency = MerchantCurrency.fromApiTarget(rate.getTarget());
             String color = currency == MerchantCurrency.OPSHARDS ? "§b"
                 : currency == MerchantCurrency.REDCOINS ? "§6" : "§d";
-            String unit = currency == MerchantCurrency.UNKNOWN ? target : currency.getDisplayUnit();
             lines.add(Component.literal(color + currency.getDisplayLabel() + ": §f"
-                + rate.getExchangeRate() + " " + unit));
+                + merchantRateText(rate)));
         });
         if (cfg.tooltipShowDataAge && (price.isPresent() || merchantRate.isPresent())) {
             long marketAge = marketCache.getAgeSeconds();
@@ -130,13 +129,12 @@ public final class TooltipValueService {
         return Optional.empty();
     }
 
-    private static String formatTarget(String target) {
-        if (target == null || target.isBlank()) return "OPS";
-        return target.toUpperCase();
+    static String merchantRateText(ShardRate rate) {
+        return String.format(java.util.Locale.GERMANY, "%.2f %s", rate.getExchangeRate(),
+            MerchantCurrency.displayUnitFor(rate.getTarget()));
     }
 
     private static String formatMoney(double value) {
-        if (value <= 0) return "–";
-        return String.format("%,.2f $", value);
+        return value <= 0 ? "–" : MoneyFormatter.format(value);
     }
 }

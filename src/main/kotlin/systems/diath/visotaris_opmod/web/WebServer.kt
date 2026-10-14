@@ -22,6 +22,7 @@ import systems.diath.visotaris_opmod.cache.ShardCache
 import systems.diath.visotaris_opmod.config.ConfigManager
 import systems.diath.visotaris_opmod.config.PriceAlertRule
 import systems.diath.visotaris_opmod.config.VisotarisConfig
+import systems.diath.visotaris_opmod.model.MerchantCurrency
 import systems.diath.visotaris_opmod.services.AuctionSyncService
 import systems.diath.visotaris_opmod.services.AuctionIconCache
 import systems.diath.visotaris_opmod.services.PriceAlertEngine
@@ -497,6 +498,7 @@ class WebServer(
     private fun merchantRateView(rate: systems.diath.visotaris_opmod.model.ShardRate): JsonObject =
         JsonParser.parseString(gson.toJson(rate)).asJsonObject.apply {
             addProperty("visibleName", WebItemNameResolver.merchantName(rate.source, rate.displayName))
+            addProperty("targetDisplayUnit", MerchantCurrency.displayUnitFor(rate.target))
         }
 
     private fun isAuctionParticipant(uuid: String): Boolean {

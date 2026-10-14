@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import Navbar from '../../components/Navbar.svelte'
   import SystemSubnav from '../../components/SystemSubnav.svelte'
-  import { fmtItem } from '../../lib/utils.js'
+  import { fmtItem, fmtMoney } from '../../lib/utils.js'
   const alertPage = window.location.pathname === '/system/price-alerts'
 
   let configured = $state(null)
@@ -28,7 +28,7 @@
     ['SPREAD_ABOVE', 'Spanne überschreitet'], ['SPREAD_BELOW', 'Spanne unterschreitet']
   ]
   const labels = Object.fromEntries(conditions)
-  const numberText = value => value == null || !Number.isFinite(value) ? '–' : new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+  const numberText = value => value == null || !Number.isFinite(value) ? '–' : fmtMoney(value)
   const stateLabel = { watching: 'Beobachtet', paused: 'Pausiert', globally_paused: 'Global pausiert', waiting_for_data: 'Wartet auf Marktdaten', triggered: 'Ausgelöst', rearm_pending: 'Wartet auf Rückkehr', cooldown: 'Cooldown' }
   const channelLabel = { HUD: 'Minecraft-HUD', WEB: 'Web-UI (solange offen)', HUD_WEB: 'Minecraft-HUD und Web-UI' }
   let timer

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import Icon from '@iconify/svelte'
   import Navbar from '../../components/Navbar.svelte'
-  import { fmt, fmtInt, itemIcon } from '../../lib/utils.js'
+  import { fmtMoney, fmtInt, itemIcon } from '../../lib/utils.js'
 
   let auctions = $state([])
   let categories = $state([])
@@ -169,7 +169,7 @@
               <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(auction.uid)}/icon`} data-uid={auction.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
             </span>
             <span class="auction-row-main"><strong>{itemName(auction)}</strong><small>{auction.item?.amount || 1}× · {auction.category || 'Ohne Kategorie'} · Verkäufer {sellerName(auction)}</small></span>
-            <span class="auction-price"><strong>{fmt(auction.currentBid)} OPS</strong><small>{auction.instantBuyPrice == null ? 'kein Sofortkauf' : `Sofort ${fmt(auction.instantBuyPrice)} OPS`}</small></span>
+            <span class="auction-price"><strong>{fmtMoney(auction.currentBid)}</strong><small>{auction.instantBuyPrice == null ? 'kein Sofortkauf' : `Sofort ${fmtMoney(auction.instantBuyPrice)}`}</small></span>
             <span class="auction-time"><strong>{remaining(auction.endTime)}</strong><small>Restzeit</small></span>
           </button>
         {/each}
@@ -188,9 +188,9 @@
             <div><dt>Menge</dt><dd>{fmtInt(selected.item?.amount || 1)}</dd></div>
             <div><dt>Kategorie</dt><dd>{selected.category || '–'}</dd></div>
             <div><dt>Status</dt><dd>{selected.state || '–'}</dd></div>
-            <div><dt>Startgebot</dt><dd>{fmt(selected.startBid)} OPS</dd></div>
-            <div><dt>Aktuelles Gebot</dt><dd>{fmt(selected.currentBid)} OPS</dd></div>
-            <div><dt>Sofortkauf</dt><dd>{selected.instantBuyPrice == null ? '–' : `${fmt(selected.instantBuyPrice)} OPS`}</dd></div>
+            <div><dt>Startgebot</dt><dd>{fmtMoney(selected.startBid)}</dd></div>
+            <div><dt>Aktuelles Gebot</dt><dd>{fmtMoney(selected.currentBid)}</dd></div>
+            <div><dt>Sofortkauf</dt><dd>{selected.instantBuyPrice == null ? '–' : fmtMoney(selected.instantBuyPrice)}</dd></div>
             <div><dt>Verkäufer</dt><dd>{sellerName(selected)}</dd></div>
             <div><dt>Höchstbietender</dt><dd>{playerName(selected.highestBidder)}</dd></div>
             <div><dt>Gebote</dt><dd>{bidCount(selected)}</dd></div>
@@ -200,7 +200,7 @@
           </dl>
           {#if selected.item?.lore?.length}<section><h3>Beschreibung</h3><ul>{#each selected.item.lore as line}<li>{line}</li>{/each}</ul></section>{/if}
           {#if Object.keys(selected.item?.enchantments || {}).length}<section><h3>Verzauberungen</h3><ul>{#each Object.entries(selected.item.enchantments) as [name, level]}<li>{name} {level}</li>{/each}</ul></section>{/if}
-          {#if Object.keys(selected.bids || {}).length}<section><h3>Gebotsverlauf aus dem aktuellen API-Datensatz</h3><ul>{#each Object.entries(selected.bids) as [uuid, amount]}<li>{playerName(uuid)} — {fmt(amount)} OPS</li>{/each}</ul></section>{/if}
+          {#if Object.keys(selected.bids || {}).length}<section><h3>Gebotsverlauf aus dem aktuellen API-Datensatz</h3><ul>{#each Object.entries(selected.bids) as [uuid, amount]}<li>{playerName(uuid)} — {fmtMoney(amount)}</li>{/each}</ul></section>{/if}
           <small class="auction-readonly">Nur Anzeige. Keine Gebots-, Kauf- oder Serveraktion.</small>
         </aside>
       {/if}

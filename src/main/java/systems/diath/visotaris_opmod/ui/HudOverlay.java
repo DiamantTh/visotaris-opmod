@@ -14,8 +14,8 @@ import systems.diath.visotaris_opmod.services.JobTrackerService;
 import systems.diath.visotaris_opmod.services.PriceAlertNotificationQueue;
 import systems.diath.visotaris_opmod.services.PriceAlertService;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
+import systems.diath.visotaris_opmod.util.MoneyFormatter;
 
-import java.util.Locale;
 
 /**
  * HUD-Overlay: zeigt Job-Tracker-Daten (Job, Level, XP/h, Money/h) sowie die
@@ -107,7 +107,7 @@ public final class HudOverlay implements HudElement {
     }
 
     private static String formatAlertPrice(double price) {
-        return String.format(Locale.GERMANY, "%,.2f", price);
+        return MoneyFormatter.format(price);
     }
 
     private static String fitAlertText(Minecraft mc, String text, int maxWidth) {
@@ -135,7 +135,7 @@ public final class HudOverlay implements HudElement {
         y += lineH;
         ctx.text(font, "XP/h: §f" + formatShort(snap.getXpPerHour()),  x, y, COLOR_LABEL, true);
         y += lineH;
-        ctx.text(font, "$/h: §f"  + formatShort(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
+        ctx.text(font, "Geld/h: §f" + MoneyFormatter.formatCompact(snap.getMoneyPerHour()), x, y, COLOR_LABEL, true);
         return y + lineH + 1;
     }
 
@@ -151,10 +151,10 @@ public final class HudOverlay implements HudElement {
                 && !value.hasShards() && !value.hasRedcoins()) return;
 
         StringBuilder line = new StringBuilder("§7Inv:");
-        if (value.getSellTotal() > 0) line.append(" §fV ").append(formatShort(value.getSellTotal()));
-        if (value.getBuyTotal() > 0) line.append(" §aK ").append(formatShort(value.getBuyTotal()));
-        if (value.hasShards()) line.append(" §bS ").append(formatShort(value.getShardTotal()));
-        if (value.hasRedcoins()) line.append(" §6R ").append(formatShort(value.getRedcoinTotal()));
+        if (value.getSellTotal() > 0) line.append(" §fV ").append(MoneyFormatter.formatCompact(value.getSellTotal()));
+        if (value.getBuyTotal() > 0) line.append(" §aK ").append(MoneyFormatter.formatCompact(value.getBuyTotal()));
+        if (value.hasShards()) line.append(" §b").append(formatShort(value.getShardTotal())).append(" OPShards");
+        if (value.hasRedcoins()) line.append(" §6").append(formatShort(value.getRedcoinTotal())).append(" Redcoins");
         ctx.text(mc.font, line.toString(), posX, y, COLOR_LABEL, true);
     }
 

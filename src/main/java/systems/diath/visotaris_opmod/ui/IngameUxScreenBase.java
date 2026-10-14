@@ -26,6 +26,7 @@ import systems.diath.visotaris_opmod.services.PriceAlertService;
 import systems.diath.visotaris_opmod.util.AuctionItemNames;
 import systems.diath.visotaris_opmod.util.AuctionSearch;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
+import systems.diath.visotaris_opmod.util.MoneyFormatter;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
@@ -995,18 +996,20 @@ public abstract class IngameUxScreenBase extends Screen {
                 else c.item(itemKey.contains("#") ? itemKey.substring(0, itemKey.indexOf('#')) : itemKey, x + 7, ry + 4);
                 String source = shardName(rate);
                 MerchantCurrency currency = MerchantCurrency.fromApiTarget(rate.getTarget());
-                String target = currency == MerchantCurrency.UNKNOWN ? currencyLabel(rate.getTarget()) : currency.getDisplayUnit();
+                String target = MerchantCurrency.displayUnitFor(rate.getTarget());
                 String description = source + "  →  " + target;
                 int rateX = x + Math.max(70, w - 115);
                 c.text(fit(c, description, Math.max(40, rateX - x - 40)), x + 30, ry + 5, WHITE, false);
-                c.text(formatRate(rate.getExchangeRate()), rateX, ry + 5, INFO, true);
-                if (rh >= 38) c.text("Basis: " + formatRate(rate.getBase()), x + 10, ry + c.lineHeight() + 6, MUTED, false);
+                c.text(fit(c, formatRate(rate.getExchangeRate()) + " " + target,
+                    Math.max(36, x + w - rateX - 7)), rateX, ry + 5, INFO, true);
+                if (rh >= 38) c.text(fit(c, "Basis: " + formatRate(rate.getBase()) + " " + target,
+                    Math.max(36, w - 20)), x + 10, ry + c.lineHeight() + 6, MUTED, false);
                 if (mouseX >= x && mouseX <= x + w && mouseY >= rowsY && mouseY < rowsY + available
                     && mouseY >= ry && mouseY < ry + rh - 2) {
                     hoveredRow = i;
                     hoveredDetails = description + "\nQuelle: " + rate.getSource()
-                        + "\nBasis: " + formatRate(rate.getBase())
-                        + "\nWechselkurs: " + formatRate(rate.getExchangeRate());
+                        + "\nBasis: " + formatRate(rate.getBase()) + " " + target
+                        + "\nWechselkurs: " + formatRate(rate.getExchangeRate()) + " " + target;
                     c.fill(x + 2, ry, x + 4, ry + rh - 2, ICE);
                 }
             }
@@ -1409,7 +1412,7 @@ public abstract class IngameUxScreenBase extends Screen {
         addToggle(x, start + row * 2, w, "Verkaufspreis anzeigen", () -> cfg.tooltipShowSellPrice,
             value -> cfg.tooltipShowSellPrice = value, "Verkaufspreis im normalen Item-Tooltip.", true);
         addToggle(x, start + row * 3, w, "Shardkurse anzeigen", () -> cfg.tooltipShowShardRates,
-            value -> cfg.tooltipShowShardRates = value, "OPShard-Kurse im normalen Item-Tooltip.", true);
+            value -> cfg.tooltipShowShardRates = value, "OPShards-Kurse im normalen Item-Tooltip.", true);
         addToggle(x, start + row * 4, w, "Sonstige Händlerkurse anzeigen", () -> cfg.tooltipShowMerchantRates,
             value -> cfg.tooltipShowMerchantRates = value, "Zum Beispiel Redcoin-Kurse im normalen Item-Tooltip.", true);
         addToggle(x, start + row * 5, w, "Alter der Cache-Daten anzeigen", () -> cfg.tooltipShowDataAge,
@@ -1935,8 +1938,7 @@ public abstract class IngameUxScreenBase extends Screen {
     private static String ageTextSeconds(int seconds) { return seconds < 3600 ? (seconds / 60) + " Min." : (seconds / 3600) + " Std."; }
 
     private static String formatMoney(double value) {
-        if (!Double.isFinite(value)) return "–";
-        return String.format(Locale.GERMANY, "%,.2f", value);
+        return MoneyFormatter.format(value);
     }
 
     private static String marketPriceText(double value) {

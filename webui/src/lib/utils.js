@@ -22,6 +22,12 @@ export function fmt(v) {
   }).format(v)
 }
 
+/** Formatiert einen normalen Markt- oder Auktionspreis als Dollarbetrag. */
+export function fmtMoney(v) {
+  const amount = fmt(v)
+  return amount === '–' ? amount : '$' + amount
+}
+
 /**
  * Formatiert eine Ganzzahl mit Tausender-Gruppierung.
  */

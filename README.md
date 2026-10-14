@@ -5,7 +5,7 @@ Eine **freie, quelloffene** Fabric-Client-Mod für Minecraft mit Fokus auf den
 
 Lizenz: [AGPLv3+](LICENSE) · Minecraft: 26.x (aktuell 26.2) · Loader: Fabric
 
-Aktueller Entwicklungsstand: **Visotaris OPMod 1.2.0-pre.6 (Vorabversion)**.
+Aktueller Entwicklungsstand: **Visotaris OPMod 1.2.0-pre.7 (Vorabversion)**.
 Visotaris **1.2.0+ unterstützt Minecraft 26.x**. Ältere veröffentlichte 1.1.x-Versionen behalten ihre damalige Minecraft-Kompatibilität. Für 26.2 wird MaLiLib 0.29.3 separat benötigt.
 Änderungen und bekannte offene Prüfungen: [Release-Notizen](docs/RELEASE_NOTES.md).
 
@@ -129,7 +129,7 @@ Voraussetzungen: Java 25, Gradle (Wrapper inklusive), Fabric für Minecraft 26.2
 ```
 
 Der finale JAR liegt in `26.x/build/libs/`; `buildAll` kopiert ihn nach
-`out/visotaris_opmod-1.2.0-pre.6+mc26.2.jar`. Alle Quellen und Tests liegen zentral
+`out/visotaris_opmod-1.2.0-pre.7+mc26.2.jar`. Alle Quellen und Tests liegen zentral
 unter `src/main/` und `src/test/`. Es gibt keinen aktiven 1.21.11-Buildpfad.
 
 ---

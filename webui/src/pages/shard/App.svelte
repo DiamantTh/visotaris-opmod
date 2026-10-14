@@ -11,7 +11,7 @@
   const isShard = $derived(currency === 'opshards')
   const pageTitle = $derived(isShard ? 'Shardkurse' : 'Redcoin-Kurse')
   const apiPath = $derived(isShard ? '/api/shard' : '/api/redcoins')
-  const unitLabel = $derived(isShard ? 'Shards / Einheit' : 'Redcoins / Einheit')
+  const unitLabel = $derived(isShard ? 'OPShards / Einheit' : 'Redcoins / Einheit')
   const currencyAccent = $derived(isShard ? 'var(--vi-accent)' : 'var(--vi-redcoin)')
   const rateClass = $derived(isShard ? 'price-buy' : 'price-redcoin')
 
@@ -85,6 +85,7 @@
     if (!v) return '–'
     return new Intl.NumberFormat('de-DE', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(v)
   }
+  function targetUnit(item) { return item.targetDisplayUnit || (isShard ? 'OPShards' : 'Redcoins') }
 
   // ── Daten laden ─────────────────────────────────────────────────────────────
   async function loadData() {
@@ -133,7 +134,7 @@
   {#if items.length > 0}
     <div class="vi-summary" transition:fade={{ duration: 150 }}>
       <div class="vi-metric"><span class="vi-metric-label">Aktive Kurse</span><span class="vi-metric-value">{items.length}</span></div>
-      <div class="vi-metric"><span class="vi-metric-label">Währung</span><span class="vi-metric-value">{isShard ? 'OPS' : 'RDC'}</span></div>
+      <div class="vi-metric"><span class="vi-metric-label">Währung</span><span class="vi-metric-value">{isShard ? 'OPShards' : 'Redcoins'}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">API-Stand</span><span class="vi-metric-value fresh">{lastDataUpdate ? new Date(lastDataUpdate).toLocaleTimeString('de-DE') : '–'}</span></div>
     </div>
   {/if}
@@ -197,7 +198,7 @@
                 </td>
                 <td class="text-right">
                   <span class={rateClass}>{fmtRate(item.exchangeRate)}</span>
-                  <span class="text-sm ml-1" style="color:var(--vi-text-muted)">{(item.target ?? 'OPS').toUpperCase() === 'OPSHARDS' ? 'OPS' : (item.target ?? 'OPS')}</span>
+                  <span class="text-sm ml-1" style="color:var(--vi-text-muted)">{targetUnit(item)}</span>
                 </td>
                 <td class="text-right" style="font-variant-numeric:tabular-nums">
                   {#if item.base > 0}

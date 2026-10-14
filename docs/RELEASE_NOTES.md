@@ -1,5 +1,17 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.7 — Vorabversion
+
+### Korrekte Währungssemantik
+
+- Marktpreise und Auktionspreise werden in nativer UX und WebUX als Dollarwerte
+  mit vorangestelltem `$` formatiert. Auktionskategorien bestimmen dabei nie die
+  Währung eines Gebots.
+- Merchant-API-Targets bleiben intern `opshards` und `redcoins`; sichtbar heißen
+  sie vollständig `OPShards` beziehungsweise `Redcoins`. Für beide wird kein
+  eigenes Währungssymbol erfunden.
+- Unbekannte künftige Merchant-Targets behalten einen lesbaren API-Fallback.
+
 ## Visotaris OPMod 1.2.0-pre.6 — Vorabversion
 
 Diese Vorabversion baut auf pre.5 auf. Visotaris bleibt auf Minecraft 26.x

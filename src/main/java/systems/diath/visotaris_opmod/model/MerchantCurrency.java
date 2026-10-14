@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /** Zielwährungen der OPSUCHT-Merchant-API. */
 public enum MerchantCurrency {
-    OPSHARDS("opshards", "OPS", "Shardkurs"),
+    OPSHARDS("opshards", "OPShards", "Shardkurs"),
     REDCOINS("redcoins", "Redcoins", "Redcoin-Kurs"),
     UNKNOWN("", "", "Händlerkurs");
 
@@ -28,5 +28,13 @@ public enum MerchantCurrency {
             if (currency.apiTarget.equals(normalized)) return currency;
         }
         return UNKNOWN;
+    }
+
+    /** Visible target while retaining unknown future API targets as a readable fallback. */
+    public static String displayUnitFor(String target) {
+        MerchantCurrency currency = fromApiTarget(target);
+        if (currency != UNKNOWN) return currency.getDisplayUnit();
+        if (target == null || target.isBlank()) return "Unbekannt";
+        return target.trim().replace('_', ' ').replace('-', ' ');
     }
 }

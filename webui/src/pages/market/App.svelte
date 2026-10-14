@@ -4,7 +4,7 @@
   import { cubicOut } from 'svelte/easing'
   import Icon from '@iconify/svelte'
   import Navbar       from '../../components/Navbar.svelte'
-  import { fmtItem, fmt, fmtInt, spreadClass, itemIcon, hideOnError } from '../../lib/utils.js'
+  import { fmtItem, fmtMoney, fmtInt, spreadClass, itemIcon, hideOnError } from '../../lib/utils.js'
 
   const LS_VIEW = 'visotaris_market_view'
 
@@ -199,7 +199,7 @@
             {:else}
               <div class="market-sparkline pending">Verlauf…</div>
             {/if}
-            <div class="market-top-prices"><span class="price-buy">{fmt(item.buy)}</span><span class="price-sell">{fmt(item.sell)}</span></div>
+            <div class="market-top-prices"><span class="price-buy">{fmtMoney(item.buy)}</span><span class="price-sell">{fmtMoney(item.sell)}</span></div>
             <div class="market-top-orders"><span class="price-buy">↓ {fmtInt(item.buyOrders)}</span><span class="price-sell">↑ {fmtInt(item.sellOrders)}</span></div>
             {#if item.historyReady}<small>{fmtInt(item.weeklyTransactions)} Trades · {fmtInt(item.weeklyItems)} Items</small>{/if}
           </a>
@@ -272,11 +272,11 @@
           <div class="mc-prices">
             <div>
               <span class="mc-label">Kauf</span>
-              {#if item.buy > 0}<span class="price-buy">{fmt(item.buy)}</span>{:else}<span class="price-na">–</span>{/if}
+              {#if item.buy > 0}<span class="price-buy">{fmtMoney(item.buy)}</span>{:else}<span class="price-na">–</span>{/if}
             </div>
             <div class="text-right">
               <span class="mc-label">Verkauf</span>
-              {#if item.sell > 0}<span class="price-sell">{fmt(item.sell)}</span>{:else}<span class="price-na">–</span>{/if}
+              {#if item.sell > 0}<span class="price-sell">{fmtMoney(item.sell)}</span>{:else}<span class="price-na">–</span>{/if}
             </div>
           </div>
           <div class="mc-orders">
@@ -338,14 +338,14 @@
                 <td class="hide-sm" style="color:var(--vi-text-muted)">{item.category ?? '–'}</td>
                 <td class="text-right">
                   {#if item.buy > 0}
-                    <span class="price-buy">{fmt(item.buy)}</span>
+                    <span class="price-buy">{fmtMoney(item.buy)}</span>
                   {:else}
                     <span class="price-na">–</span>
                   {/if}
                 </td>
                 <td class="text-right">
                   {#if item.sell > 0}
-                    <span class="price-sell">{fmt(item.sell)}</span>
+                    <span class="price-sell">{fmtMoney(item.sell)}</span>
                   {:else}
                     <span class="price-na">–</span>
                   {/if}
@@ -353,7 +353,7 @@
                 <td class="text-right">
                   {#if item.buy > 0 && item.sell > 0}
                     <span class="{spreadClass(item.buy, item.sell)} tabular">
-                      {fmt(item.buy - item.sell)}
+                      {fmtMoney(item.buy - item.sell)}
                     </span>
                   {:else}
                     <span class="price-na">–</span>

@@ -30,6 +30,11 @@ Die lokale Web-API liest dieselbe `AuctionCache`; Web- und Ingameansichten bauen
 separate Datenbeschaffung oder Regelbasis auf. Änderungen am Cache werden von beiden
 Oberflächen beim nächsten lokalen Lesen sichtbar.
 
+Markt- und Auktionspreise sind normale Dollarpreise und werden als `$` vor dem Betrag
+angezeigt. Eine Auction-Kategorie beschreibt das Angebot, nicht dessen Preiswährung.
+Die Händler-API behält ihre technischen Ziele `opshards` und `redcoins`; sichtbar heißen
+sie `OPShards` beziehungsweise `Redcoins`. Visotaris erfindet dafür kein eigenes Symbol.
+
 In der WebUX verwendet `WebItemNameResolver` für Vanilla-Angebote den lokalisierten
 Namen aus der aktiven Minecraft-Sprache. `/api/meta` stellt die Client-Sprachkennung
 als `clientLanguage` bereit. Bei erkannten Custom-Angeboten hat der echte API-Name
