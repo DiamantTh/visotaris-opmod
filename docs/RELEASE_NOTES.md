@@ -12,6 +12,18 @@
   eigenes Währungssymbol erfunden.
 - Unbekannte künftige Merchant-Targets behalten einen lesbaren API-Fallback.
 
+### WebUX-Lieferkette
+
+- Das transitive Build-Werkzeug `source-map-js` wurde von 1.2.1 auf den
+  kompatiblen Sicherheits-Patch 1.2.2 aktualisiert (GHSA-68fv-2mgg-jv7q).
+  Der anschließende `npm audit` meldet keine High- oder Critical-Findings.
+- Der History-Einstieg bleibt ohne ECharts klein; Charts laden den weiterhin
+  separaten `historyCharts`-Chunk erst bei vorhandenen Verlaufsdaten. Benannte
+  ECharts-Core-Imports vermeiden dabei unnötige Namespace-Exporte.
+- Der WebUI-Build entfernt nach erfolgreicher Ausgabe ausschließlich veraltete
+  erzeugte JS-/CSS-Bundles. Mitgelieferte Fonts und andere statische Ressourcen
+  bleiben erhalten.
+
 ## Visotaris OPMod 1.2.0-pre.6 — Vorabversion
 
 Diese Vorabversion baut auf pre.5 auf. Visotaris bleibt auf Minecraft 26.x

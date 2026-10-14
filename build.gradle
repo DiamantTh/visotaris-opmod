@@ -72,7 +72,8 @@ tasks.register('npmBuildWebui', NpmTask) {
     inputs.dir  rootProject.file('webui/src')
     inputs.files rootProject.file('webui/vite.config.js'),
                  rootProject.file('webui/svelte.config.js'),
-                 rootProject.file('webui/package.json')
+                 rootProject.file('webui/package.json'),
+                 rootProject.file('webui/package-lock.json')
     outputs.dir rootProject.file('src/main/resources/assets/webui/static/app')
 }
 

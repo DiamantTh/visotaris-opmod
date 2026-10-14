@@ -158,8 +158,10 @@
         ? d.toLocaleString('de-DE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'2-digit' })
     }
-  const fmtNum = v => fmtMoney(v)
-    const axFmt  = v => v >= 1_000_000 ? (v/1_000_000).toFixed(1)+'M' : v >= 1_000 ? (v/1_000).toFixed(1)+'k' : v
+    const fmtNum = v => fmtMoney(v)
+    const compactAxis = v => v >= 1_000_000 ? (v/1_000_000).toFixed(1)+'M' : v >= 1_000 ? (v/1_000).toFixed(1)+'k' : v
+    const priceAxisLabel = { color: chart.muted, fontSize:10, formatter: value => '$' + compactAxis(value) }
+    const countAxisLabel = { color: chart.muted, fontSize:10, formatter: compactAxis }
 
     const labels = points.map(p => fmtTs(p.timestamp))
     const GRID   = { left:64, right:20, top:30, bottom:40 }
@@ -169,8 +171,6 @@
       axisLine:  { lineStyle: { color: chart.border } },
       splitLine: { show: false }
     }
-    const yLbl = { color: chart.muted, fontSize:10, formatter: axFmt }
-
     // ── Preisentwicklung ──
     chartInstances.price = echarts.init(chartPriceEl, 'dark', { backgroundColor:'transparent' })
     chartInstances.price.setOption({
@@ -185,7 +185,7 @@
         }
       },
       grid: GRID, xAxis,
-      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color: chart.grid } } },
+      yAxis: { type:'value', axisLabel: priceAxisLabel, splitLine: { lineStyle:{ color: chart.grid } } },
       series: [
         {
           name:'Max', type:'line',
@@ -219,7 +219,7 @@
         formatter: p => `<b>${p[0].axisValueLabel}</b><br>Transaktionen: <b>${fmtInt(p[0].value ?? 0)}</b>`
       },
       grid: GRID, xAxis,
-      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color: chart.grid } } },
+      yAxis: { type:'value', axisLabel: countAxisLabel, splitLine: { lineStyle:{ color: chart.grid } } },
       series: [{
         name:'Transaktionen', type:'line',
         data: points.map(p => p.transactions),
@@ -239,7 +239,7 @@
         formatter: p => `<b>${p[0].axisValueLabel}</b><br>Items: <b>${fmtInt(p[0].value ?? 0)}</b>`
       },
       grid: GRID, xAxis,
-      yAxis: { type:'value', axisLabel: yLbl, splitLine: { lineStyle:{ color: chart.grid } } },
+      yAxis: { type:'value', axisLabel: countAxisLabel, splitLine: { lineStyle:{ color: chart.grid } } },
       series: [{
         name:'Items', type:'bar',
         data: points.map(p => p.items),

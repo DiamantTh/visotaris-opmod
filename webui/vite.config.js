@@ -1,14 +1,39 @@
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
-import { resolve } from 'path'
+import { extname, resolve } from 'path'
+import { readdirSync, unlinkSync } from 'fs'
 import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const resDir    = resolve(__dirname, '../src/main/resources/assets/webui')
 
+/**
+ * emptyOutDir bleibt aus, damit die mitgelieferten Schriftdateien erhalten
+ * bleiben. Nach einem erfolgreichen Build räumen wir daher ausschließlich
+ * überholte, von Vite erzeugte JS-/CSS-Bundles weg.
+ */
+function cleanStaleBundles() {
+  let generated = new Set()
+  return {
+    name: 'visotaris-clean-stale-webui-bundles',
+    generateBundle(_, bundle) {
+      generated = new Set(Object.keys(bundle)
+        .filter(fileName => fileName.startsWith('static/app/')))
+    },
+    writeBundle() {
+      const appDir = resolve(resDir, 'static/app')
+      for (const entry of readdirSync(appDir, { withFileTypes: true })) {
+        if (!entry.isFile() || !['.js', '.css'].includes(extname(entry.name))) continue
+        const outputName = `static/app/${entry.name}`
+        if (!generated.has(outputName)) unlinkSync(resolve(appDir, entry.name))
+      }
+    }
+  }
+}
+
 export default defineConfig({
-  plugins: [tailwindcss(), svelte()],
+  plugins: [tailwindcss(), svelte(), cleanStaleBundles()],
   base: '/',
   publicDir: false,
 
