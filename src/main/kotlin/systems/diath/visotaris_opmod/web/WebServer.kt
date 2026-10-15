@@ -140,9 +140,13 @@ class WebServer(
                 val path = call.parameters.getAll("path")?.joinToString("/") ?: run {
                     call.respond(HttpStatusCode.NotFound); return@get
                 }
+                if (!StaticResourceCompression.isSafeStaticPath(path)) {
+                    call.respond(HttpStatusCode.NotFound); return@get
+                }
                 val contentType = when {
                     path.endsWith(".css")   -> ContentType.Text.CSS
                     path.endsWith(".js")    -> ContentType.Application.JavaScript
+                    path.endsWith(".json")  -> ContentType.Application.Json
                     path.endsWith(".svg")   -> ContentType.Image.SVG
                     path.endsWith(".png")   -> ContentType.Image.PNG
                     path.endsWith(".ico")   -> ContentType.parse("image/x-icon")
@@ -707,7 +711,17 @@ class WebServer(
     }
 
     private suspend fun serveResource(call: ApplicationCall, resourcePath: String, contentType: ContentType) {
-        val stream = WebServer::class.java.classLoader.getResourceAsStream(resourcePath)
+        val classLoader = WebServer::class.java.classLoader
+        val variant = StaticResourceCompression.select(
+            resourcePath,
+            call.request.headers[HttpHeaders.AcceptEncoding]
+        ) { candidate -> classLoader.getResource(candidate) != null }
+        if (StaticResourceCompression.requiresVary(resourcePath)) {
+            call.response.headers.append(HttpHeaders.Vary, HttpHeaders.AcceptEncoding)
+        }
+        variant.encoding.token?.let { call.response.headers.append(HttpHeaders.ContentEncoding, it) }
+
+        val stream = classLoader.getResourceAsStream(variant.resourcePath)
         if (stream == null) {
             call.respond(HttpStatusCode.NotFound, "Ressource nicht gefunden: $resourcePath")
             return

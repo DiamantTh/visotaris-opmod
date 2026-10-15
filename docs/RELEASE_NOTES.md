@@ -21,8 +21,13 @@
   separaten `historyCharts`-Chunk erst bei vorhandenen Verlaufsdaten. Benannte
   ECharts-Core-Imports vermeiden dabei unnötige Namespace-Exporte.
 - Der WebUI-Build entfernt nach erfolgreicher Ausgabe ausschließlich veraltete
-  erzeugte JS-/CSS-Bundles. Mitgelieferte Fonts und andere statische Ressourcen
+  erzeugte JS-/CSS-/HTML-Bundles. Mitgelieferte Fonts und andere statische Ressourcen
   bleiben erhalten.
+- Statische WebUX-Ressourcen werden beim Build zusätzlich als Brotli- und
+  Zstandard-Dateien erzeugt. Der lokale Webserver wählt `br`, danach `zstd`,
+  sonst die unveränderte Originalressource; gzip wird bewusst weder erzeugt
+  noch ausgeliefert. Die Aushandlung setzt `Vary: Accept-Encoding` und
+  komprimiert nie erst zur Laufzeit.
 
 ## Visotaris OPMod 1.2.0-pre.6 — Vorabversion
 

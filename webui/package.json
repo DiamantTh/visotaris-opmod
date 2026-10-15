@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@hpcc-js/wasm-zstd": "^1.16.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "svelte": "^5.57.0",
     "vite": "^8.2.2"
