@@ -88,3 +88,44 @@ Hover oder Scrollen ergänzt.
 Die Screenshots verwenden synthetische Testdaten, keine echten Spieler- oder
 Marktdaten. Ein echter Browser mit aktiven Minecraft-Serverdaten wurde in diesem
 Lauf nicht verwendet.
+
+## Nachtest: pre.9 Padding-/Border-Fix
+
+Am 17. Oktober 2026 wurde das Auktionshaus nach dem nachträglichen Padding- und
+Border-Fix erneut in Chromium 155 im separaten Headless-Kontext geprüft. Der
+Fixture-Server lieferte lokal 1.200 synthetische Auktionen, darunter lange
+Item- und Verkäufernamen, eine lange Kategorie, eine lange UID, Datensätze mit
+nur Gebot sowie Gebot plus Sofortkauf. Die ausgewählte Auktion enthielt lange
+Lore, vier deutsche Verzauberungen und Gebotsdaten.
+
+- Die Karten haben jetzt 16,5rem Mindesthöhe und 1,05rem Innenabstand. Bis
+  520px sind es 18,5rem Mindesthöhe und 0,9rem Innenabstand; so bleibt auch die
+  gestapelte Fußzeile vollständig innerhalb der Karte.
+- Kategorie und Restzeit stehen in einem eigenen Meta-Footer. Ab 521px bleiben
+  sie nebeneinander, bis 520px stapeln sie sich. Lange Kategorien werden mit
+  Ellipse begrenzt, lange Verkäufer mit Ellipse und Itemnamen auf höchstens zwei
+  Zeilen.
+- Die Auswahl bleibt mit hellerem Kartenhintergrund, moderat betonter Border
+  und linkem Cyan-Akzent gut erkennbar. Normale Kartenrahmen sind dezenter.
+- Preise und Meta-Bereich haben mehr Abstand zu den Trennlinien und zur
+  Kartenkante. Die Detailinsel hat mehr Innenabstand; Verzauberungen erscheinen
+  als passive, zurückhaltende Chips.
+- Bei 1600×900 wurden zwei 455,6px breite Kachelspalten neben der Detailinsel
+  geprüft; bei 1180×820 eine 661,9px breite Kachelspalte neben der Detailinsel.
+  Bei 740×900 blieb Master/Detail aktiv. Bei 420×900 wurden die Meta-Zeilen
+  gestapelt.
+- Für alle vier Größen entsprach `documentElement.scrollWidth` exakt der
+  Viewportbreite. Die gemessenen Fußzeileninhalte lagen innerhalb der
+  Kartenränder; lange Kategorie und Verkäufer wurden kontrolliert gekürzt.
+  Browserseite und Dokumenthöhe wuchsen nicht durch die 1.200 Karten.
+- Lokales Suchen und Scrollen ließen die Anzahl der Auction-/Kategorie-/Meta-
+  Datenrequests bei drei; Rendering, Hover und Scrollen lösten keine zusätzlichen
+  Profilanfragen aus.
+
+Aktualisierte Nachtest-Screenshots:
+
+![Auktionshaus mit überarbeiteten Kartenabständen bei 1600×900](pre9-auctions-wide-1600.png)
+
+![Auktionsliste mit gestapeltem Karten-Footer bei 420×900](pre9-auctions-list-420.png)
+
+![Auktionsdetails im schmalen Master/Detail-Modus bei 420×900](pre9-auctions-detail-420.png)
