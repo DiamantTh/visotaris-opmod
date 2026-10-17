@@ -20,6 +20,7 @@ import systems.diath.visotaris_opmod.model.AuctionCategory;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -68,7 +69,9 @@ public final class AuctionApiClient {
             return value == null ? null : new JsonPrimitive(value.toString());
         }
         @Override public Instant deserialize(JsonElement value, Type type, com.google.gson.JsonDeserializationContext context) {
-            return value == null || value.isJsonNull() ? null : Instant.parse(value.getAsString());
+            if (value == null || value.isJsonNull()) return null;
+            try { return Instant.parse(value.getAsString()); }
+            catch (DateTimeParseException | IllegalStateException | UnsupportedOperationException invalidTimestamp) { return null; }
         }
     }
 }

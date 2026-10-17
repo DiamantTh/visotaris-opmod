@@ -35,11 +35,24 @@ angezeigt. Eine Auction-Kategorie beschreibt das Angebot, nicht dessen Preiswäh
 Die Händler-API behält ihre technischen Ziele `opshards` und `redcoins`; sichtbar heißen
 sie `OPShards` beziehungsweise `Redcoins`. Visotaris erfindet dafür kein eigenes Symbol.
 
-In der WebUX verwendet `WebItemNameResolver` für Vanilla-Angebote den lokalisierten
-Namen aus der aktiven Minecraft-Sprache. `/api/meta` stellt die Client-Sprachkennung
-als `clientLanguage` bereit. Bei erkannten Custom-Angeboten hat der echte API-Name
-Vorrang vor dem technischen Trägermaterial. Suche und Sortierung orientieren sich am
-angezeigten Namen; die Namensauflösung selbst löst keine Netzwerkabfragen aus.
+Für generische Vanilla-Itemnamen in der WebUX verwendet `WebItemNameResolver` weiterhin
+die lokalisierte Minecraft-Sprache; `/api/meta` stellt die Client-Sprachkennung als
+`clientLanguage` bereit.
+
+`AuctionItem.displayName` ist im OPSUCHT-Auktionshaus der reguläre sichtbare Itemname;
+Customnamen sind dort üblich. Das Feld hat unabhängig von Kategorie, Icon und
+Trägermaterial Vorrang. Native und WebUX verwenden dafür dieselbe Regel aus
+`AuctionItemNames`: wiederholt `displayName` lediglich den Materialnamen, wird der
+deutsche Vanilla-Name angezeigt. Fehlt `displayName`, dient das lokalisierte Material
+als Fallback, danach der lesbare Materialwert und zuletzt `Unbekanntes Item` als
+Notfallfallback. Suche, Sortierung, Kacheln und Details verwenden denselben sichtbaren
+Namen. Die Namensauflösung löst keine Netzwerkabfragen aus.
+
+Reguläre aktive Snapshots enthalten `startTime` und `endTime`; die Restzeit und die
+Detailanzeige werden aus diesen Zeitpunkten berechnet. Ein neues gültiges `endTime` in
+einem Event aktualisiert denselben UID-Datensatz. Bei partiellen Events bleiben
+ausgelassene Itemfelder und Zeitwerte des Snapshots erhalten. Fehlende oder ungültige
+Zeitwerte werden defensiv behandelt, sind aber kein regulärer API-Fall.
 
 Die API-URL `item.icon` ist die primäre Quelle für OPSUCHT-Custom-Icons. Visotaris lädt
 Icons asynchron und dedupliziert Downloads nach SHA-256 einer normalisierten HTTPS-URL

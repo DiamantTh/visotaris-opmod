@@ -6,6 +6,7 @@ import systems.diath.visotaris_opmod.api.AuctionApiClient;
 import systems.diath.visotaris_opmod.cache.AuctionCache;
 import systems.diath.visotaris_opmod.model.Auction;
 
+import java.time.Instant;
 import java.util.function.Consumer;
 
 /** Applies public auction events to the single UID-keyed local cache. */
@@ -47,6 +48,7 @@ public final class AuctionEventProcessor {
             if (uid == null) uid = uidFrom(update);
             if (uid == null || uid.isBlank()) return Result.IGNORED;
             update.addProperty("uid", uid);
+            discardMalformedTimestamps(update);
 
             Auction previous = cache.get(uid);
             JsonObject full = previous == null ? new JsonObject() : AuctionApiClient.toJsonElement(previous).getAsJsonObject();
@@ -84,6 +86,23 @@ public final class AuctionEventProcessor {
         if (value == null || !value.isJsonObject()) return null;
         JsonElement uid = value.getAsJsonObject().get("uid");
         return uid != null && uid.isJsonPrimitive() ? uid.getAsString() : null;
+    }
+
+    /** A malformed or explicitly null event timestamp is treated as omitted. */
+    private static void discardMalformedTimestamps(JsonObject update) {
+        for (String field : new String[]{"startTime", "endTime"}) {
+            JsonElement value = update.get(field);
+            if (value == null) continue;
+            try {
+                if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+                    update.remove(field);
+                    continue;
+                }
+                Instant.parse(value.getAsString());
+            } catch (RuntimeException invalidTimestamp) {
+                update.remove(field);
+            }
+        }
     }
 
     /** Deeply overlays an event snapshot without dropping fields omitted by partial events. */

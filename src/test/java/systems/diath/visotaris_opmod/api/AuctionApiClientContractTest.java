@@ -21,7 +21,25 @@ class AuctionApiClientContractTest {
         assertEquals("Gräbergemisch", auction.item().displayName());
         assertEquals(21.56, auction.currentBid());
         assertNull(auction.instantBuyPrice());
+        assertEquals(Instant.parse("2026-10-03T12:00:00Z"), auction.startTime());
         assertEquals(Instant.parse("2026-10-03T13:00:00Z"), auction.endTime());
+
+        var serialized = AuctionApiClient.toJsonElement(auction).getAsJsonObject();
+        assertEquals("Gräbergemisch", serialized.getAsJsonObject("item").get("displayName").getAsString());
+        assertEquals("2026-10-03T12:00:00Z", serialized.get("startTime").getAsString());
+        assertEquals("2026-10-03T13:00:00Z", serialized.get("endTime").getAsString());
+    }
+
+    @Test
+    void missingNameAndMalformedTimesRemainDefensiveNulls() {
+        var auction = AuctionApiClient.parseAuction(JsonParser.parseString("""
+            {"uid":"partial-auction","item":{"material":"PAPER","amount":1},"startTime":{},"endTime":"not-a-time"}
+            """));
+
+        assertEquals("partial-auction", auction.uid());
+        assertNull(auction.item().displayName());
+        assertNull(auction.startTime());
+        assertNull(auction.endTime());
     }
 
     @Test

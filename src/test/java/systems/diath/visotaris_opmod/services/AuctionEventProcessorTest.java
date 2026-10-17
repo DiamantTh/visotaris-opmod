@@ -20,15 +20,33 @@ class AuctionEventProcessorTest {
         assertEquals(2, cache.get(UID).item().amount());
 
         String later = """
-            {"uid":"de27aa9bfd33440dfac2c6eee9bc371d","auction":{"uid":"de27aa9bfd33440dfac2c6eee9bc371d","currentBid":5.0,"highestBidder":"bidder-uuid","bids":{"bidder-uuid":5.0},"endTime":"2026-10-03T11:10:00Z"}}
+            {"uid":"de27aa9bfd33440dfac2c6eee9bc371d","auction":{"uid":"de27aa9bfd33440dfac2c6eee9bc371d","currentBid":5.0,"highestBidder":"bidder-uuid","bids":{"bidder-uuid":5.0},"item":{"amount":3},"endTime":"2026-10-03T11:10:00Z"}}
             """;
         assertEquals(AuctionEventProcessor.Result.UPDATED, processor.apply("auction.bid_placed", later));
         Auction updated = cache.get(UID);
         assertEquals(5.0, updated.currentBid());
         assertEquals("bidder-uuid", updated.highestBidder());
-        assertEquals(2, updated.item().amount(), "omitted fields survive partial events");
+        assertEquals(3, updated.item().amount());
+        assertEquals("Custom Item", updated.item().displayName(), "omitted item fields survive partial events");
+        assertEquals(java.util.List.of("Lore"), updated.item().lore());
+        assertEquals(java.util.Map.of("minecraft:sharpness", 5), updated.item().enchantments());
         assertEquals("2026-10-03T11:10:00Z", updated.endTime().toString());
         assertEquals(1, updated.bids().size());
+    }
+
+    @Test void malformedPartialEndTimeDoesNotEraseSnapshotEndTimeOrItemName() {
+        AuctionCache cache = new AuctionCache();
+        AuctionEventProcessor processor = new AuctionEventProcessor(cache);
+        processor.apply("auction.created", SNAPSHOT);
+
+        assertEquals(AuctionEventProcessor.Result.UPDATED, processor.apply("auction.updated",
+            "{\"uid\":\"" + UID + "\",\"auction\":{\"uid\":\"" + UID
+                + "\",\"currentBid\":6.0,\"item\":{\"amount\":4},\"endTime\":{\"bad\":true}}}"));
+
+        Auction updated = cache.get(UID);
+        assertEquals("Custom Item", updated.item().displayName());
+        assertEquals(4, updated.item().amount());
+        assertEquals("2026-10-03T11:00:00Z", updated.endTime().toString());
     }
 
     @Test void observerReceivesAuctionSellerAfterSnapshotAndStreamUpdates() {
@@ -46,6 +64,8 @@ class AuctionEventProcessorTest {
         assertEquals(AuctionEventProcessor.Result.UPDATED, processor.apply("auction.updated",
             "{\"uid\":\"" + UID + "\",\"auction\":{\"uid\":\"" + UID + "\",\"currentBid\":8.0}}"));
         assertEquals(8.0, cache.get(UID).currentBid());
+        assertEquals("Custom Item", cache.get(UID).item().displayName());
+        assertEquals("2026-10-03T11:00:00Z", cache.get(UID).endTime().toString());
         assertEquals(1, cache.snapshot().size());
     }
 

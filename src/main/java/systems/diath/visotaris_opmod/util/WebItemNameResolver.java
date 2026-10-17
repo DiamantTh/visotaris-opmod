@@ -1,15 +1,12 @@
 package systems.diath.visotaris_opmod.util;
 
 import systems.diath.visotaris_opmod.model.Auction;
-import systems.diath.visotaris_opmod.model.AuctionItem;
 
-import java.net.URI;
-import java.util.Locale;
 import java.util.function.Function;
 
 /**
- * Resolves visible names sent to the local Web UX. Vanilla names come from the
- * running client's language resources; named OPSUCHT items keep their API name.
+ * Resolves names sent to the local Web UX. Auction names share the same
+ * display-name priority and vanilla-alias rules as the native auction UX.
  */
 public final class WebItemNameResolver {
     private static final String UNKNOWN_ITEM = "Unbekanntes Item";
@@ -25,10 +22,11 @@ public final class WebItemNameResolver {
     }
 
     public static String auctionName(Auction auction) {
-        if (auction == null || auction.item() == null) return UNKNOWN_ITEM;
-        AuctionItem item = auction.item();
-        if (isCustomAuction(auction) && hasText(item.displayName())) return item.displayName().trim();
-        return vanillaOrFallback(item.material(), item.displayName());
+        return auctionName(auction, AuctionItemNames::localizedVanillaName);
+    }
+
+    static String auctionName(Auction auction, Function<String, String> materialLocalizer) {
+        return AuctionItemNames.visibleName(auction == null ? null : auction.item(), materialLocalizer);
     }
 
     static String vanillaOrFallback(String material, String apiDisplayName) {
@@ -43,22 +41,6 @@ public final class WebItemNameResolver {
         if (hasText(apiDisplayName)) return apiDisplayName.trim();
         if (hasText(material)) return material.trim();
         return UNKNOWN_ITEM;
-    }
-
-    private static boolean isCustomAuction(Auction auction) {
-        String category = auction.category() == null ? "" : auction.category().toLowerCase(Locale.ROOT);
-        return category.startsWith("custom_") || category.startsWith("op_")
-            || isOpsuchtIcon(auction.item().icon());
-    }
-
-    private static boolean isOpsuchtIcon(String rawUrl) {
-        if (!hasText(rawUrl)) return false;
-        try {
-            String host = URI.create(rawUrl.trim()).getHost();
-            return host != null && host.equalsIgnoreCase("items.opsucht.net");
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
     }
 
     private static boolean hasText(String value) { return value != null && !value.isBlank(); }

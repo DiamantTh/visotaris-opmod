@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.resources.Identifier
 import systems.diath.visotaris_opmod.VisotarisLogger
+import systems.diath.visotaris_opmod.api.AuctionApiClient
 import systems.diath.visotaris_opmod.cache.MarketCache
 import systems.diath.visotaris_opmod.cache.AuctionCache
 import systems.diath.visotaris_opmod.cache.PriceHistoryCache
@@ -165,7 +166,7 @@ class WebServer(
             }
             get("/api/auctions") {
                 val values = auctionCache.snapshot().values.map { auction ->
-                    val json = JsonParser.parseString(gson.toJson(auction)).asJsonObject
+                    val json = AuctionApiClient.toJsonElement(auction).asJsonObject
                     val item = auction.item()
                     val visibleItemName = WebItemNameResolver.auctionName(auction)
                     val sellerName = profileCache.getCachedName(auction.seller())
@@ -215,7 +216,8 @@ class WebServer(
                 call.respondText(gson.toJson(mapOf("uuid" to uuid, "name" to cachedName, "resolved" to resolved)), ContentType.Application.Json)
             }
             get("/api/auctions/finalized") {
-                call.respondText(gson.toJson(auctionCache.finalizedSnapshot().values), ContentType.Application.Json)
+                val values = auctionCache.finalizedSnapshot().values.map(AuctionApiClient::toJsonElement)
+                call.respondText(gson.toJson(values), ContentType.Application.Json)
             }
             post("/api/auctions/refresh") {
                 if (!allowLocalWrite(call)) return@post

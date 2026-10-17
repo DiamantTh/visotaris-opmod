@@ -13,6 +13,15 @@ class AuctionItemNamesTest {
         }));
     }
 
+    @Test void customDisplayNamesRemainVisibleOnPaperCarriers() {
+        for (String displayName : new String[]{"Spawnersplitter", "+10% Speed Upgrade Modul"}) {
+            AuctionItem item = new AuctionItem("PAPER", null, 1, displayName, null, null);
+            assertEquals(displayName, AuctionItemNames.visibleName(item, material -> {
+                throw new AssertionError("the technical carrier must not replace an auction display name");
+            }));
+        }
+    }
+
     @Test void usesLocalizedVanillaNameThenMaterialThenUnknownFallback() {
         assertEquals("Papier", AuctionItemNames.visibleName(new AuctionItem("PAPER", null, 1, null, null, null),
             material -> "Papier"));
@@ -24,5 +33,11 @@ class AuctionItemNamesTest {
     @Test void localizesApiNamesThatAreJustVanillaMaterialNames() {
         AuctionItem item = new AuctionItem("ANCIENT_DEBRIS", null, 1, "Ancient Debris", null, null);
         assertEquals("Antiker Schrott", AuctionItemNames.visibleName(item, material -> "Antiker Schrott"));
+    }
+
+    @Test void localizesDisplayNameAliasesOfVanillaMaterials() {
+        AuctionItem item = new AuctionItem("DIAMOND", null, 1, "DIAMOND", null, null);
+        assertEquals("Diamant", AuctionItemNames.visibleName(item, material ->
+            material.equalsIgnoreCase("DIAMOND") ? "Diamant" : null));
     }
 }

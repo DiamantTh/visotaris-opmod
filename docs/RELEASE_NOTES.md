@@ -15,8 +15,11 @@
 - Die History-Charts nutzen auf breiten Fenstern ein Dashboard-Layout und passen
   ihre Größe auch bei Browser-Resize an.
 - AH-Preise bleiben normale Dollarbeträge; OPShards und Redcoins werden vollständig
-  ausgeschrieben. Das AH liefert lokalisierte Itemnamen und deutsche
-  Verzauberungsnamen an die WebUX.
+  ausgeschrieben. `AuctionItem.displayName` ist der reguläre sichtbare Itemname und
+  bleibt auch bei Custom-Items mit technischem Trägermaterial erhalten. Nur ein Alias
+  des Materials wird als deutscher Vanilla-Name angezeigt; wenn `displayName` fehlt,
+  dient das Material als defensiver Fallback. Native und WebUX teilen diese Auflösung.
+  Verzauberungen erscheinen mit deutschen Namen.
 - Browserprüfung mit lokalen synthetischen Fixtures und 1.200 Auktionen:
   [pre.9-Prüfbericht](ux/implemented/pre9-webux-responsive-data-check.md).
 

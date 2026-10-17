@@ -54,7 +54,7 @@ public final class AuctionItemNames {
         return item.material();
     }
 
-    private static String localizedVanillaName(String material) {
+    static String localizedVanillaName(String material) {
         if (!hasText(material)) return null;
         String raw = material.trim();
         Identifier id = Identifier.tryParse(raw);

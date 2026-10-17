@@ -129,3 +129,20 @@ Aktualisierte Nachtest-Screenshots:
 ![Auktionsliste mit gestapeltem Karten-Footer bei 420×900](pre9-auctions-list-420.png)
 
 ![Auktionsdetails im schmalen Master/Detail-Modus bei 420×900](pre9-auctions-detail-420.png)
+
+## Semantik-Nachtrag: Auction-Itemname und Endzeit
+
+Die pre.9-Nachprüfung am 17. Oktober 2026 hat die OPSUCHT-Feldsemantik abgesichert.
+`item.displayName` ist der reguläre sichtbare Auktions-Itemname; Customnamen bleiben
+unabhängig von Material, Kategorie oder Icon erhalten. Nur wenn der Wert das
+Materialalias wiederholt, wird der deutsche Vanilla-Name eingesetzt. Die Web-API
+ergänzt `visibleName` nach derselben gemeinsamen Regel, die auch die native Liste,
+Suche, Sortierung und Detailansicht verwenden.
+
+Reguläre Snapshots enthalten `startTime` und `endTime`; Restzeit und Details nutzen
+`endTime`. Der Web-Endpunkt serialisiert beide Werte als ISO-Zeitstempel. Tests decken
+außerdem partielles Event-Merging ab: ausgelassene Itemfelder bleiben erhalten, ein
+neues gültiges `endTime` wird übernommen, und ein kaputter Zeitwert löscht den
+Snapshotwert nicht. Fehlender Name oder ungültige Zeiten sind defensive Fehlerfälle,
+nicht die dokumentierte Form regulärer Auktionen. Der pre.9-Kachel-, Padding- und
+Master/Detail-Aufbau blieb bei dieser Semantikprüfung unverändert.
