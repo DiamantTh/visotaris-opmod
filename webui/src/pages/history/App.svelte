@@ -26,6 +26,7 @@
 
   let chartInstances = {}
   let chartEnginePromise = null
+  let chartResizeObserver
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const currentPoints = $derived(history ? (history[granularity] ?? []) : [])
@@ -100,6 +101,19 @@
       cancelled = true
       cancelAnimationFrame(frame)
       destroyCharts()
+    }
+  })
+
+  $effect(() => {
+    const elements = [chartPriceEl, chartTxEl, chartItemsEl].filter(Boolean)
+    if (!elements.length || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => requestAnimationFrame(() => handleResize()))
+    elements.forEach(element => observer.observe(element))
+    chartResizeObserver?.disconnect()
+    chartResizeObserver = observer
+    return () => {
+      observer.disconnect()
+      if (chartResizeObserver === observer) chartResizeObserver = null
     }
   })
 
@@ -268,12 +282,13 @@
   })
 </script>
 
+<div class="vi-viewport-shell">
 <Navbar activePage="history" />
 
-<div class="vi-page">
+<main class="vi-page vi-viewport-page history-page">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
-  <div class="flex items-center gap-3 mb-3 flex-wrap">
+  <div class="history-toolbar vi-page-toolbar flex items-center gap-3 flex-wrap">
     <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon="lucide:trending-up" width={15} style="color:var(--vi-accent)" />Preisverlauf
     </h5>
@@ -281,7 +296,7 @@
       <input
         type="text"
         class="search-input"
-        style="width:220px"
+        style="width:220px;max-width:100%"
         placeholder="Material (z.B. diamond)"
         bind:value={materialInput}
         onkeydown={(e) => e.key === 'Enter' && loadHistory()}
@@ -294,7 +309,7 @@
 
   <!-- ── Schnellauswahl ────────────────────────────────────────────────────── -->
   {#if recent.length > 0}
-    <div class="flex gap-2 mb-3 flex-wrap items-center" transition:fade>
+    <div class="history-recent vi-page-toolbar flex gap-2 items-center" transition:fade>
       <span class="text-sm" style="color:var(--vi-text-muted)">Zuletzt:</span>
       {#each recent as m (m)}
         <button
@@ -309,7 +324,7 @@
 
   <!-- ── Analytics-Item-Header ─────────────────────────────────────────────── -->
   {#if currentMaterial}
-    <div class="vi-card mb-3" transition:fade={{ duration: 150 }}>
+    <div class="vi-card history-item-header vi-page-toolbar" transition:fade={{ duration: 150 }}>
       <div class="vi-card-header">
         <div class="flex items-center gap-3">
           <img src={itemIcon(currentMaterial)} class="item-icon-lg" alt="" onerror={hideOnError}>
@@ -335,6 +350,7 @@
     </div>
   {/if}
 
+  <div class="history-content-scroll vi-scroll-region">
   <!-- ── Lade-Spinner ──────────────────────────────────────────────────────── -->
   {#if loading}
     <div class="loading-overlay" transition:fade>
@@ -378,7 +394,7 @@
   <!-- ── Charts ────────────────────────────────────────────────────────────── -->
   {#if !loading && history && currentPoints.length > 0}
     <!-- Kennzahlen -->
-    <div class="stat-grid mb-3" transition:fade>
+    <div class="stat-grid history-stats" transition:fade>
       {#if live}
         <div class="stat-card live" title="Aktueller Kaufpreis">
           <div class="stat-value">{fmtMoney(live.buy)}</div>
@@ -416,8 +432,9 @@
         </div>
       {/if}
     </div>
+    <div class="history-dashboard">
     <!-- Preisentwicklung -->
-    <div class="vi-card mb-3" transition:fade>
+    <div class="vi-card history-price-card" transition:fade>
       <div class="vi-card-header">
         <span class="flex items-center gap-2">
           <Icon icon="lucide:trending-up" width={14} style="color:var(--vi-accent)" />Preisentwicklung
@@ -425,38 +442,76 @@
         </span>
       </div>
       <div class="vi-card-body">
-        <div class="chart-container" bind:this={chartPriceEl}></div>
+        <div class="chart-container history-price-chart" bind:this={chartPriceEl}></div>
       </div>
     </div>
 
+    <div class="history-secondary-charts">
     <!-- Transaktionen -->
-    <div class="vi-card mb-3" transition:fade>
+    <div class="vi-card history-chart-card" transition:fade>
       <div class="vi-card-header">
         <span class="flex items-center gap-2">
           <Icon icon="lucide:arrow-left-right" width={14} style="color:var(--vi-accent)" />Transaktionen
         </span>
       </div>
       <div class="vi-card-body">
-        <div class="chart-container" bind:this={chartTxEl}></div>
+        <div class="chart-container history-secondary-chart" bind:this={chartTxEl}></div>
       </div>
     </div>
 
     <!-- Gehandelte Items -->
-    <div class="vi-card" transition:fade>
+    <div class="vi-card history-chart-card" transition:fade>
       <div class="vi-card-header">
         <span class="flex items-center gap-2">
           <Icon icon="lucide:boxes" width={14} style="color:var(--vi-redcoin)" />Gehandelte Items
         </span>
       </div>
       <div class="vi-card-body">
-        <div class="chart-container" bind:this={chartItemsEl}></div>
+        <div class="chart-container history-secondary-chart" bind:this={chartItemsEl}></div>
       </div>
       <div class="vi-card-footer flex justify-between">
         <span>{currentPoints.length} Datenpunkte</span>
         {#if currentPoints.length > 0}<span>Zeitraum: {dateRange}</span>{/if}
       </div>
     </div>
+    </div>
+    </div>
 
   {/if}
 
+  </div>
+</main>
 </div>
+
+<style>
+  .history-toolbar { margin:0; }
+  .history-toolbar > div:last-child { min-width:0; }
+  .history-recent { flex:0 0 auto; max-width:100%; overflow-x:auto; white-space:nowrap; }
+  .history-content-scroll { flex:1 1 auto; padding:0 .1rem .3rem; }
+  .history-stats { margin-bottom:.7rem; }
+  .history-dashboard { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(19rem,1fr); align-items:stretch; gap:.75rem; }
+  .history-price-card,.history-chart-card { display:flex; flex-direction:column; min-width:0; }
+  .history-price-card .vi-card-body,.history-chart-card .vi-card-body { flex:1 1 auto; min-height:0; }
+  .history-price-chart { height:clamp(280px,46vh,500px); }
+  .history-secondary-charts { display:grid; grid-template-rows:repeat(2,minmax(0,1fr)); gap:.75rem; min-width:0; }
+  .history-secondary-chart { height:clamp(160px,23vh,220px); }
+  @media(max-width:1100px) {
+    .history-dashboard { grid-template-columns:minmax(0,1fr); }
+    .history-secondary-charts { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:auto; }
+    .history-price-chart { height:clamp(250px,40vh,400px); }
+    .history-secondary-chart { height:clamp(155px,22vh,200px); }
+  }
+  @media(max-width:700px) {
+    .history-toolbar { align-items:stretch; }
+    .history-toolbar > div:last-child { width:100%; }
+    .history-toolbar .search-input { flex:1; width:auto!important; }
+    .history-secondary-charts { grid-template-columns:minmax(0,1fr); }
+    .history-price-chart { height:clamp(230px,36vh,320px); }
+    .history-secondary-chart { height:clamp(180px,28vh,240px); }
+    .history-item-header .vi-card-header { align-items:flex-start; }
+  }
+  @media(min-width:1101px) and (max-height:860px) {
+    .history-price-chart { height:clamp(250px,40vh,360px); }
+    .history-secondary-chart { height:clamp(145px,18vh,180px); }
+  }
+</style>

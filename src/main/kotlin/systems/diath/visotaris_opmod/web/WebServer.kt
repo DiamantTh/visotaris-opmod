@@ -29,6 +29,7 @@ import systems.diath.visotaris_opmod.services.PriceAlertEngine
 import systems.diath.visotaris_opmod.services.PriceAlertService
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
 import systems.diath.visotaris_opmod.util.AuctionSearch
+import systems.diath.visotaris_opmod.util.AuctionDisplayText
 import systems.diath.visotaris_opmod.util.WebItemNameResolver
 import java.util.Arrays
 
@@ -170,7 +171,13 @@ class WebServer(
                     val sellerName = profileCache.getCachedName(auction.seller())
                     json.addProperty("sellerName", sellerName)
                     json.addProperty("searchText", AuctionSearch.searchableText(auction, sellerName, visibleItemName))
-                    json.get("item")?.takeIf { it.isJsonObject }?.asJsonObject?.addProperty("visibleName", visibleItemName)
+                    json.get("item")?.takeIf { it.isJsonObject }?.asJsonObject?.apply {
+                        addProperty("visibleName", visibleItemName)
+                        val visibleEnchantments = item?.enchantments()?.map { (key, level) ->
+                            AuctionDisplayText.enchantment(key, level)
+                        }.orEmpty()
+                        add("visibleEnchantments", gson.toJsonTree(visibleEnchantments))
+                    }
                     json
                 }
                 call.respondText(gson.toJson(values), ContentType.Application.Json)

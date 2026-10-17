@@ -28,6 +28,15 @@ export function fmtMoney(v) {
   return amount === '–' ? amount : '$' + amount
 }
 
+/** Sichtbarer Name der unterstützten Händler-Zielwährungen. */
+export function currencyDisplayName(target) {
+  const key = String(target ?? '').trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
+  if (key === 'opshards' || key === 'op_shards') return 'OPShards'
+  if (key === 'redcoins' || key === 'red_coin') return 'Redcoins'
+  if (key === 'ops' || key === 'rdc') return 'Unbekannte Währung'
+  return key ? key.replaceAll('_', ' ').replace(/\b\w/g, char => char.toLocaleUpperCase('de')) : 'Unbekannte Währung'
+}
+
 /**
  * Formatiert eine Ganzzahl mit Tausender-Gruppierung.
  */

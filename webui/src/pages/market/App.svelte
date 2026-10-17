@@ -144,12 +144,13 @@
   })
 </script>
 
+<div class="vi-viewport-shell">
 <Navbar activePage="market" />
 
-<div class="vi-page">
+<main class="vi-page vi-viewport-page market-viewport">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
-  <div class="flex items-center gap-3 mb-3 flex-wrap">
+  <div class="market-page-toolbar vi-page-toolbar flex items-center gap-3 flex-wrap">
     <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon="lucide:table" width={15} style="color:var(--vi-accent)" />Marktpreise
     </h5>
@@ -166,7 +167,7 @@
       <input
         type="text"
         class="search-input"
-        style="width:220px"
+        style="width:220px;max-width:100%"
         placeholder="Suchen…"
         bind:value={search}
       >
@@ -177,7 +178,7 @@
   </div>
 
   {#if items.length > 0}
-    <div class="vi-summary" transition:fade={{ duration: 150 }}>
+    <div class="vi-summary vi-page-toolbar" transition:fade={{ duration: 150 }}>
       <div class="vi-metric"><span class="vi-metric-label">Aktive Marktpreise</span><span class="vi-metric-value">{fmtInt(items.length)}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">Kategorien</span><span class="vi-metric-value">{fmtInt(categories.length)}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">API-Stand</span><span class="vi-metric-value fresh">{lastDataUpdate ? new Date(lastDataUpdate).toLocaleTimeString('de-DE') : '–'}</span></div>
@@ -185,7 +186,7 @@
   {/if}
 
   {#if topItems.length > 0}
-    <section class="market-top" transition:fade={{ duration: 150 }} aria-label="Marktaktivität Top 10">
+    <section class="market-top vi-page-toolbar" transition:fade={{ duration: 150 }} aria-label="Marktaktivität Top 10">
       <div class="market-top-heading">
         <span><Icon icon="lucide:flame" width={14} /> Marktaktivität · Top 10</span>
         <small>{topWarming > 0 ? `Verläufe werden geladen (${topWarming})…` : 'nach aktiven Aufträgen'}</small>
@@ -208,11 +209,11 @@
     </section>
   {/if}
 
-  <div class:vi-data-layout={categories.length > 0}>
+  <div class="market-workspace vi-data-workspace" class:has-categories={categories.length > 0}>
     {#if categories.length > 0}
       <aside class="vi-category-rail" transition:fade={{ duration: 150 }}>
         <div class="vi-category-rail-title"><span>Kategorien</span><span style="color:var(--vi-text-muted)">{categories.length}</span></div>
-        <div class="vi-category-list">
+        <div class="vi-category-list vi-scroll-region">
           <button class="vi-category" class:active={category === ''} onclick={() => category = ''}>
             <span>Alle Items</span><span class="vi-category-count">{fmtInt(items.length)}</span>
           </button>
@@ -225,7 +226,7 @@
       </aside>
     {/if}
 
-    <div>
+    <div class="market-main-column">
       {#if categories.length > 0}
         <div class="vi-mobile-categories" transition:fade>
           <button class="chip" class:active={category === ''} onclick={() => category = ''}>Alle</button>
@@ -254,7 +255,7 @@
 
   <!-- ── Grid-Ansicht ──────────────────────────────────────────────────────── -->
   {#if viewMode === 'grid' && (!loading || items.length > 0)}
-    <div class="market-grid mb-3" transition:fade={{ duration: 200 }}>
+    <div class="market-grid vi-scroll-region" transition:fade={{ duration: 200 }}>
       {#each filteredItems as item (item.itemKey)}
         <a
           href="/history?m={encodeURIComponent(item.itemKey)}"
@@ -291,14 +292,13 @@
       {/each}
     </div>
     {#if filteredItems.length === 0}
-      <div class="empty-state mb-3">
+      <div class="empty-state">
         <Icon icon="lucide:search-x" width={30} />
         <div>Keine Marktpreise für diese Auswahl.</div>
         <small>Suche oder Kategorie zurücksetzen.</small>
       </div>
     {/if}
-    <div class="vi-card-footer flex justify-between rounded"
-         style="border:1px solid var(--vi-border); background:var(--vi-bg-card)">
+    <div class="vi-card-footer vi-data-footer flex justify-between">
       <span>{filteredItems.length} / {items.length} Einträge</span>
       {#if lastDataUpdate}<span>API-Stand: {new Date(lastDataUpdate).toLocaleString('de-DE')}</span>{/if}
     </div>
@@ -306,8 +306,8 @@
 
   <!-- ── Listen-Ansicht ────────────────────────────────────────────────────── -->
   {#if viewMode === 'list' && (!loading || items.length > 0)}
-    <div class="vi-card" transition:fade={{ duration: 200 }}>
-      <div class="overflow-x-auto">
+    <div class="vi-card vi-data-surface market-list-card" transition:fade={{ duration: 200 }}>
+      <div class="vi-table-region">
         <table class="vi-table">
           <thead>
             <tr>
@@ -315,7 +315,7 @@
               <th class="hide-sm">Kategorie</th>
               <th onclick={() => setSort('buy')}  class="text-right {sortCls('buy')}">Kaufpreis</th>
               <th onclick={() => setSort('sell')} class="text-right {sortCls('sell')}">Verkaufspreis</th>
-              <th class="text-right">Spanne</th>
+              <th class="text-right hide-xs">Spanne</th>
               <th onclick={() => setSort('orders')} class="text-right {sortCls('orders')}">Aufträge (K / V)</th>
             </tr>
           </thead>
@@ -350,7 +350,7 @@
                     <span class="price-na">–</span>
                   {/if}
                 </td>
-                <td class="text-right">
+                <td class="text-right hide-xs">
                   {#if item.buy > 0 && item.sell > 0}
                     <span class="{spreadClass(item.buy, item.sell)} tabular">
                       {fmtMoney(item.buy - item.sell)}
@@ -375,7 +375,7 @@
           <div>Keine Marktpreise für diese Auswahl.</div>
         </div>
       {/if}
-      <div class="vi-card-footer flex justify-between">
+      <div class="vi-card-footer vi-data-footer flex justify-between">
         <span>{filteredItems.length} / {items.length} Einträge</span>
         {#if lastDataUpdate}<span>API-Stand: {new Date(lastDataUpdate).toLocaleString('de-DE')}</span>{/if}
       </div>
@@ -384,6 +384,7 @@
 
     </div>
   </div>
+</main>
 </div>
 
 <style>
@@ -394,5 +395,35 @@
   }
   @media (max-width: 800px) {
     .vi-mobile-categories { display: flex; }
+  }
+  .market-viewport { gap:.55rem; }
+  .market-page-toolbar { margin:0; }
+  .market-workspace { gap:.75rem; }
+  .market-workspace.has-categories { display:grid; grid-template-columns:13.5rem minmax(0,1fr); }
+  .market-workspace .vi-category-rail { display:flex; flex-direction:column; min-height:0; }
+  .market-workspace .vi-category-rail-title { flex:0 0 auto; }
+  .market-workspace .vi-category-list { flex:1 1 auto; }
+  .market-main-column { display:flex; flex:1 1 auto; flex-direction:column; min-width:0; min-height:0; }
+  .vi-mobile-categories { flex:0 0 auto; margin:0 0 .45rem; }
+  .market-main-column .loading-overlay { flex:1 1 auto; min-height:0; }
+  .market-main-column .vi-alert-error { flex:0 0 auto; }
+  .market-grid { flex:1 1 auto; min-height:0; align-content:start; padding:.65rem; }
+  .market-list-card { flex:1 1 auto; }
+  .market-list-card .vi-table-region { flex:1 1 auto; }
+  .vi-data-footer { display:flex; justify-content:space-between; gap:.8rem; }
+  @media (max-width:800px) {
+    .market-workspace.has-categories { display:flex; }
+    .market-workspace .vi-category-rail { display:none; }
+  }
+  @media (max-width:520px) {
+    .market-page-toolbar { gap:.5rem; }
+    .market-page-toolbar > div:last-child { width:100%; }
+    .market-page-toolbar .search-input { flex:1; width:auto!important; }
+    .market-list-card .vi-table th,.market-list-card .vi-table td { padding:.38rem .4rem; font-size:.68rem; }
+    .market-list-card .vi-table th { white-space:normal; }
+    .market-list-card .vi-table .hide-xs { display:none; }
+    .market-list-card .vi-table th:first-child { width:38%; }
+    .market-grid { padding:.45rem; grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr)); }
+    .vi-data-footer { font-size:.68rem; }
   }
 </style>

@@ -44,6 +44,11 @@
   })
 
   function itemName(auction) { return auction?.item?.visibleName || auction?.item?.displayName || auction?.item?.material || 'Unbekanntes Item' }
+  function canonicalUuid(value) {
+    const compact = String(value || '').replaceAll('-', '').toLowerCase()
+    return /^[0-9a-f]{32}$/.test(compact) ? `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}` : value
+  }
+  function playerName(uuid) { return uuid ? (profileNames[canonicalUuid(uuid)] || 'Spielername nicht verfügbar') : '–' }
   function sellerName(auction) { return auction?.sellerName || playerName(auction?.seller) }
   function fallbackMaterial(auction) {
     const item = auction?.item || {}
@@ -51,26 +56,34 @@
     if (category.startsWith('custom_') || category.startsWith('op_') || /items\.opsucht\.net/i.test(item.icon || '')) return 'barrier'
     return item.material || 'barrier'
   }
-  function auctionIconLoaded(event) {
-    const fallback = event.currentTarget.previousElementSibling
-    if (fallback) fallback.hidden = true
+  function categoryLabel(raw) {
+    if (!raw) return 'Ohne Kategorie'
+    const categoryEntry = categories.find(entry => entry.name === raw)
+    if (categoryEntry?.displayName) return categoryEntry.displayName
+    return String(raw).replace(/^minecraft:/, '').replaceAll(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toLocaleUpperCase('de'))
   }
-  function hideFallbackIcon(event) { event.currentTarget.hidden = true }
-  function shortId(value) { return value ? `${value.slice(0, 8)}…${value.slice(-4)}` : 'unbekannt' }
-  function canonicalUuid(value) {
-    const compact = String(value || '').replaceAll('-', '').toLowerCase()
-    return /^[0-9a-f]{32}$/.test(compact) ? `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}` : value
+  function statusLabel(raw) {
+    const key = String(raw || '').trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
+    return ({ active: 'Aktiv', open: 'Aktiv', sold: 'Verkauft', instant_bought: 'Sofort gekauft', bought: 'Sofort gekauft', expired: 'Abgelaufen', cancelled: 'Abgebrochen', canceled: 'Abgebrochen', removed: 'Entfernt', pending: 'Ausstehend' })[key]
+      || (key ? key.replaceAll('_', ' ').replace(/\b\w/g, char => char.toLocaleUpperCase('de')) : 'Unbekannt')
   }
-  function playerName(uuid) { return uuid ? (profileNames[canonicalUuid(uuid)] || shortId(uuid)) : '–' }
   function date(value) { return value ? new Date(value).toLocaleString('de-DE') : '–' }
   function remaining(value) {
-    const seconds = Math.max(0, Math.floor((Date.parse(value || '') - Date.now()) / 1000))
+    const seconds = Math.floor((Date.parse(value || '') - Date.now()) / 1000)
     if (!Number.isFinite(seconds) || !value) return '–'
-    const hours = Math.floor(seconds / 3600)
+    if (seconds <= 0) return 'Abgelaufen'
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor(seconds % 86400 / 3600)
     const minutes = Math.floor(seconds % 3600 / 60)
-    return hours ? `${hours} h ${minutes} min` : `${minutes} min`
+    if (days) return `${days} T ${hours} h`
+    if (hours) return `${hours} h ${minutes} min`
+    return `${minutes} min`
   }
   function bidCount(auction) { return Object.keys(auction.bids || {}).length }
+  function bidEntries(auction) {
+    return Object.entries(auction?.bids || {}).sort((a, b) => b[1] - a[1])
+  }
+  function enchantments(auction) { return auction?.item?.visibleEnchantments || [] }
   function cycleSort(value) { if (sortKey === value) descending = !descending; else { sortKey = value; descending = false } }
   function sortLabel() { return ({ ending: 'Ablauf', name: 'Name', current: 'Gebot', instant: 'Sofortkauf' })[sortKey] }
   function retryAuctionIcon(event) {
@@ -83,6 +96,11 @@
       image.src = `/api/auctions/${encodeURIComponent(image.dataset.uid)}/icon?retry=${Date.now()}`
     }, 1200)
   }
+  function auctionIconLoaded(event) {
+    const fallback = event.currentTarget.previousElementSibling
+    if (fallback) fallback.hidden = true
+  }
+  function hideFallbackIcon(event) { event.currentTarget.hidden = true }
 
   async function load() {
     if (loading) return
@@ -101,13 +119,12 @@
     finally { loading = false }
   }
 
-  async function resolveProfiles(rows, includeBids = false) {
+  async function resolveProfiles(rows) {
     const ids = new Set()
     for (const auction of rows) {
-      if (includeBids) {
-        if (auction.highestBidder) ids.add(auction.highestBidder)
-        Object.keys(auction.bids || {}).slice(0, 50).forEach(id => ids.add(id))
-      }
+      if (auction.seller) ids.add(auction.seller)
+      if (auction.highestBidder) ids.add(auction.highestBidder)
+      Object.keys(auction.bids || {}).slice(0, 50).forEach(id => ids.add(id))
     }
     for (const raw of ids) {
       const last = profileLookupAt.get(raw) || 0
@@ -138,77 +155,231 @@
   })
 </script>
 
-<Navbar activePage="auctions" />
-<main class="vi-page auction-page">
-  <header class="auction-heading">
-    <div><p class="auction-kicker">OPSUCHT · READ-ONLY · LOKALER CACHE</p><h1>Auktionshaus</h1><p>Aktive Angebote und Live-Änderungen aus derselben AuctionCache-Instanz wie im Minecraft-Menü.</p></div>
-    <button class="btn-primary" onclick={refresh} disabled={refreshing}><Icon icon="lucide:refresh-cw" width={15} />{refreshing ? 'Angefragt …' : 'Auktionen aktualisieren'}</button>
-  </header>
+<div class="vi-viewport-shell auction-shell">
+  <Navbar activePage="auctions" />
+  <main class="vi-page vi-viewport-page auction-page">
+    <header class="auction-heading vi-page-toolbar">
+      <div><p class="auction-kicker">OPSUCHT · READ-ONLY · LOKALER CACHE</p><h1>Auktionshaus</h1><p>Aktive Angebote und Live-Änderungen aus derselben AuctionCache-Instanz wie im Minecraft-Menü.</p></div>
+      <button class="btn-primary" onclick={refresh} disabled={refreshing}><Icon icon="lucide:refresh-cw" width={15} />{refreshing ? 'Angefragt …' : 'Auktionen aktualisieren'}</button>
+    </header>
 
-  {#if error}<div class="vi-alert-error" role="alert">{error}</div>{/if}
-  {#if notice}<div class="auction-notice" role="status">{notice}</div>{/if}
-  <section class="auction-toolbar vi-card">
-    <label class="auction-search"><Icon icon="lucide:search" width={15} /><input bind:value={search} placeholder="Item oder Verkäufer suchen …" /></label>
-    <select bind:value={category} aria-label="Kategorie"><option value="">Alle Kategorien</option>{#each categories as entry}<option value={entry.name}>{entry.displayName || entry.name}</option>{/each}</select>
-    <button class="btn-outline" onclick={() => cycleSort(sortKey)} aria-label="Sortierrichtung umschalten">Sortierung: {sortLabel()} {descending ? '↓' : '↑'}</button>
-    <select bind:value={sortKey} aria-label="Sortieren nach"><option value="ending">Ablauf</option><option value="name">Name</option><option value="current">Gebot</option><option value="instant">Sofortkauf</option></select>
-  </section>
-  <p class="auction-meta">{auctions.length.toLocaleString('de-DE')} aktiv · Cache: {meta?.updatedAt ? date(meta.updatedAt) : 'noch nicht synchronisiert'} · {meta?.streamActive ? 'Live verbunden' : meta?.streamEnabled ? (meta?.devOverride && !meta?.liveUpdatesEnabled ? 'Entwicklungsstream verbindet …' : 'Liveupdates verbinden …') : 'manueller Abruf'}</p>
+    {#if error}<div class="vi-alert-error auction-notice" role="alert">{error}</div>{/if}
+    {#if notice}<div class="auction-notice" role="status">{notice}</div>{/if}
+    <section class="auction-toolbar vi-card vi-page-toolbar">
+      <label class="auction-search"><Icon icon="lucide:search" width={15} /><input bind:value={search} placeholder="Item oder Verkäufer suchen …" /></label>
+      <select bind:value={category} aria-label="Kategorie"><option value="">Alle Kategorien</option>{#each categories as entry}<option value={entry.name}>{entry.displayName || categoryLabel(entry.name)}</option>{/each}</select>
+      <button class="btn-outline auction-sort-direction" onclick={() => cycleSort(sortKey)} aria-label="Sortierrichtung umschalten">{descending ? '↓' : '↑'}</button>
+      <select bind:value={sortKey} aria-label="Sortieren nach"><option value="ending">Ablauf</option><option value="name">Name</option><option value="current">Gebot</option><option value="instant">Sofortkauf</option></select>
+    </section>
 
-  {#if loading && !auctions.length}
-    <div class="auction-empty">Lokalen Auktionscache laden …</div>
-  {:else if !filtered.length}
-    <div class="auction-empty"><strong>{auctions.length ? 'Keine passenden Auktionen' : 'Noch keine Auktionen synchronisiert'}</strong><span>{auctions.length ? 'Suche oder Kategorie anpassen.' : '„Auktionen aktualisieren“ lädt /auctions/active. Das Öffnen dieser Seite fragt keine externe Auktionsliste ab.'}</span></div>
-  {:else}
-    <div class="auction-layout">
-      <section class="auction-list" aria-label="Aktive Auktionen">
-        {#each filtered as auction (auction.uid)}
-          <button class="auction-row" class:selected={selectedUid === auction.uid} onclick={() => { selectedUid = auction.uid; resolveProfiles([auction], true) }}>
-            <span class="auction-icons" aria-hidden="true">
-              <img class="auction-icon-fallback" src={itemIcon(fallbackMaterial(auction))} alt="" loading="lazy" onerror={hideFallbackIcon} />
-              <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(auction.uid)}/icon`} data-uid={auction.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
-            </span>
-            <span class="auction-row-main"><strong>{itemName(auction)}</strong><small>{auction.item?.amount || 1}× · {auction.category || 'Ohne Kategorie'} · Verkäufer {sellerName(auction)}</small></span>
-            <span class="auction-price"><strong>{fmtMoney(auction.currentBid)}</strong><small>{auction.instantBuyPrice == null ? 'kein Sofortkauf' : `Sofort ${fmtMoney(auction.instantBuyPrice)}`}</small></span>
-            <span class="auction-time"><strong>{remaining(auction.endTime)}</strong><small>Restzeit</small></span>
-          </button>
-        {/each}
+    <div class="auction-layout vi-data-workspace" class:has-selection={Boolean(selected)}>
+      <section class="auction-results vi-data-surface" aria-label="Aktive Auktionen">
+        <div class="auction-results-heading"><strong>{filtered.length.toLocaleString('de-DE')} Angebote</strong><span>{meta?.updatedAt ? `Cache ${date(meta.updatedAt)}` : 'Cache nicht synchronisiert'} · {meta?.streamActive ? 'Liveupdates aktiv' : meta?.streamEnabled ? (meta?.devOverride && !meta?.liveUpdatesEnabled ? 'Entwicklungsstream verbindet …' : 'Liveupdates verbinden …') : 'manueller Abruf'}</span></div>
+        {#if loading && !auctions.length}
+          <div class="auction-empty auction-empty-scroll">Lokalen Auktionscache laden …</div>
+        {:else if !filtered.length}
+          <div class="auction-empty auction-empty-scroll"><strong>{auctions.length ? 'Keine passenden Auktionen' : 'Noch keine Auktionen synchronisiert'}</strong><span>{auctions.length ? 'Suche oder Kategorie anpassen.' : '„Auktionen aktualisieren“ lädt /auctions/active. Das Öffnen der Seite fragt keine externe Auktionsliste ab.'}</span></div>
+        {:else}
+          <div class="auction-grid vi-scroll-region">
+            {#each filtered as auction (auction.uid)}
+              <button type="button" class="auction-tile" class:selected={selectedUid === auction.uid} aria-pressed={selectedUid === auction.uid} onclick={() => { selectedUid = auction.uid; resolveProfiles([auction]) }}>
+                <span class="auction-tile-head">
+                  <span class="auction-icons auction-tile-icons" aria-hidden="true">
+                    <img class="auction-icon-fallback" src={itemIcon(fallbackMaterial(auction))} alt="" loading="lazy" onerror={hideFallbackIcon} />
+                    <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(auction.uid)}/icon`} data-uid={auction.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
+                  </span>
+                  <span class="auction-tile-name"><strong>{itemName(auction)}</strong><small>{fmtInt(auction.item?.amount || 1)} Stück</small></span>
+                </span>
+                <span class="auction-tile-seller"><span>Verkäufer</span><strong>{sellerName(auction)}</strong></span>
+                <span class="auction-tile-prices">
+                  <span><small>Aktuelles Gebot</small><strong>{fmtMoney(auction.currentBid)}</strong></span>
+                  {#if auction.instantBuyPrice != null}<span><small>Sofortkauf</small><strong>{fmtMoney(auction.instantBuyPrice)}</strong></span>{/if}
+                </span>
+                <span class="auction-tile-bottom"><span class="auction-category">{categoryLabel(auction.category)}</span><span class="auction-time"><strong>{remaining(auction.endTime)}</strong><small>Restzeit</small></span></span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+        <footer class="vi-card-footer vi-data-footer auction-results-footer">
+          <span>{filtered.length.toLocaleString('de-DE')} / {auctions.length.toLocaleString('de-DE')} Angebote</span>
+          <span>{descending ? 'Absteigend' : 'Aufsteigend'} · {sortLabel()}</span>
+        </footer>
       </section>
 
-      {#if selected}
-        <aside class="auction-detail vi-card">
-          <div class="auction-detail-head">
-            <span class="auction-icons auction-detail-icons" aria-hidden="true">
-              <img class="auction-icon-fallback" src={itemIcon(fallbackMaterial(selected))} alt="" loading="lazy" onerror={hideFallbackIcon} />
-              <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(selected.uid)}/icon`} data-uid={selected.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
-            </span>
-            <div><p class="auction-kicker">ANGEBOTSDETAILS</p><h2>{itemName(selected)}</h2></div><button class="btn-outline" onclick={() => selectedUid = ''} aria-label="Details schließen">×</button>
+      <aside class="auction-detail vi-card vi-data-surface" aria-label="Auktionsdetails">
+        {#if selected}
+          <div class="auction-detail-header">
+            <button type="button" class="btn-outline auction-back-button" onclick={() => selectedUid = ''}><Icon icon="lucide:arrow-left" width={14} />Zurück zur Liste</button>
+            <div class="auction-detail-title">
+              <span class="auction-icons auction-detail-icons" aria-hidden="true">
+                <img class="auction-icon-fallback" src={itemIcon(fallbackMaterial(selected))} alt="" loading="lazy" onerror={hideFallbackIcon} />
+                <img class="auction-icon-api" src={`/api/auctions/${encodeURIComponent(selected.uid)}/icon`} data-uid={selected.uid} alt="" loading="lazy" onload={auctionIconLoaded} onerror={retryAuctionIcon} />
+              </span>
+              <div><p class="auction-kicker">ANGEBOTSDETAILS</p><h2>{itemName(selected)}</h2><small>{fmtInt(selected.item?.amount || 1)} Stück · {categoryLabel(selected.category)}</small></div>
+            </div>
           </div>
-          <dl>
-            <div><dt>Menge</dt><dd>{fmtInt(selected.item?.amount || 1)}</dd></div>
-            <div><dt>Kategorie</dt><dd>{selected.category || '–'}</dd></div>
-            <div><dt>Status</dt><dd>{selected.state || '–'}</dd></div>
-            <div><dt>Startgebot</dt><dd>{fmtMoney(selected.startBid)}</dd></div>
-            <div><dt>Aktuelles Gebot</dt><dd>{fmtMoney(selected.currentBid)}</dd></div>
-            <div><dt>Sofortkauf</dt><dd>{selected.instantBuyPrice == null ? '–' : fmtMoney(selected.instantBuyPrice)}</dd></div>
-            <div><dt>Verkäufer</dt><dd>{sellerName(selected)}</dd></div>
-            <div><dt>Höchstbietender</dt><dd>{playerName(selected.highestBidder)}</dd></div>
-            <div><dt>Gebote</dt><dd>{bidCount(selected)}</dd></div>
-            <div><dt>Startzeit</dt><dd>{date(selected.startTime)}</dd></div>
-            <div><dt>Endzeit</dt><dd>{date(selected.endTime)} · {remaining(selected.endTime)}</dd></div>
-            <div><dt>Auktions-UID</dt><dd class="mono">{selected.uid}</dd></div>
-          </dl>
-          {#if selected.item?.lore?.length}<section><h3>Beschreibung</h3><ul>{#each selected.item.lore as line}<li>{line}</li>{/each}</ul></section>{/if}
-          {#if Object.keys(selected.item?.enchantments || {}).length}<section><h3>Verzauberungen</h3><ul>{#each Object.entries(selected.item.enchantments) as [name, level]}<li>{name} {level}</li>{/each}</ul></section>{/if}
-          {#if Object.keys(selected.bids || {}).length}<section><h3>Gebotsverlauf aus dem aktuellen API-Datensatz</h3><ul>{#each Object.entries(selected.bids) as [uuid, amount]}<li>{playerName(uuid)} — {fmtMoney(amount)}</li>{/each}</ul></section>{/if}
-          <small class="auction-readonly">Nur Anzeige. Keine Gebots-, Kauf- oder Serveraktion.</small>
-        </aside>
-      {/if}
+          <div class="auction-detail-scroll vi-scroll-region">
+            <section class="auction-detail-section">
+              <h3><Icon icon="lucide:tag" width={14} />Auktion</h3>
+              <dl class="auction-detail-grid">
+                <div><dt>Verkäufer</dt><dd>{sellerName(selected)}</dd></div>
+                <div><dt>Status</dt><dd>{statusLabel(selected.state)}</dd></div>
+                <div><dt>Gebote</dt><dd>{fmtInt(bidCount(selected))}</dd></div>
+                <div><dt>Restzeit</dt><dd>{remaining(selected.endTime)}</dd></div>
+              </dl>
+            </section>
+
+            <section class="auction-detail-section">
+              <h3><Icon icon="lucide:coins" width={14} />Preise</h3>
+              <dl class="auction-detail-grid auction-price-grid">
+                <div><dt>Startgebot</dt><dd>{fmtMoney(selected.startBid)}</dd></div>
+                <div><dt>Aktuelles Gebot</dt><dd>{fmtMoney(selected.currentBid)}</dd></div>
+                <div><dt>Sofortkauf</dt><dd>{selected.instantBuyPrice == null ? '–' : fmtMoney(selected.instantBuyPrice)}</dd></div>
+                <div><dt>Höchstbietender</dt><dd>{playerName(selected.highestBidder)}</dd></div>
+              </dl>
+            </section>
+
+            {#if selected.item?.lore?.length}
+              <section class="auction-detail-section auction-long-section">
+                <h3><Icon icon="lucide:align-left" width={14} />Beschreibung</h3>
+                <div class="auction-lore">{#each selected.item.lore as line}{#if line?.trim()}<p>{line}</p>{:else}<div class="auction-lore-break" aria-hidden="true"></div>{/if}{/each}</div>
+              </section>
+            {/if}
+
+            {#if enchantments(selected).length}
+              <section class="auction-detail-section">
+                <h3><Icon icon="lucide:sparkles" width={14} />Verzauberungen</h3>
+                <ul class="auction-enchantments">{#each enchantments(selected) as name}<li>{name}</li>{/each}</ul>
+              </section>
+            {/if}
+
+            {#if bidEntries(selected).length}
+              <section class="auction-detail-section">
+                <h3><Icon icon="lucide:history" width={14} />Gebote</h3>
+                <ul class="auction-bids">{#each bidEntries(selected) as [uuid, amount]}<li><span>{playerName(uuid)}</span><strong>{fmtMoney(amount)}</strong></li>{/each}</ul>
+                <small>Gebotsbeträge aus dem aktuellen API-Datensatz; Zeitpunkte werden dort nicht mitgeliefert.</small>
+              </section>
+            {/if}
+
+            <section class="auction-detail-section">
+              <h3><Icon icon="lucide:clock-3" width={14} />Zeiten und Kennung</h3>
+              <dl class="auction-detail-grid auction-time-grid">
+                <div><dt>Start</dt><dd>{date(selected.startTime)}</dd></div>
+                <div><dt>Ende</dt><dd>{date(selected.endTime)}</dd></div>
+                <div class="auction-uid"><dt>Auktions-ID</dt><dd>{selected.uid}</dd></div>
+              </dl>
+            </section>
+            <small class="auction-readonly">Nur Anzeige. Keine Gebots-, Kauf- oder Serveraktion.</small>
+          </div>
+        {:else}
+          <div class="auction-detail-empty"><Icon icon="lucide:mouse-pointer-click" width={26} /><strong>Auktion auswählen</strong><span>Hier erscheinen alle verfügbaren Details des Angebots.</span></div>
+        {/if}
+      </aside>
     </div>
-  {/if}
-</main>
+  </main>
+</div>
 
 <style>
-  .auction-page{max-width:1440px}.auction-heading{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin:.6rem 0 1.2rem}.auction-heading h1{margin:.12rem 0;font-size:clamp(1.7rem,4vw,2.25rem)}.auction-heading p{color:var(--vi-text-muted);max-width:46rem}.auction-kicker{color:var(--vi-accent)!important;font:600 .68rem var(--vi-font-data);letter-spacing:.09em;margin:0}.auction-heading .btn-primary{display:flex;align-items:center;gap:.45rem;white-space:nowrap}.auction-toolbar{display:flex;align-items:center;gap:.55rem;padding:.65rem;margin:.8rem 0}.auction-search{display:flex;align-items:center;gap:.5rem;flex:1;min-width:12rem;color:var(--vi-text-muted)}.auction-search input,.auction-toolbar select{border:1px solid var(--vi-border);background:var(--vi-bg-input);color:var(--vi-text);border-radius:.35rem;padding:.5rem .6rem;min-width:0}.auction-search input{width:100%}.auction-meta{color:var(--vi-text-muted);font-size:.78rem;margin:.5rem .1rem}.auction-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(18rem,.9fr);gap:.8rem;align-items:start}.auction-list{display:grid;gap:.4rem}.auction-row{display:grid;grid-template-columns:2rem minmax(0,1fr) minmax(8rem,auto) minmax(4.4rem,auto);align-items:center;gap:.6rem;width:100%;text-align:left;padding:.55rem .65rem;border:1px solid var(--vi-border);border-radius:.45rem;background:var(--vi-bg-card);color:var(--vi-text);cursor:pointer}.auction-row:hover,.auction-row.selected{border-color:var(--vi-accent);background:var(--vi-bg-elevated)}.auction-row img{width:2rem;height:2rem;object-fit:contain;image-rendering:pixelated}.auction-row-main,.auction-price,.auction-time{display:grid;gap:.12rem;min-width:0}.auction-row-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auction-row small,.auction-price small,.auction-time small{font-size:.7rem;color:var(--vi-text-muted)}.auction-price{text-align:right}.auction-time{text-align:right}.auction-detail{padding:1rem;position:sticky;top:5rem}.auction-detail-head{display:flex;align-items:start;justify-content:space-between;gap:.8rem}.auction-detail h2{font-size:1.2rem;margin:.15rem 0 .8rem;overflow-wrap:anywhere}.auction-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem .8rem}.auction-detail dl div{min-width:0}.auction-detail dt{font-size:.68rem;color:var(--vi-text-muted)}.auction-detail dd{margin:.1rem 0 0;overflow-wrap:anywhere;font-size:.82rem}.auction-detail .mono{font-family:var(--vi-font-data);font-size:.7rem}.auction-detail h3{font-size:.82rem;margin:.9rem 0 .3rem}.auction-detail ul{padding-left:1rem;margin:.25rem 0;color:var(--vi-text-muted);font-size:.78rem}.auction-readonly{display:block;margin-top:1rem;color:var(--vi-text-muted)}.auction-empty{display:grid;gap:.35rem;padding:2rem;text-align:center;border:1px dashed var(--vi-border);border-radius:.5rem;color:var(--vi-text-muted)}.auction-empty strong{color:var(--vi-text)}.auction-notice{padding:.65rem .8rem;border:1px solid var(--vi-accent);border-radius:.4rem;color:var(--vi-text)}@media(max-width:850px){.auction-layout{grid-template-columns:1fr}.auction-detail{position:static}}@media(max-width:650px){.auction-heading{align-items:start;flex-direction:column}.auction-toolbar{align-items:stretch;flex-direction:column}.auction-row{grid-template-columns:2rem minmax(0,1fr) auto}.auction-time{display:none}}
-  .auction-icons{position:relative;display:block;width:2rem;height:2rem;flex:none}.auction-icons img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}.auction-icon-api{z-index:1}.auction-detail-icons{width:3rem;height:3rem}
+  .auction-page { max-width: 1600px; }
+  .auction-heading { display:flex; align-items:end; justify-content:space-between; gap:1rem; }
+  .auction-heading h1 { margin:.12rem 0; font-size:clamp(1.55rem,3vw,2rem); }
+  .auction-heading p { max-width:46rem; margin:.25rem 0 0; color:var(--vi-text-muted); font-size:.82rem; }
+  .auction-kicker { color:var(--vi-accent); font:600 .66rem var(--vi-font-data); letter-spacing:.09em; margin:0; }
+  .auction-heading .btn-primary { display:flex; align-items:center; gap:.45rem; white-space:nowrap; }
+  .auction-toolbar { display:flex; align-items:center; gap:.5rem; padding:.55rem; margin:0; }
+  .auction-search { display:flex; align-items:center; gap:.5rem; flex:1; min-width:12rem; color:var(--vi-text-muted); }
+  .auction-search input,.auction-toolbar select { min-width:0; border:1px solid var(--vi-border); background:var(--vi-bg-input); color:var(--vi-text); border-radius:.35rem; padding:.45rem .55rem; }
+  .auction-search input { width:100%; }
+  .auction-sort-direction { font-weight:700; }
+  .auction-notice { flex:0 0 auto; padding:.55rem .75rem; border:1px solid var(--vi-accent); border-radius:.4rem; color:var(--vi-text); }
+  .auction-results { border:1px solid var(--vi-border); border-radius:.55rem; background:color-mix(in srgb,var(--vi-bg-card) 88%,transparent); }
+  .auction-results-heading { flex:0 0 auto; display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.55rem .75rem; border-bottom:1px solid var(--vi-border); }
+  .auction-results-heading strong { font-size:.82rem; }
+  .auction-results-heading span { color:var(--vi-text-muted); font-size:.7rem; text-align:right; }
+  .auction-grid { flex:1 1 auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr)); align-content:start; gap:.7rem; padding:.75rem; }
+  .auction-tile { display:flex; flex-direction:column; gap:.75rem; min-width:0; min-height:13rem; padding:.9rem; border:1px solid var(--vi-border); border-radius:.55rem; background:color-mix(in srgb,var(--vi-bg-card) 96%,transparent); color:var(--vi-text); text-align:left; cursor:pointer; transition:border-color .15s,background-color .15s,box-shadow .15s; }
+  .auction-tile:hover,.auction-tile.selected { border-color:var(--vi-accent); background:var(--vi-bg-elevated,var(--vi-hover)); box-shadow:0 4px 14px #0003; }
+  .auction-tile:focus-visible { outline:2px solid var(--vi-accent); outline-offset:2px; }
+  .auction-tile-head { display:flex; align-items:center; gap:.75rem; min-width:0; }
+  .auction-icons { position:relative; display:block; width:2.2rem; height:2.2rem; flex:0 0 auto; }
+  .auction-icons img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+  .auction-icon-api { z-index:1; }
+  .auction-tile-icons { width:3.2rem; height:3.2rem; padding:.2rem; border:1px solid color-mix(in srgb,var(--vi-accent) 24%,var(--vi-border)); border-radius:.45rem; background:var(--vi-bg-input); }
+  .auction-detail-icons { width:3.5rem; height:3.5rem; padding:.2rem; border:1px solid var(--vi-border); border-radius:.45rem; background:var(--vi-bg-input); }
+  .auction-tile-name { display:grid; gap:.22rem; min-width:0; }
+  .auction-tile-name strong { display:-webkit-box; overflow:hidden; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:2; font-size:.98rem; line-height:1.25; }
+  .auction-tile-name small,.auction-tile-seller span,.auction-tile-prices small,.auction-time small { color:var(--vi-text-muted); font-size:.7rem; }
+  .auction-tile-seller { display:grid; grid-template-columns:5rem minmax(0,1fr); align-items:baseline; gap:.5rem; min-width:0; }
+  .auction-tile-seller strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8rem; }
+  .auction-tile-prices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; padding:.55rem 0; border-block:1px solid var(--vi-border); }
+  .auction-tile-prices > span { display:grid; gap:.2rem; min-width:0; }
+  .auction-tile-prices > span:last-child:nth-child(1) { grid-column:1 / -1; }
+  .auction-tile-prices small { line-height:1.2; }
+  .auction-tile-prices strong { overflow-wrap:anywhere; color:var(--vi-accent); font:600 .88rem var(--vi-font-data); font-variant-numeric:tabular-nums; }
+  .auction-tile-prices > span:nth-child(2) strong { color:var(--vi-buy); }
+  .auction-tile-bottom { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-top:auto; }
+  .auction-category { max-width:60%; overflow:hidden; padding:.2rem .45rem; border:1px solid var(--vi-border); border-radius:999px; color:var(--vi-text-muted); font-size:.68rem; text-overflow:ellipsis; white-space:nowrap; }
+  .auction-time { display:grid; justify-items:end; gap:.1rem; min-width:0; text-align:right; }
+  .auction-time strong { font:500 .77rem var(--vi-font-data); font-variant-numeric:tabular-nums; }
+  .auction-results-footer { display:flex; justify-content:space-between; gap:.75rem; padding:.45rem .75rem; font-size:.72rem; }
+  .auction-empty { display:grid; align-content:center; justify-items:center; gap:.35rem; min-height:8rem; padding:1.5rem; color:var(--vi-text-muted); text-align:center; }
+  .auction-empty strong { color:var(--vi-text); }
+  .auction-detail { border:1px solid var(--vi-border); border-radius:.55rem; background:color-mix(in srgb,var(--vi-bg-card) 94%,transparent); }
+  .auction-detail-header { flex:0 0 auto; padding:.85rem .9rem; border-bottom:1px solid var(--vi-border); }
+  .auction-detail-title { display:flex; align-items:center; gap:.75rem; min-width:0; }
+  .auction-detail-title > div { min-width:0; }
+  .auction-detail-title h2 { margin:.16rem 0 .2rem; overflow-wrap:anywhere; font-size:1.12rem; line-height:1.2; }
+  .auction-detail-title small { color:var(--vi-text-muted); font-size:.72rem; }
+  .auction-detail-scroll { flex:1 1 auto; padding:.2rem .9rem .9rem; }
+  .auction-detail-section { padding:.7rem 0; border-bottom:1px solid color-mix(in srgb,var(--vi-border) 72%,transparent); }
+  .auction-detail-section h3 { display:flex; align-items:center; gap:.4rem; margin:0 0 .55rem; color:var(--vi-text); font-size:.82rem; }
+  .auction-detail-section h3 :global(svg) { color:var(--vi-accent); }
+  .auction-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem .8rem; margin:0; }
+  .auction-detail-grid > div { min-width:0; }
+  .auction-detail-grid dt { color:var(--vi-text-muted); font-size:.68rem; }
+  .auction-detail-grid dd { margin:.12rem 0 0; overflow-wrap:anywhere; font-size:.8rem; font-variant-numeric:tabular-nums; }
+  .auction-price-grid dd { color:var(--vi-accent); font-family:var(--vi-font-data); font-size:.82rem; }
+  .auction-lore { color:var(--vi-text-on-muted); font-size:.8rem; line-height:1.5; overflow-wrap:anywhere; }
+  .auction-lore p { margin:.35rem 0; white-space:pre-wrap; }
+  .auction-lore-break { height:.42rem; }
+  .auction-enchantments { display:grid; grid-template-columns:repeat(auto-fit,minmax(10rem,1fr)); gap:.35rem .8rem; margin:0; padding:0; list-style:none; }
+  .auction-enchantments li { padding:.35rem .5rem; border:1px solid var(--vi-border); border-radius:.35rem; color:var(--vi-text-on-muted); font-size:.77rem; }
+  .auction-bids { display:grid; gap:.25rem; max-height:15rem; overflow:auto; margin:.2rem 0 .4rem; padding:0; list-style:none; }
+  .auction-bids li { display:flex; justify-content:space-between; gap:.8rem; padding:.3rem .45rem; border-radius:.3rem; background:color-mix(in srgb,var(--vi-bg-input) 68%,transparent); }
+  .auction-bids li span { min-width:0; overflow-wrap:anywhere; color:var(--vi-text-on-muted); }
+  .auction-bids li strong { flex:none; color:var(--vi-accent); font:500 .75rem var(--vi-font-data); }
+  .auction-detail-section > small { color:var(--vi-text-muted); font-size:.68rem; }
+  .auction-uid { grid-column:1 / -1; }
+  .auction-uid dd { font-family:var(--vi-font-data); font-size:.68rem; }
+  .auction-readonly { display:block; padding-top:.7rem; color:var(--vi-text-muted); font-size:.68rem; }
+  .auction-detail-empty { display:grid; align-content:center; justify-items:center; gap:.5rem; flex:1; padding:2rem; color:var(--vi-text-muted); text-align:center; }
+  .auction-detail-empty :global(svg) { color:var(--vi-accent); }
+  .auction-detail-empty strong { color:var(--vi-text); }
+  .auction-detail-empty span { max-width:18rem; font-size:.78rem; }
+  .auction-back-button { display:none; margin:0 0 .7rem; }
+  @media (min-width: 921px) {
+    .auction-layout { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(20rem,1fr); grid-template-rows:minmax(0,1fr); gap:.75rem; }
+  }
+  @media (max-width: 920px) {
+    .auction-heading { align-items:start; flex-direction:column; }
+    .auction-toolbar { flex-wrap:wrap; }
+    .auction-search { flex-basis:100%; }
+    .auction-detail { display:none; }
+    .auction-layout.has-selection .auction-results { display:none; }
+    .auction-layout.has-selection .auction-detail { display:flex; }
+    .auction-back-button { display:inline-flex; align-items:center; gap:.35rem; }
+  }
+  @media (max-width: 520px) {
+    .auction-heading .btn-primary { width:100%; justify-content:center; }
+    .auction-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; }
+    .auction-search { grid-column:1 / -1; }
+    .auction-sort-direction { justify-self:start; min-width:2rem; justify-content:center; }
+    .auction-toolbar select:last-child { grid-column:1 / -1; }
+    .auction-results-heading { align-items:start; flex-direction:column; gap:.15rem; }
+    .auction-results-heading span { text-align:left; }
+    .auction-grid { grid-template-columns:minmax(0,1fr); gap:.55rem; padding:.55rem; }
+    .auction-tile { min-height:12rem; }
+    .auction-detail-title h2 { font-size:1rem; }
+    .auction-detail-grid { gap:.45rem .55rem; }
+  }
 </style>

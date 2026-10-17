@@ -4,14 +4,14 @@
   import { cubicOut } from 'svelte/easing'
   import Icon from '@iconify/svelte'
   import Navbar       from '../../components/Navbar.svelte'
-  import { fmtItem, itemIcon, hideOnError } from '../../lib/utils.js'
+  import { fmtItem, itemIcon, hideOnError, currencyDisplayName } from '../../lib/utils.js'
 
   /** @type {{ currency: 'opshards' | 'redcoins' }} */
   let { currency = 'opshards' } = $props()
   const isShard = $derived(currency === 'opshards')
   const pageTitle = $derived(isShard ? 'Shardkurse' : 'Redcoin-Kurse')
   const apiPath = $derived(isShard ? '/api/shard' : '/api/redcoins')
-  const unitLabel = $derived(isShard ? 'OPShards / Einheit' : 'Redcoins / Einheit')
+  const unitLabel = $derived(`${currencyDisplayName(currency)} / Einheit`)
   const currencyAccent = $derived(isShard ? 'var(--vi-accent)' : 'var(--vi-redcoin)')
   const rateClass = $derived(isShard ? 'price-buy' : 'price-redcoin')
 
@@ -85,7 +85,7 @@
     if (!v) return '–'
     return new Intl.NumberFormat('de-DE', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(v)
   }
-  function targetUnit(item) { return item.targetDisplayUnit || (isShard ? 'OPShards' : 'Redcoins') }
+  function targetUnit() { return currencyDisplayName(currency) }
 
   // ── Daten laden ─────────────────────────────────────────────────────────────
   async function loadData() {
@@ -107,12 +107,13 @@
   $effect.root(() => { loadData() })
 </script>
 
+<div class="vi-viewport-shell">
 <Navbar activePage={isShard ? 'shard' : 'redcoins'} />
 
-<div class="vi-page">
+<main class="vi-page vi-viewport-page rates-page">
 
   <!-- ── Kopfzeile ────────────────────────────────────────────────────────── -->
-  <div class="flex items-center gap-3 mb-3 flex-wrap">
+  <div class="rates-toolbar vi-page-toolbar flex items-center gap-3 flex-wrap">
     <h5 class="vi-page-heading m-0 flex items-center gap-2 font-semibold text-base">
       <Icon icon={isShard ? 'lucide:gem' : 'lucide:circle-dollar-sign'} width={15} style="color:{currencyAccent}" />{pageTitle}
     </h5>
@@ -121,7 +122,7 @@
       <input
         type="text"
         class="search-input"
-        style="width:200px"
+        style="width:200px;max-width:100%"
         placeholder="Suchen…"
         bind:value={search}
       >
@@ -132,7 +133,7 @@
   </div>
 
   {#if items.length > 0}
-    <div class="vi-summary" transition:fade={{ duration: 150 }}>
+    <div class="vi-summary vi-page-toolbar" transition:fade={{ duration: 150 }}>
       <div class="vi-metric"><span class="vi-metric-label">Aktive Kurse</span><span class="vi-metric-value">{items.length}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">Währung</span><span class="vi-metric-value">{isShard ? 'OPShards' : 'Redcoins'}</span></div>
       <div class="vi-metric"><span class="vi-metric-label">API-Stand</span><span class="vi-metric-value fresh">{lastDataUpdate ? new Date(lastDataUpdate).toLocaleTimeString('de-DE') : '–'}</span></div>
@@ -141,7 +142,7 @@
 
   <!-- ── Lade-Spinner ──────────────────────────────────────────────────────── -->
   {#if loading && items.length === 0}
-    <div class="loading-overlay" transition:fade={{ duration: 150 }}>
+    <div class="loading-overlay rates-loading" transition:fade={{ duration: 150 }}>
       <div class="text-center">
         <span class="inline-block w-6 h-6 border-2 rounded-full animate-spin mb-2 mx-auto block"
               style="border-color:var(--vi-accent); border-top-color:transparent"></span>
@@ -158,17 +159,17 @@
 
   <!-- ── Tabelle ───────────────────────────────────────────────────────────── -->
   {#if !loading || items.length > 0}
-    <div class="vi-card" transition:fade={{ duration: 200 }}>
-      <div class="overflow-x-auto">
+    <div class="vi-card vi-data-surface rates-table-card" transition:fade={{ duration: 200 }}>
+      <div class="vi-table-region">
         <table class="vi-table">
           <thead>
             <tr>
               <th onclick={() => setSort('item')} class={sortCls('item')}>Material</th>
-              <th onclick={() => setSort('base')} class="text-right {sortCls('base')}">Basiskurs</th>
+              <th onclick={() => setSort('base')} class="text-right hide-xs {sortCls('base')}">Basiskurs</th>
               <th onclick={() => setSort('rate')} class="text-right {sortCls('rate')}">
                 {unitLabel}
               </th>
-              <th onclick={() => setSort('diff')} class="text-right {sortCls('diff')}">Trend</th>
+              <th onclick={() => setSort('diff')} class="text-right hide-sm {sortCls('diff')}">Trend</th>
             </tr>
           </thead>
           <tbody>
@@ -189,7 +190,7 @@
                     {/if}
                   </div>
                 </td>
-                <td class="text-right">
+                <td class="text-right hide-xs">
                   {#if item.base > 0}
                     <span style="color:var(--vi-text-muted); font-variant-numeric:tabular-nums">{fmtRate(item.base)}</span>
                   {:else}
@@ -198,9 +199,9 @@
                 </td>
                 <td class="text-right">
                   <span class={rateClass}>{fmtRate(item.exchangeRate)}</span>
-                  <span class="text-sm ml-1" style="color:var(--vi-text-muted)">{targetUnit(item)}</span>
+                  <span class="text-sm ml-1" style="color:var(--vi-text-muted)">{targetUnit()}</span>
                 </td>
-                <td class="text-right" style="font-variant-numeric:tabular-nums">
+                <td class="text-right hide-sm" style="font-variant-numeric:tabular-nums">
                   {#if item.base > 0}
                     {@const d = diffPct(item)}
                     <span class={d > 0.05 ? 'price-buy' : d < -0.05 ? 'price-sell' : ''}
@@ -224,11 +225,26 @@
           <div>Keine Kurse für diese Suche.</div>
         </div>
       {/if}
-      <div class="vi-card-footer flex justify-between">
+      <div class="vi-card-footer vi-data-footer flex justify-between">
         <span>{filteredItems.length} / {items.length} Einträge</span>
         {#if lastDataUpdate}<span>API-Stand: {new Date(lastDataUpdate).toLocaleString('de-DE')}</span>{/if}
       </div>
     </div>
   {/if}
 
+</main>
 </div>
+
+<style>
+  .rates-toolbar { margin:0; }
+  .rates-loading { flex:1 1 auto; min-height:0; }
+  .rates-table-card { flex:1 1 auto; }
+  .rates-table-card .vi-table-region { flex:1 1 auto; }
+  @media(max-width:520px) {
+    .rates-toolbar { gap:.5rem; }
+    .rates-toolbar > div:last-child { width:100%; }
+    .rates-toolbar .search-input { flex:1; width:auto!important; }
+    .rates-table-card .vi-table th,.rates-table-card .vi-table td { padding:.4rem .45rem; font-size:.7rem; }
+    .rates-table-card .vi-table .hide-xs,.rates-table-card .vi-table .hide-sm { display:none; }
+  }
+</style>

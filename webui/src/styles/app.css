@@ -84,6 +84,28 @@ button, input { font-family: inherit; }
 /* ── Gemeinsame Datenansicht ──────────────────────────────────────────────── */
 .vi-page { max-width: 1540px; margin: 0 auto; padding: 1.5rem clamp(1rem, 2.4vw, 2.25rem) 3rem; }
 .vi-page-heading { letter-spacing: -0.025em; }
+.vi-viewport-shell { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.vi-viewport-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1540px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: clamp(0.65rem, 1.35vh, 1.1rem) clamp(1rem, 2.4vw, 2.25rem) 0.8rem;
+  overflow: hidden;
+}
+.vi-page-toolbar { flex: 0 0 auto; }
+.vi-data-workspace { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; }
+.vi-data-surface { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.vi-scroll-region { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.vi-data-footer { flex: 0 0 auto; position: relative; z-index: 2; background: var(--vi-bg-card); }
+.vi-table-region { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.vi-table-region .vi-table { table-layout: fixed; }
+.vi-table-region .vi-table th { position: sticky; top: 0; z-index: 2; background: var(--vi-bg); }
+.vi-table-region .vi-table td { overflow-wrap: anywhere; }
 .vi-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -103,10 +125,8 @@ button, input { font-family: inherit; }
 .market-top-heading > span { display:flex; align-items:center; gap:0.4rem; color:var(--vi-text); }
 .market-top-heading svg { color:var(--vi-redcoin); }
 .market-top-heading small, .market-top-card small { color:var(--vi-text-muted); font-family:var(--vi-font-data); font-size:0.66rem; font-weight:400; }
-.market-top-grid { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); }
-.market-top-card { display:grid; grid-template-columns:minmax(0, 1fr) 3.4rem; grid-template-rows:auto 2rem auto auto; gap:0.22rem 0.5rem; min-width:0; padding:0.6rem 0.7rem; border-right:1px solid var(--vi-border); border-bottom:1px solid var(--vi-border); color:inherit; text-decoration:none; transition:background-color .15s; }
-.market-top-card:nth-child(5n) { border-right:0; }
-.market-top-card:nth-last-child(-n + 5) { border-bottom:0; }
+.market-top-grid { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(13rem, 17rem); grid-template-rows:1fr; gap:0.4rem; padding:0.4rem; overflow-x:auto; overscroll-behavior-x:contain; }
+.market-top-card { display:grid; grid-template-columns:minmax(0, 1fr) 3.4rem; grid-template-rows:auto 2rem auto auto; gap:0.22rem 0.5rem; min-width:0; padding:0.55rem 0.65rem; border:1px solid var(--vi-border); border-radius:0.45rem; color:inherit; text-decoration:none; transition:background-color .15s; }
 .market-top-card:hover { background:var(--vi-hover); }
 .market-top-item { display:flex; align-items:center; gap:0.4rem; min-width:0; font-size:0.76rem; }
 .market-top-item strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -115,8 +135,6 @@ button, input { font-family: inherit; }
 .market-sparkline.pending { display:grid; place-items:center; color:var(--vi-text-muted); font-family:var(--vi-font-data); font-size:0.58rem; }
 .market-top-prices, .market-top-orders { display:flex; justify-content:space-between; gap:0.4rem; font-family:var(--vi-font-data); font-size:0.72rem; font-variant-numeric:tabular-nums; }
 .market-top-card small { grid-column:1 / -1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (max-width: 1120px) { .market-top-grid { grid-template-columns:repeat(3, minmax(0, 1fr)); } .market-top-card:nth-child(5n) { border-right:1px solid var(--vi-border); } .market-top-card:nth-child(3n) { border-right:0; } .market-top-card:nth-last-child(-n + 5) { border-bottom:1px solid var(--vi-border); } .market-top-card:nth-last-child(-n + 3) { border-bottom:0; } }
-@media (max-width: 680px) { .market-top-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .market-top-card:nth-child(3n) { border-right:1px solid var(--vi-border); } .market-top-card:nth-child(2n) { border-right:0; } .market-top-card:nth-last-child(-n + 3) { border-bottom:1px solid var(--vi-border); } .market-top-card:nth-last-child(-n + 2) { border-bottom:0; } }
 .vi-data-layout { display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: 0.85rem; }
 .vi-category-rail { align-self: start; border: 1px solid var(--vi-border); border-radius: 0.6rem; background: color-mix(in srgb, var(--vi-bg-card) 90%, transparent); overflow: hidden; }
 .vi-category-rail-title { display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--vi-border); font-size: 0.8rem; font-weight: 600; }
@@ -219,7 +237,7 @@ tbody tr { will-change: transform; }
 /* ── ECharts-Container ───────────────────────────────────────────────────────── */
 .chart-container {
   width: 100%;
-  height: 420px;
+  height: clamp(190px, 34vh, 390px);
   background-color: var(--vi-bg-card);
   border-radius: 0.5rem;
 }
@@ -414,7 +432,7 @@ tbody tr { will-change: transform; }
 /* ── Markt-Grid (Karten-Ansicht) ─────────────────────────────────────────────── */
 .market-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 0.7rem;
 }
 .market-card {
@@ -511,6 +529,15 @@ tbody tr { will-change: transform; }
   .vi-metric { padding: 0.55rem 0.6rem; }
   .vi-navbar { gap: 0.7rem; padding-inline: 0.9rem; }
   .vi-navbar-links a { padding-inline: 0.45rem; }
+}
+
+@media (max-width: 520px) {
+  .vi-viewport-page { padding-inline: 0.7rem; gap: 0.5rem; }
+  .vi-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vi-metric { padding: 0.45rem 0.4rem; }
+  .vi-metric-value { font-size: 0.82rem; }
+  .market-top-grid { grid-auto-columns: minmax(12rem, 82vw); }
+  .market-card .mc-prices { font-size: 0.76rem; }
 }
 .stat-card .stat-label {
   font-size: 0.75rem;

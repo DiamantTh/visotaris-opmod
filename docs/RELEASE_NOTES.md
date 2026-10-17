@@ -1,5 +1,25 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.9+mc26.2 — Vorabversion
+
+### Responsive WebUX für datenreiche Ansichten
+
+- Das Auktionshaus zeigt größere responsive Kacheln neben einer eigenständigen,
+  gruppierten Detailansicht. Schmale Ansichten wechseln auf Auswahl und Zurück-
+  Mechanismus; lange Ergebnislisten und umfangreiche Details scrollen innerhalb
+  ihres jeweiligen Bereichs.
+- Markt, Shards, Redcoins und Händler verwenden viewportgebundene Datenflächen mit
+  internem Tabellen- oder Kachelscrollen, sticky Tabellenköpfen und erreichbaren
+  Statuszeilen. Die Markt-Kacheln wachsen leicht, bleiben aber dichter als die
+  Auktionskacheln.
+- Die History-Charts nutzen auf breiten Fenstern ein Dashboard-Layout und passen
+  ihre Größe auch bei Browser-Resize an.
+- AH-Preise bleiben normale Dollarbeträge; OPShards und Redcoins werden vollständig
+  ausgeschrieben. Das AH liefert lokalisierte Itemnamen und deutsche
+  Verzauberungsnamen an die WebUX.
+- Browserprüfung mit lokalen synthetischen Fixtures und 1.200 Auktionen:
+  [pre.9-Prüfbericht](ux/implemented/pre9-webux-responsive-data-check.md).
+
 ## Visotaris OPMod 1.2.0-pre.8 — Vorabversion
 
 ### Native Auktionshaus- und Tooltip-UX
