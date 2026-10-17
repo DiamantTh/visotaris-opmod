@@ -64,6 +64,9 @@ public final class ConfigManager {
             // ── Anzeige (neu: anzeige.x; alt: x) ─────────────────────────────────────
             c.showMarketTooltips   = bool(toml, "display.showMarketTooltips", "anzeige.showMarketTooltips", "showMarketTooltips", c.showMarketTooltips);
             c.showHud              = bool(toml, "display.showHud", "anzeige.showHud", "showHud", c.showHud);
+            c.showCoordinates      = bool(toml, "display.showCoordinates", "", "", c.showCoordinates);
+            Object coordinatesPosition = toml.get("display.coordinatesPosition");
+            if (coordinatesPosition instanceof String value) c.coordinatesPosition = HudPosition.fromConfig(value);
             c.showContainerOverlay = bool(toml, "display.showContainerOverlay", "anzeige.showContainerOverlay", "showContainerOverlay", c.showContainerOverlay);
             c.showQuickButtons     = bool(toml, "display.showQuickButtons", "anzeige.showQuickButtons", "showQuickButtons", c.showQuickButtons);
             c.shulkerRecursion     = bool(toml, "display.shulkerRecursion", "anzeige.shulkerRecursion", "shulkerRecursion", c.shulkerRecursion);
@@ -191,6 +194,8 @@ public final class ConfigManager {
             toml.setComment("display", "HUD, tooltips and UI overlays");
             toml.set("display.showMarketTooltips", c.showMarketTooltips);
             toml.set("display.showHud", c.showHud);
+            toml.set("display.showCoordinates", c.showCoordinates);
+            toml.set("display.coordinatesPosition", (c.coordinatesPosition == null ? HudPosition.LEFT_MIDDLE : c.coordinatesPosition).name());
             toml.set("display.showContainerOverlay", c.showContainerOverlay);
             toml.set("display.showQuickButtons", c.showQuickButtons);
             toml.set("display.shulkerRecursion", c.shulkerRecursion);

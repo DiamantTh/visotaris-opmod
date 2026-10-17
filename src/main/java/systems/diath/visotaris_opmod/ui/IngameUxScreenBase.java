@@ -14,6 +14,7 @@ import systems.diath.visotaris_opmod.cache.MarketCache;
 import systems.diath.visotaris_opmod.cache.AuctionCache;
 import systems.diath.visotaris_opmod.cache.ShardCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
+import systems.diath.visotaris_opmod.config.HudPosition;
 import systems.diath.visotaris_opmod.config.PriceAlertRule;
 import systems.diath.visotaris_opmod.config.VisotarisConfig;
 import systems.diath.visotaris_opmod.model.MarketPrice;
@@ -1712,27 +1713,34 @@ public abstract class IngameUxScreenBase extends Screen {
             cfg.observerModeOnly, () -> updateConfig(() -> cfg.observerModeOnly = !cfg.observerModeOnly));
         addToggle(x, start + row, w, "Permanentes HUD", () -> cfg.showHud, value -> cfg.showHud = value,
             "Job- und Inventaranzeige. Alarmmeldungen haben ihren eigenen Kanal.", true);
-        addToggle(x, start + row * 2, w, "Container-Preisanzeige", () -> cfg.showContainerOverlay,
+        addToggle(x, start + row * 2, w, "Koordinaten anzeigen", () -> cfg.showCoordinates, value -> cfg.showCoordinates = value,
+            "Kompakte vertikale XYZ-Blockkoordinaten am Bildschirmrand.", true);
+        addControl(x, start + row * 3, w, 23, () -> "Koordinatenposition  ·  "
+                + (cfg.coordinatesPosition == null ? "Links mittig" : cfg.coordinatesPosition.label()) + "  ▾",
+            () -> cfg.showCoordinates, () -> "Feste Seitenposition der Koordinatenanzeige; Standard: Links mittig.", false,
+            () -> updateConfig(() -> cfg.coordinatesPosition = (cfg.coordinatesPosition == null
+                ? HudPosition.LEFT_MIDDLE : cfg.coordinatesPosition).next()));
+        addToggle(x, start + row * 4, w, "Container-Preisanzeige", () -> cfg.showContainerOverlay,
             value -> cfg.showContainerOverlay = value, "Gesamtwertanzeige in geöffneten Containern.", true);
-        addToggle(x, start + row * 3, w, "Schnellzugriff-Buttons", () -> cfg.showQuickButtons,
+        addToggle(x, start + row * 5, w, "Schnellzugriff-Buttons", () -> cfg.showQuickButtons,
             value -> cfg.showQuickButtons = value, "Zusatzbuttons in unterstützten Inventaren.", true);
-        addToggle(x, start + row * 4, w, "Shulker-Rekursion", () -> cfg.shulkerRecursion,
+        addToggle(x, start + row * 6, w, "Shulker-Rekursion", () -> cfg.shulkerRecursion,
             value -> cfg.shulkerRecursion = value, "Verschachtelte Shulker-Inhalte bei Inventarwerten berücksichtigen.", true);
-        addToggle(x, start + row * 5, w, "Rename-Schutz", () -> cfg.enableRenameProtection,
+        addToggle(x, start + row * 7, w, "Rename-Schutz", () -> cfg.enableRenameProtection,
             value -> cfg.enableRenameProtection = value, "Bestätigung vor /rename.", true);
-        addToggle(x, start + row * 6, w, "Sign-Schutz", () -> cfg.enableSignProtection,
+        addToggle(x, start + row * 8, w, "Sign-Schutz", () -> cfg.enableSignProtection,
             value -> cfg.enableSignProtection = value, "Bestätigung vor /sign.", true);
-        addToggle(x, start + row * 7, w, "Offhand-Blocker", () -> cfg.enableOffhandBlocker,
+        addToggle(x, start + row * 9, w, "Offhand-Blocker", () -> cfg.enableOffhandBlocker,
             value -> cfg.enableOffhandBlocker = value, "Blockiert den Offhand-Tastendruck.", true);
-        addToggle(x, start + row * 8, w, "Inventarwarnung", () -> cfg.enableInventoryWarning,
+        addToggle(x, start + row * 10, w, "Inventarwarnung", () -> cfg.enableInventoryWarning,
             value -> cfg.enableInventoryWarning = value, "Lokale Warnung bei vollem Inventar.", true);
-        addToggle(x, start + row * 9, w, "Job-Tracker", () -> cfg.enableJobTracker,
+        addToggle(x, start + row * 11, w, "Job-Tracker", () -> cfg.enableJobTracker,
             value -> cfg.enableJobTracker = value, "Liest passende sichtbare Chatmeldungen clientseitig aus.", true);
-        addToggle(x, start + row * 10, w, "Command-Kurzformen", () -> cfg.enableCommandShortforms,
+        addToggle(x, start + row * 12, w, "Command-Kurzformen", () -> cfg.enableCommandShortforms,
             value -> cfg.enableCommandShortforms = value, "Wandelt z. B. 1k vor dem Senden in 1000 um.", true);
-        addToggle(x, start + row * 11, w, "Amboss-Normalisierung", () -> cfg.enableAnvilNormalization,
+        addToggle(x, start + row * 13, w, "Amboss-Normalisierung", () -> cfg.enableAnvilNormalization,
             value -> cfg.enableAnvilNormalization = value, "Erweitert Kurzformen im Amboss-Eingabefeld.", true);
-        contentEnd = start + row * 12;
+        contentEnd = start + row * 14;
     }
 
     private void buildSystem(int x, int y, int w) {

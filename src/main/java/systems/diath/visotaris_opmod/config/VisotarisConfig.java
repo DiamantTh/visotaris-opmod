@@ -17,6 +17,8 @@ public final class VisotarisConfig {
         observerModeOnly = source.observerModeOnly;
         showMarketTooltips = source.showMarketTooltips;
         showHud = source.showHud;
+        showCoordinates = source.showCoordinates;
+        coordinatesPosition = source.coordinatesPosition;
         showContainerOverlay = source.showContainerOverlay;
         showQuickButtons = source.showQuickButtons;
         shulkerRecursion = source.shulkerRecursion;
@@ -76,6 +78,8 @@ public final class VisotarisConfig {
     // ── Anzeige ───────────────────────────────────────────────────────────────
     public boolean showMarketTooltips   = true;
     public boolean showHud              = true;
+    public boolean showCoordinates      = false;
+    public HudPosition coordinatesPosition = HudPosition.LEFT_MIDDLE;
     public boolean showContainerOverlay = true;
     public boolean showQuickButtons     = true;
     public boolean shulkerRecursion     = true;

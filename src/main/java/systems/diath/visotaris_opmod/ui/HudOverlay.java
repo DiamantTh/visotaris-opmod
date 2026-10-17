@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.DeltaTracker;
 import systems.diath.visotaris_opmod.config.ConfigManager;
+import systems.diath.visotaris_opmod.config.HudPosition;
 import systems.diath.visotaris_opmod.model.JobSnapshot;
 import systems.diath.visotaris_opmod.model.InventoryValuation;
 import systems.diath.visotaris_opmod.services.InventoryValuationService;
@@ -66,15 +67,36 @@ public final class HudOverlay implements HudElement {
     public void extractRenderState(GuiGraphicsExtractor ctx, DeltaTracker tickCounter) {
         var cfg = config.getConfig();
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.gui.hud.isHidden()) return;
+        if (mc.player == null || mc.level == null || mc.gui.hud.isHidden()) return;
 
         if (cfg.priceAlertsEnabled) renderPriceAlert(ctx, mc);
         else alertNotifications.clear();
-        if (!cfg.ingameFeaturesEnabled() || !cfg.showHud) return;
+        if (!cfg.ingameFeaturesEnabled()) return;
+
+        if (CoordinateHudLayout.shouldRender(cfg.showCoordinates, cfg.ingameFeaturesEnabled(),
+                mc.gui.hud.isHidden(), mc.player != null, mc.level != null)) {
+            renderCoordinates(ctx, mc, cfg.coordinatesPosition);
+        }
+        if (!cfg.showHud) return;
 
         int nextY = renderJobInfo(ctx, mc);
         renderInventoryValue(ctx, mc, nextY);
         if (cfg.enableInventoryWarning) renderInventoryWarning(ctx, mc);
+    }
+
+    private void renderCoordinates(GuiGraphicsExtractor ctx, Minecraft mc, HudPosition position) {
+        String[] lines = CoordinateHudLayout.lines(mc.player.blockPosition());
+        if (lines.length == 0) return;
+
+        int textWidth = 0;
+        for (String line : lines) textWidth = Math.max(textWidth, mc.font.width(line));
+        int lineHeight = mc.font.lineHeight;
+        var origin = CoordinateHudLayout.origin(mc.getWindow().getGuiScaledWidth(),
+            mc.getWindow().getGuiScaledHeight(), textWidth, lineHeight, 8, position);
+        int[] colors = {CoordinateHudLayout.X_COLOR, CoordinateHudLayout.Y_COLOR, CoordinateHudLayout.Z_COLOR};
+        for (int row = 0; row < lines.length; row++) {
+            ctx.text(mc.font, lines[row], origin.x(), CoordinateHudLayout.rowY(origin.y(), lineHeight, row), colors[row], true);
+        }
     }
 
     /** Short-lived price alert card; independent of the persistent job/inventory HUD. */

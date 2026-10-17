@@ -1,5 +1,16 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.10+mc26.2 — Vorabversion
+
+### Kompaktes Koordinaten-HUD
+
+- Optionales natives XYZ-HUD mit drei vertikalen Zeilen am Bildschirmrand.
+- Angezeigt werden ganze Minecraft-Blockkoordinaten; X, Y und Z haben dezente
+  Rot-, Grün- und Cyanfarben.
+- Sechs feste Seitenpositionen sind konfigurierbar; Standard ist links mittig.
+- Das HUD zeigt ausschließlich X, Y und Z und ergänzt keine F3-/Debuginformationen.
+- Praktischer Client-Prüfbericht: [Koordinaten-HUD](ux/implemented/pre10-coordinate-hud-check.md).
+
 ## Visotaris OPMod 1.2.0-pre.9+mc26.2 — Vorabversion
 
 ### Responsive WebUX für datenreiche Ansichten

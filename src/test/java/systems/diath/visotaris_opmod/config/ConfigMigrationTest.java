@@ -79,6 +79,8 @@ class ConfigMigrationTest {
 
         VisotarisConfig draft = new VisotarisConfig(live);
         draft.showHud = !draft.showHud;
+        draft.showCoordinates = true;
+        draft.coordinatesPosition = HudPosition.RIGHT_TOP;
         draft.auctionLiveUpdatesEnabled = true;
         draft.discordScreenshotTargets[0].webhookUrl = "draft-only";
         PriceAlertRule rule = new PriceAlertRule("diamond", "BUY_ABOVE", 120);
@@ -86,6 +88,8 @@ class ConfigMigrationTest {
 
         assertTrue(live.showHud != draft.showHud);
         assertFalse(live.auctionLiveUpdatesEnabled, "live updates default to off until saved");
+        assertFalse(live.showCoordinates);
+        assertEquals(HudPosition.LEFT_MIDDLE, live.coordinatesPosition);
         assertTrue(live.priceAlertRules.isEmpty());
         assertEquals("", live.discordScreenshotTargets[0].webhookUrl);
         assertEquals(before, Files.readString(file), "editing the draft must not write the file");
@@ -96,6 +100,8 @@ class ConfigMigrationTest {
         reloaded.load();
         assertEquals(draft.showHud, reloaded.getConfig().showHud);
         assertTrue(reloaded.getConfig().auctionLiveUpdatesEnabled);
+        assertTrue(reloaded.getConfig().showCoordinates);
+        assertEquals(HudPosition.RIGHT_TOP, reloaded.getConfig().coordinatesPosition);
         assertEquals("draft-only", reloaded.getConfig().discordScreenshotTargets[0].webhookUrl);
         assertEquals(1, reloaded.getConfig().priceAlertRules.size());
     }
@@ -106,6 +112,23 @@ class ConfigMigrationTest {
         manager.load();
         assertFalse(manager.getConfig().auctionLiveUpdatesEnabled);
         assertTrue(Files.readString(file).contains("liveUpdatesEnabled = false"));
+    }
+
+    @Test void coordinateHudToggleAndPositionPersistAcrossReloads() throws Exception {
+        Path file = directory.resolve("coordinates.toml");
+        ConfigManager manager = new ConfigManager(file);
+        manager.load();
+
+        assertFalse(manager.getConfig().showCoordinates);
+        assertEquals(HudPosition.LEFT_MIDDLE, manager.getConfig().coordinatesPosition);
+        manager.getConfig().showCoordinates = true;
+        manager.getConfig().coordinatesPosition = HudPosition.RIGHT_BOTTOM;
+        manager.save();
+
+        ConfigManager reloaded = new ConfigManager(file);
+        reloaded.load();
+        assertTrue(reloaded.getConfig().showCoordinates);
+        assertEquals(HudPosition.RIGHT_BOTTOM, reloaded.getConfig().coordinatesPosition);
     }
 
     @Test void failedCandidateSaveDoesNotPublishDraftAsLiveConfig() throws Exception {
