@@ -24,7 +24,13 @@ public final class AuctionItemNames {
 
     static String visibleName(AuctionItem item, Function<String, String> materialLocalizer) {
         if (item == null) return UNKNOWN_ITEM;
-        if (hasText(item.displayName())) return item.displayName().trim();
+        if (hasText(item.displayName())) {
+            if (hasText(item.material()) && isMaterialAlias(item.displayName(), item.material())) {
+                String localized = materialLocalizer.apply(item.material());
+                if (hasText(localized)) return localized.trim();
+            }
+            return item.displayName().trim();
+        }
         if (hasText(item.material())) {
             String localized = materialLocalizer.apply(item.material());
             if (hasText(localized)) return localized.trim();
@@ -57,8 +63,22 @@ public final class AuctionItemNames {
         Item item = BuiltInRegistries.ITEM.getValue(id);
         if (item == null || item == Items.AIR && !"minecraft:air".equals(id.toString())) return null;
         String translationKey = item.getDescriptionId();
+        String german = AuctionDisplayText.germanTranslation(translationKey);
+        if (german != null && !german.equals(translationKey)) return german;
         String translated = Component.translatable(translationKey).getString();
         return translationKey.equals(translated) ? null : translated;
+    }
+
+    private static boolean isMaterialAlias(String displayName, String material) {
+        return normalizeName(displayName).equals(normalizeName(material));
+    }
+
+    private static String normalizeName(String value) {
+        String withoutFormatting = value.replaceAll("(?i)§[0-9A-FK-OR]", "");
+        String normalized = withoutFormatting.trim().toLowerCase(Locale.ROOT);
+        int namespace = normalized.indexOf(':');
+        if (namespace >= 0) normalized = normalized.substring(namespace + 1);
+        return normalized.replaceAll("[\\s_-]+", "");
     }
 
     private static boolean isOpsuchtIcon(String rawUrl) {

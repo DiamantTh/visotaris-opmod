@@ -20,4 +20,9 @@ class AuctionItemNamesTest {
             material -> null));
         assertEquals("Unbekanntes Item", AuctionItemNames.visibleName(null, material -> null));
     }
+
+    @Test void localizesApiNamesThatAreJustVanillaMaterialNames() {
+        AuctionItem item = new AuctionItem("ANCIENT_DEBRIS", null, 1, "Ancient Debris", null, null);
+        assertEquals("Antiker Schrott", AuctionItemNames.visibleName(item, material -> "Antiker Schrott"));
+    }
 }

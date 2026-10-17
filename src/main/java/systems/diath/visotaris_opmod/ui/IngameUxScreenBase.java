@@ -23,6 +23,7 @@ import systems.diath.visotaris_opmod.model.ShardRate;
 import systems.diath.visotaris_opmod.services.PriceAlertEngine;
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator;
 import systems.diath.visotaris_opmod.services.PriceAlertService;
+import systems.diath.visotaris_opmod.util.AuctionDisplayText;
 import systems.diath.visotaris_opmod.util.AuctionItemNames;
 import systems.diath.visotaris_opmod.util.AuctionSearch;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
@@ -117,6 +118,7 @@ public abstract class IngameUxScreenBase extends Screen {
     private final List<ShardRate> shardRows = new ArrayList<>();
     private final List<Auction> auctionRows = new ArrayList<>();
     private record AuctionRowHitbox(String uid, int x, int y, int width, int height) { }
+    private record TooltipLine(String text, boolean heading, boolean spacer) { }
     private final List<AuctionRowHitbox> auctionRowHitboxes = new ArrayList<>();
     private final List<Button> navigation = new ArrayList<>();
     private final List<Integer> navigationPages = new ArrayList<>();
@@ -1029,7 +1031,7 @@ public abstract class IngameUxScreenBase extends Screen {
             cfg.auctionLiveUpdatesEnabled ? " · Liveupdates verbinden …" : " · manuell";
         c.text(fit(c, "Aktiv · " + auctionRows.size() + " Auktionen · " + ageText(auctionCache.getLastUpdatedMs()) + streamStatus, w - 12), x + 6, y + 84, MUTED, false);
         int rowsY = y + 103;
-        int rh = 42;
+        int rh = auctionRowHeight(w - 4);
         int available = Math.max(30, window.contentBottom() - rowsY - c.lineHeight() - 8);
         if (auctionRows.isEmpty()) {
             drawEmptyState(c, x + 5, rowsY + 10, w - 10,
@@ -1051,23 +1053,43 @@ public abstract class IngameUxScreenBase extends Screen {
             int ry = rowsY + (int) Math.round((i - start - fraction) * rh);
             if (auction.uid() != null) auctionRowHitboxes.add(new AuctionRowHitbox(auction.uid(), x + 2, ry, w - 4, rh - 2));
             card(c, x + 2, ry, w - 4, rh - 2);
+            int rowX = x + 2;
+            int rowWidth = w - 4;
             String material = AuctionItemNames.fallbackMaterial(auction).toLowerCase(Locale.ROOT);
             String iconUrl = auction.item() == null ? null : auction.item().icon();
             byte[] icon = mod.getAuctionIconCache().getCached(iconUrl);
             if (icon == null && iconUrl != null) mod.getAuctionIconCache().request(iconUrl);
             String iconKey = systems.diath.visotaris_opmod.services.AuctionIconCache.cacheId(iconUrl);
-            if (icon == null || iconKey == null || !c.image(iconKey, icon, x + 7, ry + 5, 16)) c.item(material, x + 7, ry + 5);
+            if (icon == null || iconKey == null || !c.image(iconKey, icon, rowX + 5, ry + 5, 16)) c.item(material, rowX + 5, ry + 5);
             String name = AuctionItemNames.visibleName(auction.item());
-            int textWidth = Math.max(48, w - 40);
-            c.text(fit(c, name, textWidth), x + 30, ry + 3, WHITE, false);
             String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
-            int priceColumn = Math.min(128, Math.max(72, w * 2 / 5));
-            int priceX = x + w - priceColumn - 7;
-            int sellerWidth = Math.max(48, priceX - x - 38);
-            c.text(fit(c, "Verkäufer: " + seller, sellerWidth), x + 30, ry + c.lineHeight() + 3, MUTED, false);
-            String price = "Gebot " + formatMoney(auction.currentBid());
-            if (auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0) price += " · Sofort " + formatMoney(auction.instantBuyPrice());
-            c.text(fit(c, price, priceColumn), priceX, ry + c.lineHeight() + 3, INFO, false);
+            String bid = "Gebot " + formatMoney(auction.currentBid());
+            String instantBuy = auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0
+                ? "Sofortkauf " + formatMoney(auction.instantBuyPrice()) : "";
+            AuctionRowLayout rowLayout = AuctionRowLayout.calculate(rowWidth,
+                Math.max(c.textWidth(bid), instantBuy.isEmpty() ? 0 : c.textWidth(instantBuy)));
+            int textX = rowX + 28;
+            int priceRight = rowX + rowWidth - rowLayout.rightInset();
+            if (rowLayout.stacked()) {
+                int textWidth = rowLayout.leftWidth();
+                c.text(fit(c, name, textWidth), textX, ry + 3, WHITE, false);
+                c.text(fit(c, "Verkäufer: " + seller, textWidth), textX, ry + c.lineHeight() + 3, MUTED, false);
+                int bidY = ry + c.lineHeight() * 2 + 3;
+                drawRightAligned(c, bid, textX, priceRight, rowLayout.rightWidth(), bidY, INFO);
+                if (!instantBuy.isEmpty())
+                    drawRightAligned(c, instantBuy, textX, priceRight, rowLayout.rightWidth(), bidY + c.lineHeight(), INFO);
+            } else {
+                c.text(fit(c, name, rowLayout.leftWidth()), textX, ry + 3, WHITE, false);
+                c.text(fit(c, "Verkäufer: " + seller, rowLayout.leftWidth()), textX,
+                    ry + c.lineHeight() + 3, MUTED, false);
+                c.text(fit(c, bid, rowLayout.rightWidth()),
+                    priceRight - c.textWidth(fit(c, bid, rowLayout.rightWidth())), ry + 3, INFO, false);
+                if (!instantBuy.isEmpty()) {
+                    String visiblePrice = fit(c, instantBuy, rowLayout.rightWidth());
+                    c.text(visiblePrice, priceRight - c.textWidth(visiblePrice),
+                        ry + c.lineHeight() + 3, INFO, false);
+                }
+            }
             if (mouseX >= x && mouseX <= x + w && mouseY >= rowsY && mouseY < rowsY + available
                 && mouseY >= ry && mouseY < ry + rh - 2) {
                 hoveredRow = i;
@@ -1075,26 +1097,76 @@ public abstract class IngameUxScreenBase extends Screen {
                 String bidDetails = auction.bids() == null ? "" : auction.bids().entrySet().stream().limit(3)
                     .map(entry -> mod.getProfileCache().getDisplayName(entry.getKey()) + ": " + formatMoney(entry.getValue()))
                     .collect(java.util.stream.Collectors.joining(" · "));
-                hoveredDetails = name + " · " + (auction.item() == null ? 1 : auction.item().amount()) + "×"
-                    + "\nKategorie: " + auction.category() + " · Status: " + auction.state()
-                    + "\nStartgebot: " + formatMoney(auction.startBid()) + " · Aktuell: " + formatMoney(auction.currentBid())
-                    + (auction.instantBuyPrice() != null ? " · Sofortkauf: " + formatMoney(auction.instantBuyPrice()) : "")
-                    + "\nVerkäufer: " + seller + " · Höchstbietender: " + bidder
-                    + "\nGebote: " + (auction.bids() == null ? 0 : auction.bids().size())
-                    + (bidDetails.isBlank() ? "" : " · " + bidDetails)
-                    + "\nStart: " + (auction.startTime() == null ? "–" : auction.startTime())
-                    + " · Ende: " + (auction.endTime() == null ? "–" : auction.endTime())
-                    + (auction.item() == null || auction.item().lore() == null || auction.item().lore().isEmpty() ? "" :
-                        "\nBeschreibung: " + String.join(" · ", auction.item().lore().stream().filter(line -> !line.isBlank()).limit(4).toList()))
-                    + (auction.item() == null || auction.item().enchantments() == null || auction.item().enchantments().isEmpty() ? "" :
-                        "\nVerzauberungen: " + auction.item().enchantments().entrySet().stream().limit(6)
-                            .map(entry -> entry.getKey().substring(entry.getKey().lastIndexOf(':') + 1).replace('_', ' ') + " " + entry.getValue())
-                            .collect(java.util.stream.Collectors.joining(", ")))
-                    + "\nUID: " + auction.uid();
+                hoveredDetails = auctionTooltip(auction, name, seller, bidder, bidDetails);
                 c.fill(x + 2, ry, x + 4, ry + rh - 2, ICE);
             }
         }
         c.disableScissor();
+    }
+
+    private static int auctionRowHeight(int rowWidth) { return rowWidth < 280 ? 58 : 42; }
+
+    private static void drawRightAligned(IngameUxCanvas c, String value, int minX, int rightX,
+                                         int maxWidth, int y, int color) {
+        String visible = fit(c, value, Math.min(maxWidth, Math.max(1, rightX - minX)));
+        c.text(visible, Math.max(minX, rightX - c.textWidth(visible)), y, color, false);
+    }
+
+    private String auctionTooltip(Auction auction, String name, String seller, String bidder, String bidDetails) {
+        StringBuilder text = new StringBuilder(name).append(" · ")
+            .append(auction.item() == null ? 1 : auction.item().amount()).append("×");
+        appendTooltipSection(text, "Preise", "Startgebot: " + formatMoney(auction.startBid()),
+            "Aktuelles Gebot: " + formatMoney(auction.currentBid()));
+        if (auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0)
+            appendTooltipLine(text, "Sofortkauf: " + formatMoney(auction.instantBuyPrice()));
+
+        appendTooltipSection(text, "Gebote", "Verkäufer: " + seller, "Höchstbietender: " + bidder,
+            "Anzahl: " + (auction.bids() == null ? 0 : auction.bids().size()));
+        if (!bidDetails.isBlank()) appendTooltipLine(text, "Letzte Gebote: " + bidDetails);
+
+        if (auction.item() != null && auction.item().lore() != null) {
+            List<String> lore = auction.item().lore().stream().limit(8).toList();
+            if (lore.stream().anyMatch(line -> line != null && !line.isBlank())) {
+                appendTooltipHeading(text, "Beschreibung:");
+                int shown = 0;
+                for (String line : lore) {
+                    if (line == null || line.isBlank()) {
+                        if (shown > 0 && !text.toString().endsWith("\n\n")) text.append('\n');
+                        continue;
+                    }
+                    appendTooltipLine(text, line.trim());
+                    shown++;
+                }
+            }
+        }
+
+        if (auction.item() != null && auction.item().enchantments() != null && !auction.item().enchantments().isEmpty()) {
+            appendTooltipHeading(text, "Verzauberungen:");
+            auction.item().enchantments().entrySet().stream().limit(8)
+                .forEach(entry -> appendTooltipLine(text, AuctionDisplayText.enchantment(entry.getKey(), entry.getValue())));
+            if (auction.item().enchantments().size() > 8) appendTooltipLine(text, "… weitere Verzauberungen");
+        }
+
+        appendTooltipSection(text, "Auktionsdaten", "Kategorie: " + AuctionDisplayText.category(auction.category()),
+            "Status: " + AuctionDisplayText.status(auction.state()),
+            "Start: " + AuctionDisplayText.timestamp(auction.startTime()),
+            "Ende: " + AuctionDisplayText.timestamp(auction.endTime()));
+        appendTooltipLine(text, "Auktions-ID: " + (auction.uid() == null ? "–" : auction.uid()));
+        return text.toString();
+    }
+
+    private static void appendTooltipSection(StringBuilder target, String heading, String... lines) {
+        appendTooltipHeading(target, heading + ":");
+        for (String line : lines) appendTooltipLine(target, line);
+    }
+
+    private static void appendTooltipHeading(StringBuilder target, String heading) {
+        if (!target.isEmpty()) target.append("\n\n");
+        target.append(heading);
+    }
+
+    private static void appendTooltipLine(StringBuilder target, String line) {
+        target.append('\n').append(line);
     }
 
     private void drawAuctionDetails(IngameUxCanvas c) {
@@ -1132,7 +1204,7 @@ public abstract class IngameUxScreenBase extends Screen {
         c.text(fit(c, itemName + " · " + (auction.item() == null ? 1 : auction.item().amount()) + "×", textW),
             textX, y + 31, WHITE, true);
         int lineY = y + 52;
-        c.text(fit(c, "Kategorie: " + safeAuctionText(auction.category()) + " · Status: " + safeAuctionText(auction.state()), w - 18),
+        c.text(fit(c, "Kategorie: " + AuctionDisplayText.category(auction.category()) + " · Status: " + AuctionDisplayText.status(auction.state()), w - 18),
             x + 9, lineY, MUTED, false);
         lineY += c.lineHeight() + 3;
         String prices = "Start " + formatMoney(auction.startBid()) + " · Gebot " + formatMoney(auction.currentBid());
@@ -1148,28 +1220,38 @@ public abstract class IngameUxScreenBase extends Screen {
         int bidCount = auction.bids() == null ? 0 : auction.bids().size();
         c.text(fit(c, "Gebote: " + bidCount, w - 18), x + 9, lineY, MUTED, false);
         lineY += c.lineHeight() + 3;
-        c.text(fit(c, "Start: " + (auction.startTime() == null ? "–" : auction.startTime()), w - 18), x + 9, lineY, MUTED, false);
+        c.text(fit(c, "Start: " + AuctionDisplayText.timestamp(auction.startTime()), w - 18), x + 9, lineY, MUTED, false);
         lineY += c.lineHeight() + 3;
-        c.text(fit(c, "Ende: " + (auction.endTime() == null ? "–" : auction.endTime()), w - 18), x + 9, lineY, MUTED, false);
+        c.text(fit(c, "Ende: " + AuctionDisplayText.timestamp(auction.endTime()), w - 18), x + 9, lineY, MUTED, false);
         lineY += c.lineHeight() + 4;
-        String lore = auction.item() == null || auction.item().lore() == null ? "" : String.join(" · ", auction.item().lore());
-        if (!lore.isBlank()) {
+        List<String> lore = auction.item() == null || auction.item().lore() == null ? List.of() : auction.item().lore();
+        if (lore.stream().anyMatch(line -> line != null && !line.isBlank())) {
             c.text("Beschreibung", x + 9, lineY, WHITE, true);
             lineY += c.lineHeight() + 2;
-            drawWrapped(c, lore, x + 9, lineY, w - 18, MUTED);
-            lineY += c.lineHeight() * 3 + 3;
+            for (String paragraph : lore) {
+                if (paragraph == null || paragraph.isBlank()) {
+                    lineY += Math.max(3, c.lineHeight() / 2);
+                } else {
+                    int lines = drawWrappedLines(c, paragraph.trim(), x + 9, lineY, w - 18, MUTED, 4);
+                    lineY += lines * c.lineHeight();
+                }
+                if (lineY >= bottom - c.lineHeight()) break;
+            }
+            lineY += 3;
         }
         if (auction.item() != null && auction.item().enchantments() != null && !auction.item().enchantments().isEmpty()
             && lineY < bottom - c.lineHeight()) {
-            String enchantments = auction.item().enchantments().entrySet().stream().limit(6)
-                .map(entry -> entry.getKey().substring(entry.getKey().lastIndexOf(':') + 1).replace('_', ' ') + " " + entry.getValue())
-                .collect(java.util.stream.Collectors.joining(", "));
-            c.text(fit(c, "Verzauberungen: " + enchantments, w - 18), x + 9, lineY, MUTED, false);
+            c.text("Verzauberungen", x + 9, lineY, WHITE, true);
+            lineY += c.lineHeight() + 2;
+            for (var enchantment : auction.item().enchantments().entrySet().stream().limit(8).toList()) {
+                if (lineY >= bottom - c.lineHeight()) break;
+                c.text(fit(c, AuctionDisplayText.enchantment(enchantment.getKey(), enchantment.getValue()), w - 18),
+                    x + 9, lineY, MUTED, false);
+                lineY += c.lineHeight();
+            }
         }
         c.disableScissor();
     }
-
-    private static String safeAuctionText(String value) { return value == null || value.isBlank() ? "–" : value; }
 
     private void requestAuctionDetailProfiles(Auction auction) {
         if (auction == null) return;
@@ -2000,38 +2082,96 @@ public abstract class IngameUxScreenBase extends Screen {
         if (!line.isEmpty() && row < 3) c.text(line.toString(), x, y + row * c.lineHeight(), color, false);
     }
 
+    private int drawWrappedLines(IngameUxCanvas c, String value, int x, int y, int maxWidth, int color, int maxLines) {
+        List<String> lines = wrapTooltip(c, value, maxWidth).stream()
+            .filter(line -> !line.spacer()).map(TooltipLine::text).toList();
+        int visibleLines = Math.min(maxLines, lines.size());
+        boolean truncated = visibleLines < lines.size();
+        int drawn = 0;
+        while (drawn < visibleLines) {
+            String line = lines.get(drawn);
+            if (truncated && drawn == visibleLines - 1) line = fit(c, line + "…", maxWidth);
+            c.text(line, x, y + drawn * c.lineHeight(), color, false);
+            drawn++;
+        }
+        return Math.max(1, drawn);
+    }
+
     private void drawTooltip(IngameUxCanvas c, String value, int mouseX, int mouseY) {
         int maxWidth = Math.min(310, Math.max(120, width - 20));
-        List<String> lines = wrapTooltip(c, value, maxWidth - 12);
+        List<TooltipLine> lines = wrapTooltip(c, value, maxWidth - 12);
         int maxLines = Math.max(1, (height - 20) / Math.max(1, c.lineHeight()));
         if (lines.size() > maxLines) {
             lines = new ArrayList<>(lines.subList(0, maxLines));
-            lines.set(maxLines - 1, fit(c, "… weitere Details in der Web-UX", maxWidth - 12));
+            lines.set(maxLines - 1, new TooltipLine(fit(c, "… weitere Details in der Auktion", maxWidth - 12), false, false));
         }
-        int boxW = Math.min(maxWidth, lines.stream().mapToInt(c::textWidth).max().orElse(0) + 12);
-        int boxH = lines.size() * c.lineHeight() + 10;
+        int boxW = Math.min(maxWidth, lines.stream().filter(line -> !line.spacer())
+            .mapToInt(line -> c.textWidth(line.text())).max().orElse(0) + 12);
+        int boxH = lines.stream().mapToInt(line -> line.spacer() ? Math.max(3, c.lineHeight() / 2) : c.lineHeight()).sum() + 10;
         int x = clamp(mouseX + 12, 5, width - boxW - 5);
         int y = mouseY + boxH + 12 > height ? Math.max(5, mouseY - boxH - 10) : mouseY + 10;
         c.fill(x - 1, y - 1, x + boxW + 1, y + boxH + 1, 0xFF090E13);
         c.fill(x, y, x + boxW, y + boxH, 0xF01B2A36);
         c.fill(x, y, x + boxW, y + 1, ICE);
-        for (int i = 0; i < lines.size(); i++) c.text(lines.get(i), x + 6, y + 5 + i * c.lineHeight(), WHITE, true);
+        int lineY = y + 5;
+        for (TooltipLine line : lines) {
+            if (line.spacer()) {
+                lineY += Math.max(3, c.lineHeight() / 2);
+            } else {
+                c.text(line.text(), x + 6, lineY, line.heading() ? INFO : WHITE, true);
+                lineY += c.lineHeight();
+            }
+        }
     }
 
-    private static List<String> wrapTooltip(IngameUxCanvas c, String value, int maxWidth) {
-        List<String> lines = new ArrayList<>();
-        for (String paragraph : value.split("\\n")) {
-            StringBuilder line = new StringBuilder();
-            for (String word : paragraph.split(" ")) {
-                String candidate = line.isEmpty() ? word : line + " " + word;
-                if (c.textWidth(candidate) > maxWidth && !line.isEmpty()) {
-                    lines.add(line.toString());
-                    line = new StringBuilder(word);
-                } else line = new StringBuilder(candidate);
+    private static List<TooltipLine> wrapTooltip(IngameUxCanvas c, String value, int maxWidth) {
+        List<TooltipLine> lines = new ArrayList<>();
+        int available = Math.max(1, maxWidth);
+        for (String paragraph : value.split("\\n", -1)) {
+            if (paragraph.isBlank()) {
+                if (!lines.isEmpty() && !lines.getLast().spacer()) lines.add(new TooltipLine("", false, true));
+                continue;
             }
-            if (!line.isEmpty()) lines.add(line.toString());
+            boolean heading = paragraph.length() <= 48 && paragraph.endsWith(":");
+            appendWrappedTooltipLine(c, lines, paragraph.trim(), available, heading);
         }
+        while (!lines.isEmpty() && lines.getLast().spacer()) lines.removeLast();
         return lines;
+    }
+
+    private static void appendWrappedTooltipLine(IngameUxCanvas c, List<TooltipLine> lines, String value,
+                                                  int maxWidth, boolean heading) {
+        StringBuilder line = new StringBuilder();
+        for (String word : value.split("\\s+")) {
+            if (word.isEmpty()) continue;
+            if (c.textWidth(word) > maxWidth) {
+                if (!line.isEmpty()) {
+                    lines.add(new TooltipLine(line.toString(), heading, false));
+                    line.setLength(0);
+                }
+                StringBuilder chunk = new StringBuilder();
+                for (int codePoint : word.codePoints().toArray()) {
+                    String symbol = new String(Character.toChars(codePoint));
+                    if (!chunk.isEmpty() && c.textWidth(chunk + symbol) > maxWidth) {
+                        lines.add(new TooltipLine(chunk.toString(), heading, false));
+                        chunk.setLength(0);
+                    }
+                    chunk.append(symbol);
+                }
+                line.append(chunk);
+                continue;
+            }
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            if (c.textWidth(candidate) > maxWidth && !line.isEmpty()) {
+                lines.add(new TooltipLine(line.toString(), heading, false));
+                line.setLength(0);
+                line.append(word);
+            } else {
+                line.setLength(0);
+                line.append(candidate);
+            }
+        }
+        if (!line.isEmpty()) lines.add(new TooltipLine(line.toString(), heading, false));
     }
 
     private static void card(IngameUxCanvas c, int x, int y, int w, int h) {

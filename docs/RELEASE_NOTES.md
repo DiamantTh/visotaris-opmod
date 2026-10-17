@@ -1,5 +1,21 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.8 — Vorabversion
+
+### Native Auktionshaus- und Tooltip-UX
+
+- Auktionszeilen teilen Gebote und Sofortkäufe in eine rechtsbündige Preisspalte
+  mit Innenabstand zur Kartenkante auf. Bei schmalen Inhaltsbereichen wechseln die
+  Zeilen in ein gestapeltes Layout; lange Namen und Preise werden kontrolliert gekürzt.
+- Auktionsdetails gliedern Preise, Gebote, Beschreibung, Verzauberungen und
+  Auktionsdaten mit kompakten Abständen. Mehrzeilige Lore bleibt als eigener Text
+  lesbar.
+- Verzauberungen verwenden deutsche Minecraft-Sprachressourcen und die üblichen
+  römischen Stufen. Itemnamen, die nur eine Vanilla-Material-ID wiederholen, werden
+  ebenfalls mit dem deutschen Minecraft-Namen angezeigt.
+- Auktionskategorien, Status und Zeitangaben werden als deutsche, lesbare Werte
+  statt als Registry-/API-Schlüssel dargestellt.
+
 ## Visotaris OPMod 1.2.0-pre.7 — Vorabversion
 
 ### Korrekte Währungssemantik
