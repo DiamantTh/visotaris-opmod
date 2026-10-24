@@ -17,5 +17,6 @@ class AuctionSellerNamesTest {
         assertFalse(AuctionSellerNames.isAnonymous("123e4567-e89b-12d3-a456-426614174000"));
         assertEquals("Spielername nicht verfügbar", AuctionSellerNames.visibleName("id", null));
         assertEquals("OPShadowWolf", AuctionSellerNames.visibleName("id", " OPShadowWolf "));
+        assertEquals("Spielername wird aufgelöst", AuctionSellerNames.visibleName("id", null, true));
     }
 }

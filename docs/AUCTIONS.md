@@ -65,11 +65,13 @@ das Vanilla-Material beziehungsweise ein neutrales Icon der Fallback. URL-Validi
 Bildgrößenlimits und ein temporärer Fehlercache verhindern wiederholte Downloads.
 
 Verkäufer-, Höchstbietenden- und Gebots-UUIDs werden vom gemeinsamen `ProfileCache`
-asynchron aufgelöst. Zuerst wird Minecrafts `services.profileResolver().fetchById`
+asynchron aufgelöst. Fehlt die Verkäufer-UUID, gilt die Auktion als anonym; Visotaris
+versucht dann keine Ableitung oder Profilauflösung. Bei einer vorhandenen, noch laufenden
+Verkäuferauflösung bleibt die UI nutzbar und zeigt einen lokalen Ladezustand. Zuerst wird Minecrafts `services.profileResolver().fetchById`
 verwendet, danach der feste Mojang-Session-Profile-Endpunkt. UUID, letzter Name und
 Auflösungszeit werden lokal gespeichert; gleichzeitige Lookups werden zusammengeführt,
-Fehler kurz negativ gecacht. Bis zur erfolgreichen Auflösung zeigt die UX eine gekürzte
-UUID. Es wird kein Chatbefehl automatisiert eingegeben.
+Fehler kurz negativ gecacht. Kann ein vorhandener Verkäufername nicht aufgelöst werden,
+zeigt die UX „Spielername nicht verfügbar“. Es wird kein Chatbefehl automatisiert eingegeben.
 
 Es gibt keine Biet-, Kauf-, Erstell- oder Abbruchfunktion und keine automatisierte
 Minecraft-Serveraktion. Visotaris 1.2.x zielt auf Minecraft 26.x (derzeit 26.2).

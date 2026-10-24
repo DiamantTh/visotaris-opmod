@@ -1064,8 +1064,10 @@ public abstract class IngameUxScreenBase extends Screen {
             String iconKey = systems.diath.visotaris_opmod.services.AuctionIconCache.cacheId(iconUrl);
             if (icon == null || iconKey == null || !c.image(iconKey, icon, rowX + 5, ry + 5, 16)) c.item(material, rowX + 5, ry + 5);
             String name = AuctionItemNames.visibleName(auction.item());
+            boolean sellerResolving = mod.getProfileCache().isResolving(auction.seller());
             String seller = AuctionSellerNames.visibleName(auction.seller(),
-                mod.getProfileCache().getCachedName(auction.seller()));
+                mod.getProfileCache().getCachedName(auction.seller()), sellerResolving);
+            if (sellerResolving) seller += loadingDots();
             String bid = "Gebot " + formatMoney(auction.currentBid());
             String instantBuy = auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0
                 ? "Sofortkauf " + formatMoney(auction.instantBuyPrice()) : "";
@@ -1214,8 +1216,10 @@ public abstract class IngameUxScreenBase extends Screen {
         if (auction.instantBuyPrice() != null) prices += " · Sofort " + formatMoney(auction.instantBuyPrice());
         c.text(fit(c, prices, w - 18), x + 9, lineY, INFO, false);
         lineY += c.lineHeight() + 3;
+        boolean sellerResolving = mod.getProfileCache().isResolving(auction.seller());
         String seller = AuctionSellerNames.visibleName(auction.seller(),
-            mod.getProfileCache().getCachedName(auction.seller()));
+            mod.getProfileCache().getCachedName(auction.seller()), sellerResolving);
+        if (sellerResolving) seller += loadingDots();
         String bidder = auction.highestBidder() == null ? "–" : mod.getProfileCache().getDisplayName(auction.highestBidder());
         c.text(fit(c, "Verkäufer: " + seller, w - 18), x + 9, lineY, WHITE, false);
         lineY += c.lineHeight() + 3;
@@ -2029,6 +2033,11 @@ public abstract class IngameUxScreenBase extends Screen {
     }
 
     private static String ageTextSeconds(int seconds) { return seconds < 3600 ? (seconds / 60) + " Min." : (seconds / 3600) + " Std."; }
+
+    /** Small local activity cue for an already running ProfileCache lookup. */
+    private static String loadingDots() {
+        return ".".repeat((int) (System.currentTimeMillis() / 350L % 3L) + 1);
+    }
 
     private static String formatMoney(double value) {
         return MoneyFormatter.format(value);

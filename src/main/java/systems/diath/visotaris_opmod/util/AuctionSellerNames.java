@@ -4,6 +4,7 @@ package systems.diath.visotaris_opmod.util;
 public final class AuctionSellerNames {
     public static final String ANONYMOUS_SELLER = "Anonymer Verkäufer";
     public static final String UNRESOLVED_SELLER = "Spielername nicht verfügbar";
+    public static final String RESOLVING_SELLER = "Spielername wird aufgelöst";
 
     private AuctionSellerNames() { }
 
@@ -16,7 +17,12 @@ public final class AuctionSellerNames {
     }
 
     public static String visibleName(String seller, String resolvedName) {
+        return visibleName(seller, resolvedName, false);
+    }
+
+    public static String visibleName(String seller, String resolvedName, boolean resolving) {
         if (isAnonymous(seller)) return ANONYMOUS_SELLER;
+        if (resolving) return RESOLVING_SELLER;
         return resolvedName == null || resolvedName.isBlank() ? UNRESOLVED_SELLER : resolvedName.trim();
     }
 }

@@ -26,12 +26,14 @@ class ProfileCacheTest {
         try {
             var first = cache.resolve(UUID);
             assertTrue(started.await(2, TimeUnit.SECONDS));
+            assertTrue(cache.isResolving(UUID), "the UI can show a read-only loading state while resolving");
             var second = cache.resolve("de27aa9b-fd33-440d-fac2-c6eee9bc371d");
             assertSame(first, second);
             release.countDown();
             assertEquals("DiamondTh", first.get(2, TimeUnit.SECONDS));
             assertEquals(1, minecraftLookups.get());
             assertEquals(0, fallbackLookups.get());
+            assertFalse(cache.isResolving(UUID));
         } finally { release.countDown(); cache.close(); }
 
         try (ProfileCache reopened = new ProfileCache(file, uuid -> fail("persisted cache should be used"),

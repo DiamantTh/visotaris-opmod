@@ -1,5 +1,6 @@
 # Umgesetzte Visotaris-Ingame-UX
 
+Die sichere Verkäuferauflösung im Auktionshaus aus pre.11 ist mit asynchronen Cache-Fixtures geprüft: [Prüfbericht](pre11-auction-seller-resolution-check.md).
 Das optionale vertikale XYZ-HUD aus pre.10 wurde im isolierten Minecraft-Client mit positiven und negativen Blockpositionen sowie in zwei Auflösungen geprüft: [Prüfbericht](pre10-coordinate-hud-check.md).
 Die responsive WebUX für datenreiche Ansichten von pre.9 wurde in einem isolierten Browser mit lokalen API-Fixtures geprüft: [Prüfbericht und Screenshots](pre9-webux-responsive-data-check.md).
 Aktuelle pre.6-Navigationsprüfung für Visotaris 1.2.x: [Menüreihenfolge, Seitenwechsel und MaLiLib-Rückkehr](pre6-navigation-check.md). Der ältere Bericht zu Hauptmenü und Runtime-Registry dokumentiert den Stand von pre.3: [26.2-Prüfung](26.2-mainmenu-registry-check.md).

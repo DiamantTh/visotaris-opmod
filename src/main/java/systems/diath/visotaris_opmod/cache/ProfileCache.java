@@ -86,6 +86,15 @@ public final class ProfileCache implements AutoCloseable {
         return entry != null && entry.name != null && !entry.name.isBlank() ? entry.name : null;
     }
 
+    /**
+     * Read-only state for UI loading indicators. This never starts a profile
+     * lookup, so rendering and scrolling remain free of network activity.
+     */
+    public boolean isResolving(String rawUuid) {
+        String uuid = canonicalUuid(rawUuid);
+        return uuid != null && inFlight.containsKey(uuid);
+    }
+
     /** Increments when a resolved name is loaded or changes, for local UI-index refreshes. */
     public long getNameVersion() { return nameVersion.get(); }
 
@@ -111,8 +120,8 @@ public final class ProfileCache implements AutoCloseable {
                     if (previous == null || !name.equals(previous.name)) nameVersion.incrementAndGet();
                 }
                 save();
-                candidate.complete(name == null ? shortUuid(uuid) : name);
                 inFlight.remove(uuid, candidate);
+                candidate.complete(name == null ? shortUuid(uuid) : name);
             });
         } catch (RuntimeException stopped) {
             inFlight.remove(uuid, candidate);

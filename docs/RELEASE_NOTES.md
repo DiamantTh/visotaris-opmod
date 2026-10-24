@@ -1,5 +1,16 @@
 # Release Notes
 
+## Visotaris OPMod 1.2.0-pre.11+mc26.2 — Vorabversion
+
+### Auktionshaus: sichere Verkäuferauflösung
+
+- Auktionsliste und Detailansicht bleiben sofort nutzbar, während ein vorhandener
+  Verkäufer im gemeinsamen `ProfileCache` aufgelöst wird.
+- Das Verkäuferfeld zeigt dabei „Spielername wird aufgelöst …“ samt dezenter
+  Ladeanzeige; nach Abschluss erscheint nur dieses Feld aktualisiert.
+- Fehlende Verkäufer-UUIDs bleiben „Anonymer Verkäufer“ und starten weder in der
+  nativen noch in der WebUX eine Profilabfrage.
+
 ## Visotaris OPMod 1.2.0-pre.10+mc26.2 — Vorabversion
 
 ### Kompaktes Koordinaten-HUD

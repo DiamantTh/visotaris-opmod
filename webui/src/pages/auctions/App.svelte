@@ -13,6 +13,7 @@
   let descending = $state(false)
   let selectedUid = $state('')
   let profileNames = $state({})
+  let profileResolution = $state({})
   const profileLookupAt = new Map()
   let loading = $state(false)
   let refreshing = $state(false)
@@ -49,10 +50,18 @@
     return /^[0-9a-f]{32}$/.test(compact) ? `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}` : value
   }
   function playerName(uuid) { return uuid ? (profileNames[canonicalUuid(uuid)] || 'Spielername nicht verfügbar') : 'Anonymer Verkäufer' }
-  function sellerName(auction) {
+  function sellerResolution(auction) {
     const seller = String(auction?.seller || '').trim()
-    if (!seller) return 'Anonymer Verkäufer'
-    return profileNames[canonicalUuid(seller)] || auction?.sellerName || 'Spielername nicht verfügbar'
+    if (!seller) return 'anonymous'
+    const uuid = canonicalUuid(seller)
+    if (profileNames[uuid] || auction?.sellerName) return 'resolved'
+    return profileResolution[uuid] || auction?.sellerResolution || 'unavailable'
+  }
+  function sellerName(auction) {
+    const state = sellerResolution(auction)
+    if (state === 'anonymous') return 'Anonymer Verkäufer'
+    if (state === 'resolving') return 'Spielername wird aufgelöst …'
+    return profileNames[canonicalUuid(auction?.seller)] || auction?.sellerName || 'Spielername nicht verfügbar'
   }
   function fallbackMaterial(auction) {
     const item = auction?.item || {}
@@ -135,7 +144,11 @@
       if (Date.now() - last < 4000) continue
       profileLookupAt.set(raw, Date.now())
       fetch(`/api/profiles/${encodeURIComponent(raw)}`).then(response => response.ok ? response.json() : null)
-        .then(value => { if (value?.resolved) profileNames[value.uuid] = value.name })
+        .then(value => {
+          if (!value?.uuid) return
+          if (value.resolved) profileNames[value.uuid] = value.name
+          profileResolution[value.uuid] = value.resolution || (value.resolved ? 'resolved' : 'unavailable')
+        })
         .catch(() => {})
     }
   }
@@ -194,7 +207,7 @@
                   </span>
                   <span class="auction-tile-name"><strong>{itemName(auction)}</strong><small>{fmtInt(auction.item?.amount || 1)} Stück</small></span>
                 </span>
-                <span class="auction-tile-seller"><span>Verkäufer</span><strong>{sellerName(auction)}</strong></span>
+                <span class="auction-tile-seller"><span>Verkäufer</span><strong class:auction-seller-resolving={sellerResolution(auction) === 'resolving'}>{sellerName(auction)}</strong></span>
                 <span class="auction-tile-prices">
                   <span><small>Aktuelles Gebot</small><strong>{fmtMoney(auction.currentBid)}</strong></span>
                   {#if auction.instantBuyPrice != null}<span><small>Sofortkauf</small><strong>{fmtMoney(auction.instantBuyPrice)}</strong></span>{/if}
@@ -226,7 +239,7 @@
             <section class="auction-detail-section">
               <h3><Icon icon="lucide:tag" width={14} />Auktion</h3>
               <dl class="auction-detail-grid">
-                <div><dt>Verkäufer</dt><dd>{sellerName(selected)}</dd></div>
+                <div><dt>Verkäufer</dt><dd class:auction-seller-resolving={sellerResolution(selected) === 'resolving'}>{sellerName(selected)}</dd></div>
                 <div><dt>Status</dt><dd>{statusLabel(selected.state)}</dd></div>
                 <div><dt>Gebote</dt><dd>{fmtInt(bidCount(selected))}</dd></div>
                 <div><dt>Restzeit</dt><dd>{remaining(selected.endTime)}</dd></div>
@@ -316,6 +329,10 @@
   .auction-tile-name small,.auction-tile-seller span,.auction-tile-prices small,.auction-time small { color:var(--vi-text-muted); font-size:.7rem; }
   .auction-tile-seller { display:grid; grid-template-columns:5rem minmax(0,1fr); align-items:baseline; gap:.5rem; min-width:0; }
   .auction-tile-seller strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8rem; }
+  .auction-tile-seller strong.auction-seller-resolving { color:var(--vi-text-muted); display:inline-flex; align-items:center; gap:.45rem; }
+  .auction-tile-seller strong.auction-seller-resolving::after { content:''; flex:0 0 2.4rem; height:.18rem; border-radius:999px; background:linear-gradient(90deg, var(--vi-line) 0 35%, var(--vi-cyan) 35% 60%, var(--vi-line) 60%); background-size:200% 100%; animation:auction-seller-loading 1s linear infinite; }
+  .auction-detail-grid dd.auction-seller-resolving { color:var(--vi-text-muted); }
+  @keyframes auction-seller-loading { to { background-position:-200% 0; } }
   .auction-tile-prices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; padding:.7rem 0 .75rem; border-block:1px solid color-mix(in srgb,var(--vi-border) 64%,transparent); }
   .auction-tile-prices > span { display:grid; gap:.2rem; min-width:0; }
   .auction-tile-prices > span:last-child:nth-child(1) { grid-column:1 / -1; }

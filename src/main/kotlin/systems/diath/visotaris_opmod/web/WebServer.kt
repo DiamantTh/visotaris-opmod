@@ -171,8 +171,16 @@ class WebServer(
                     val visibleItemName = WebItemNameResolver.auctionName(auction)
                     // Missing seller IDs are intentionally anonymous. Do not infer them
                     // from another cache or trigger any profile lookup for them.
-                    val sellerName = auction.seller()?.takeIf { it.isNotBlank() }?.let(profileCache::getCachedName)
+                    val sellerId = auction.seller()?.takeIf { it.isNotBlank() }
+                    val sellerName = sellerId?.let(profileCache::getCachedName)
+                    val sellerResolution = when {
+                        sellerId == null -> "anonymous"
+                        sellerName != null -> "resolved"
+                        profileCache.isResolving(sellerId) -> "resolving"
+                        else -> "unavailable"
+                    }
                     json.addProperty("sellerName", sellerName)
+                    json.addProperty("sellerResolution", sellerResolution)
                     json.addProperty("searchText", AuctionSearch.searchableText(auction, sellerName, visibleItemName))
                     json.get("item")?.takeIf { it.isJsonObject }?.asJsonObject?.apply {
                         addProperty("visibleName", visibleItemName)
@@ -212,10 +220,19 @@ class WebServer(
                 if (uuid == null || !isAuctionParticipant(uuid)) {
                     call.respond(HttpStatusCode.NotFound); return@get
                 }
-                val cachedName = profileCache.getDisplayName(uuid)
-                val resolved = cachedName != ProfileCache.shortUuid(uuid)
-                if (!resolved) profileCache.resolve(uuid)
-                call.respondText(gson.toJson(mapOf("uuid" to uuid, "name" to cachedName, "resolved" to resolved)), ContentType.Application.Json)
+                val cachedName = profileCache.getCachedName(uuid)
+                if (cachedName == null) profileCache.resolve(uuid)
+                val resolution = when {
+                    cachedName != null -> "resolved"
+                    profileCache.isResolving(uuid) -> "resolving"
+                    else -> "unavailable"
+                }
+                call.respondText(gson.toJson(mapOf(
+                    "uuid" to uuid,
+                    "name" to cachedName,
+                    "resolved" to (cachedName != null),
+                    "resolution" to resolution
+                )), ContentType.Application.Json)
             }
             get("/api/auctions/finalized") {
                 val values = auctionCache.finalizedSnapshot().values.map(AuctionApiClient::toJsonElement)
