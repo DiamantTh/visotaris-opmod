@@ -40,4 +40,19 @@ class AuctionItemNamesTest {
         assertEquals("Diamant", AuctionItemNames.visibleName(item, material ->
             material.equalsIgnoreCase("DIAMOND") ? "Diamant" : null));
     }
+
+    @Test void localizesNamelessVanillaSpawnEggsInsteadOfShowingTheirRegistryKeys() {
+        String[][] spawnEggs = {
+            {"BREEZE_SPAWN_EGG", "Breeze-Spawn-Ei"},
+            {"OCELOT_SPAWN_EGG", "Ozelot-Spawn-Ei"},
+            {"SHEEP_SPAWN_EGG", "Schaf-Spawn-Ei"},
+            {"ZOMBIE_SPAWN_EGG", "Zombie-Spawn-Ei"}
+        };
+
+        for (String[] spawnEgg : spawnEggs) {
+            AuctionItem item = new AuctionItem(spawnEgg[0], null, 1, null, null, null);
+            assertEquals(spawnEgg[1], AuctionItemNames.visibleName(item, material ->
+                material.equalsIgnoreCase(spawnEgg[0]) ? spawnEgg[1] : null));
+        }
+    }
 }

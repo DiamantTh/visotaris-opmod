@@ -12,6 +12,14 @@
   „Anonymer Verkäufer“ und startet weder in der nativen noch in der WebUX eine
   Profilabfrage.
 
+### Deutsche Vanilla-Itemnamen als API-Fallback
+
+- Fehlt bei einem gewöhnlichen Auction-Item `displayName`, wird sein deutsches
+  Vanilla-Material verwendet. Damit bleiben etwa `SHEEP_SPAWN_EGG` und weitere
+  namenlos gelieferte Spawn-Eggs als „Schaf-Spawn-Ei“ statt als Registry-Key sichtbar.
+- Derselbe gemeinsame Fallback gilt in Markt, Auktionshaus und zugehörigen
+  Tooltips. Echte API-Customnamen behalten weiterhin immer Vorrang.
+
 ## Visotaris OPMod 1.2.0-pre.10+mc26.2 — Vorabversion
 
 ### Kompaktes Koordinaten-HUD

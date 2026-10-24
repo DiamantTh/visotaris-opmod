@@ -40,4 +40,9 @@ class WebItemNameResolverTest {
         assertEquals("unknown_material", WebItemNameResolver.vanillaOrFallback("unknown_material", null, ignored -> null));
         assertEquals("Unbekanntes Item", WebItemNameResolver.vanillaOrFallback(null, null, ignored -> null));
     }
+
+    @Test void marketUsesTheGermanVanillaFallbackForSpawnEggs() {
+        assertEquals("Schaf-Spawn-Ei", WebItemNameResolver.vanillaOrFallback("SHEEP_SPAWN_EGG", null,
+            material -> material.equalsIgnoreCase("SHEEP_SPAWN_EGG") ? "Schaf-Spawn-Ei" : null));
+    }
 }

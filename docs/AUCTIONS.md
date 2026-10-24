@@ -35,18 +35,20 @@ angezeigt. Eine Auction-Kategorie beschreibt das Angebot, nicht dessen Preiswäh
 Die Händler-API behält ihre technischen Ziele `opshards` und `redcoins`; sichtbar heißen
 sie `OPShards` beziehungsweise `Redcoins`. Visotaris erfindet dafür kein eigenes Symbol.
 
-Für generische Vanilla-Itemnamen in der WebUX verwendet `WebItemNameResolver` weiterhin
-die lokalisierte Minecraft-Sprache; `/api/meta` stellt die Client-Sprachkennung als
-`clientLanguage` bereit.
+Für generische Vanilla-Itemnamen verwenden Markt, Auktionshaus und ihre Tooltips die
+gebündelte deutsche Minecraft-Sprachressource. Die aktive Client-Sprache bleibt nur ein
+defensiver Fallback, falls diese Ressource unerwartet nicht verfügbar sein sollte;
+`/api/meta` stellt die Client-Sprachkennung weiterhin für andere WebUX-Metadaten bereit.
 
 `AuctionItem.displayName` ist im OPSUCHT-Auktionshaus der reguläre sichtbare Itemname;
 Customnamen sind dort üblich. Das Feld hat unabhängig von Kategorie, Icon und
 Trägermaterial Vorrang. Native und WebUX verwenden dafür dieselbe Regel aus
 `AuctionItemNames`: wiederholt `displayName` lediglich den Materialnamen, wird der
-deutsche Vanilla-Name angezeigt. Fehlt `displayName`, dient das lokalisierte Material
-als Fallback, danach der lesbare Materialwert und zuletzt `Unbekanntes Item` als
-Notfallfallback. Suche, Sortierung, Kacheln und Details verwenden denselben sichtbaren
-Namen. Die Namensauflösung löst keine Netzwerkabfragen aus.
+deutsche Vanilla-Name angezeigt. Fehlt `displayName` – wie bei normalen Vanilla-Items
+in manchen aktiven Snapshots, darunter Spawn-Eggs – dient das deutsche lokalisierte
+Material als Fallback, danach der lesbare Materialwert und zuletzt `Unbekanntes Item`
+als Notfallfallback. Suche, Sortierung, Kacheln und Details verwenden denselben
+sichtbaren Namen. Die Namensauflösung löst keine Netzwerkabfragen aus.
 
 Reguläre aktive Snapshots enthalten `startTime` und `endTime`; die Restzeit und die
 Detailanzeige werden aus diesen Zeitpunkten berechnet. Ein neues gültiges `endTime` in
