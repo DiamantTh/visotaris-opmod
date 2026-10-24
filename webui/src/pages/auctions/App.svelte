@@ -48,8 +48,12 @@
     const compact = String(value || '').replaceAll('-', '').toLowerCase()
     return /^[0-9a-f]{32}$/.test(compact) ? `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}` : value
   }
-  function playerName(uuid) { return uuid ? (profileNames[canonicalUuid(uuid)] || 'Spielername nicht verfügbar') : '–' }
-  function sellerName(auction) { return auction?.sellerName || playerName(auction?.seller) }
+  function playerName(uuid) { return uuid ? (profileNames[canonicalUuid(uuid)] || 'Spielername nicht verfügbar') : 'Anonymer Verkäufer' }
+  function sellerName(auction) {
+    const seller = String(auction?.seller || '').trim()
+    if (!seller) return 'Anonymer Verkäufer'
+    return profileNames[canonicalUuid(seller)] || auction?.sellerName || 'Spielername nicht verfügbar'
+  }
   function fallbackMaterial(auction) {
     const item = auction?.item || {}
     const category = String(auction?.category || '').toLowerCase()

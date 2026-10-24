@@ -11,6 +11,12 @@
 - Das HUD zeigt ausschließlich X, Y und Z und ergänzt keine F3-/Debuginformationen.
 - Praktischer Client-Prüfbericht: [Koordinaten-HUD](ux/implemented/pre10-coordinate-hud-check.md).
 
+### Auktionshaus: Anbieter-Privatsphäre
+
+- Fehlt im öffentlichen Auction-Datensatz die Verkäufer-UUID, erscheint einheitlich
+  „Anonymer Verkäufer“. Es wird keine Profilauflösung oder Ableitung aus anderen
+  Clientdaten versucht.
+
 ## Visotaris OPMod 1.2.0-pre.9+mc26.2 — Vorabversion
 
 ### Responsive WebUX für datenreiche Ansichten

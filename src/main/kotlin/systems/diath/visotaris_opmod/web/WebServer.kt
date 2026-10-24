@@ -169,7 +169,9 @@ class WebServer(
                     val json = AuctionApiClient.toJsonElement(auction).asJsonObject
                     val item = auction.item()
                     val visibleItemName = WebItemNameResolver.auctionName(auction)
-                    val sellerName = profileCache.getCachedName(auction.seller())
+                    // Missing seller IDs are intentionally anonymous. Do not infer them
+                    // from another cache or trigger any profile lookup for them.
+                    val sellerName = auction.seller()?.takeIf { it.isNotBlank() }?.let(profileCache::getCachedName)
                     json.addProperty("sellerName", sellerName)
                     json.addProperty("searchText", AuctionSearch.searchableText(auction, sellerName, visibleItemName))
                     json.get("item")?.takeIf { it.isJsonObject }?.asJsonObject?.apply {

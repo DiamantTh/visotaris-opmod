@@ -26,6 +26,7 @@ import systems.diath.visotaris_opmod.services.PriceAlertInputValidator;
 import systems.diath.visotaris_opmod.services.PriceAlertService;
 import systems.diath.visotaris_opmod.util.AuctionDisplayText;
 import systems.diath.visotaris_opmod.util.AuctionItemNames;
+import systems.diath.visotaris_opmod.util.AuctionSellerNames;
 import systems.diath.visotaris_opmod.util.AuctionSearch;
 import systems.diath.visotaris_opmod.util.ItemNameResolver;
 import systems.diath.visotaris_opmod.util.MoneyFormatter;
@@ -1063,7 +1064,8 @@ public abstract class IngameUxScreenBase extends Screen {
             String iconKey = systems.diath.visotaris_opmod.services.AuctionIconCache.cacheId(iconUrl);
             if (icon == null || iconKey == null || !c.image(iconKey, icon, rowX + 5, ry + 5, 16)) c.item(material, rowX + 5, ry + 5);
             String name = AuctionItemNames.visibleName(auction.item());
-            String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
+            String seller = AuctionSellerNames.visibleName(auction.seller(),
+                mod.getProfileCache().getCachedName(auction.seller()));
             String bid = "Gebot " + formatMoney(auction.currentBid());
             String instantBuy = auction.instantBuyPrice() != null && auction.instantBuyPrice() > 0
                 ? "Sofortkauf " + formatMoney(auction.instantBuyPrice()) : "";
@@ -1212,7 +1214,8 @@ public abstract class IngameUxScreenBase extends Screen {
         if (auction.instantBuyPrice() != null) prices += " · Sofort " + formatMoney(auction.instantBuyPrice());
         c.text(fit(c, prices, w - 18), x + 9, lineY, INFO, false);
         lineY += c.lineHeight() + 3;
-        String seller = auction.seller() == null ? "Unbekannt" : mod.getProfileCache().getDisplayName(auction.seller());
+        String seller = AuctionSellerNames.visibleName(auction.seller(),
+            mod.getProfileCache().getCachedName(auction.seller()));
         String bidder = auction.highestBidder() == null ? "–" : mod.getProfileCache().getDisplayName(auction.highestBidder());
         c.text(fit(c, "Verkäufer: " + seller, w - 18), x + 9, lineY, WHITE, false);
         lineY += c.lineHeight() + 3;
