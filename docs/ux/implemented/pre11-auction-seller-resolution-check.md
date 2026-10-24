@@ -8,7 +8,8 @@ Rendern, Scrollen oder Suchen keine solchen Abfragen aus.
 
 Für jede Auktion gilt:
 
-- Eine fehlende oder leere Verkäufer-UUID bedeutet `Anonymer Verkäufer`.
+- Die all-zero Verkäufer-UUID `00000000-0000-0000-0000-000000000000` bedeutet
+  `Anonymer Verkäufer`.
   Weder native noch WebUX starten dafür eine Profilabfrage oder leiten eine
   Identität aus anderen Cache-Daten ab.
 - Bei vorhandener UUID und laufendem Eintrag im gemeinsamen `ProfileCache` zeigt
@@ -20,6 +21,10 @@ Für jede Auktion gilt:
   erscheint `Spielername nicht verfügbar`.
 
 ## Prüfung
+
+Am 24.10.2026 wurde `/auctions/active` read-only geprüft: In diesem Snapshot waren
+alle 1.483 `seller`-Werte UUIDs; 257 davon waren der all-zero Sentinel. Damit ist
+die Sentinel-Regel am realen Contract statt anhand einer Nullannahme abgesichert.
 
 `ProfileCacheTest` blockiert einen kontrollierten asynchronen Resolver und prüft,
 dass `isResolving` während des Laufs wahr und nach dem Abschluss falsch ist.

@@ -9,6 +9,7 @@ import systems.diath.visotaris_opmod.cache.AuctionCachePersistence;
 import systems.diath.visotaris_opmod.cache.ProfileCache;
 import systems.diath.visotaris_opmod.config.ConfigManager;
 import systems.diath.visotaris_opmod.model.Auction;
+import systems.diath.visotaris_opmod.util.AuctionSellerNames;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -253,7 +254,7 @@ public final class AuctionSyncService {
     }
 
     private void prefetchSeller(Auction auction) {
-        if (auction == null || auction.seller() == null || auction.seller().isBlank()) return;
+        if (auction == null || AuctionSellerNames.isAnonymous(auction.seller())) return;
         profiles.resolve(auction.seller());
     }
 

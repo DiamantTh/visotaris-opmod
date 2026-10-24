@@ -65,8 +65,10 @@ das Vanilla-Material beziehungsweise ein neutrales Icon der Fallback. URL-Validi
 Bildgrößenlimits und ein temporärer Fehlercache verhindern wiederholte Downloads.
 
 Verkäufer-, Höchstbietenden- und Gebots-UUIDs werden vom gemeinsamen `ProfileCache`
-asynchron aufgelöst. Fehlt die Verkäufer-UUID, gilt die Auktion als anonym; Visotaris
-versucht dann keine Ableitung oder Profilauflösung. Bei einer vorhandenen, noch laufenden
+asynchron aufgelöst. Der Auction-Contract liefert `seller` immer. Die all-zero UUID
+`00000000-0000-0000-0000-000000000000` ist der beobachtete Anonymitäts-Sentinel;
+Visotaris zeigt dafür `Anonymer Verkäufer` und startet keine Profilauflösung. Bei einer
+anderen, vorhandenen UUID und noch laufenden
 Verkäuferauflösung bleibt die UI nutzbar und zeigt einen lokalen Ladezustand. Zuerst wird Minecrafts `services.profileResolver().fetchById`
 verwendet, danach der feste Mojang-Session-Profile-Endpunkt. UUID, letzter Name und
 Auflösungszeit werden lokal gespeichert; gleichzeitige Lookups werden zusammengeführt,

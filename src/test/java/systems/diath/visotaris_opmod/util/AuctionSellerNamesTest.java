@@ -7,10 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuctionSellerNamesTest {
-    @Test void missingSellerIdIsExplicitlyAnonymous() {
+    @Test void opsuchtAllZeroSellerUuidIsExplicitlyAnonymous() {
         assertTrue(AuctionSellerNames.isAnonymous(null));
         assertTrue(AuctionSellerNames.isAnonymous("  "));
-        assertEquals("Anonymer Verkäufer", AuctionSellerNames.visibleName(null, "CachedPlayer"));
+        assertTrue(AuctionSellerNames.isAnonymous(AuctionSellerNames.ANONYMOUS_SELLER_UUID));
+        assertEquals("Anonymer Verkäufer", AuctionSellerNames.visibleName(AuctionSellerNames.ANONYMOUS_SELLER_UUID, "CachedPlayer"));
     }
 
     @Test void suppliedSellerIdUsesOnlyItsResolvedProfileName() {

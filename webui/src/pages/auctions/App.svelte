@@ -14,6 +14,7 @@
   let selectedUid = $state('')
   let profileNames = $state({})
   let profileResolution = $state({})
+  const anonymousSellerUuid = '00000000-0000-0000-0000-000000000000'
   const profileLookupAt = new Map()
   let loading = $state(false)
   let refreshing = $state(false)
@@ -49,10 +50,11 @@
     const compact = String(value || '').replaceAll('-', '').toLowerCase()
     return /^[0-9a-f]{32}$/.test(compact) ? `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}` : value
   }
-  function playerName(uuid) { return uuid ? (profileNames[canonicalUuid(uuid)] || 'Spielername nicht verfügbar') : 'Anonymer Verkäufer' }
+  function isAnonymousParticipant(value) { return canonicalUuid(value) === anonymousSellerUuid }
+  function playerName(uuid, anonymousLabel = 'Anonymer Spieler') { return isAnonymousParticipant(uuid) ? anonymousLabel : (uuid ? (profileNames[canonicalUuid(uuid)] || 'Spielername nicht verfügbar') : '–') }
   function sellerResolution(auction) {
     const seller = String(auction?.seller || '').trim()
-    if (!seller) return 'anonymous'
+    if (!seller || isAnonymousParticipant(seller)) return 'anonymous'
     const uuid = canonicalUuid(seller)
     if (profileNames[uuid] || auction?.sellerName) return 'resolved'
     return profileResolution[uuid] || auction?.sellerResolution || 'unavailable'
@@ -135,9 +137,9 @@
   async function resolveProfiles(rows) {
     const ids = new Set()
     for (const auction of rows) {
-      if (auction.seller) ids.add(auction.seller)
-      if (auction.highestBidder) ids.add(auction.highestBidder)
-      Object.keys(auction.bids || {}).slice(0, 50).forEach(id => ids.add(id))
+      if (auction.seller && !isAnonymousParticipant(auction.seller)) ids.add(auction.seller)
+      if (auction.highestBidder && !isAnonymousParticipant(auction.highestBidder)) ids.add(auction.highestBidder)
+      Object.keys(auction.bids || {}).slice(0, 50).filter(id => !isAnonymousParticipant(id)).forEach(id => ids.add(id))
     }
     for (const raw of ids) {
       const last = profileLookupAt.get(raw) || 0

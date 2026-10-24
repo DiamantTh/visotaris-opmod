@@ -31,6 +31,7 @@ import systems.diath.visotaris_opmod.services.PriceAlertService
 import systems.diath.visotaris_opmod.services.PriceAlertInputValidator
 import systems.diath.visotaris_opmod.util.AuctionSearch
 import systems.diath.visotaris_opmod.util.AuctionDisplayText
+import systems.diath.visotaris_opmod.util.AuctionSellerNames
 import systems.diath.visotaris_opmod.util.WebItemNameResolver
 import java.util.Arrays
 
@@ -169,9 +170,9 @@ class WebServer(
                     val json = AuctionApiClient.toJsonElement(auction).asJsonObject
                     val item = auction.item()
                     val visibleItemName = WebItemNameResolver.auctionName(auction)
-                    // Missing seller IDs are intentionally anonymous. Do not infer them
-                    // from another cache or trigger any profile lookup for them.
-                    val sellerId = auction.seller()?.takeIf { it.isNotBlank() }
+                    // Every auction has seller. The all-zero UUID is OPSUCHT's privacy
+                    // sentinel, so it must not reach the profile cache.
+                    val sellerId = auction.seller()?.takeIf { !AuctionSellerNames.isAnonymous(it) }
                     val sellerName = sellerId?.let(profileCache::getCachedName)
                     val sellerResolution = when {
                         sellerId == null -> "anonymous"
@@ -217,7 +218,7 @@ class WebServer(
             }
             get("/api/profiles/{uuid}") {
                 val uuid = ProfileCache.canonicalUuid(call.parameters["uuid"])
-                if (uuid == null || !isAuctionParticipant(uuid)) {
+                if (uuid == null || AuctionSellerNames.isAnonymous(uuid) || !isAuctionParticipant(uuid)) {
                     call.respond(HttpStatusCode.NotFound); return@get
                 }
                 val cachedName = profileCache.getCachedName(uuid)

@@ -4,9 +4,11 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import systems.diath.visotaris_opmod.util.AuctionSellerNames;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuctionApiClientContractTest {
 
@@ -63,5 +65,13 @@ class AuctionApiClientContractTest {
             """));
         assertEquals("auction-2", auction.uid());
         assertEquals("Stein", auction.item().displayName());
+    }
+
+    @Test void preservesTheObservedAnonymousSellerSentinel() {
+        var auction = AuctionApiClient.parseAuction(JsonParser.parseString("""
+            {"uid":"anonymous-auction","seller":"00000000-0000-0000-0000-000000000000","item":{"material":"PAPER","amount":1},"startTime":"2026-10-03T12:00:00Z","endTime":"2026-10-03T13:00:00Z"}
+            """));
+        assertEquals(AuctionSellerNames.ANONYMOUS_SELLER_UUID, auction.seller());
+        assertTrue(AuctionSellerNames.isAnonymous(auction.seller()));
     }
 }

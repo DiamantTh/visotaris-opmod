@@ -8,8 +8,9 @@
   Verkäufer im gemeinsamen `ProfileCache` aufgelöst wird.
 - Das Verkäuferfeld zeigt dabei „Spielername wird aufgelöst …“ samt dezenter
   Ladeanzeige; nach Abschluss erscheint nur dieses Feld aktualisiert.
-- Fehlende Verkäufer-UUIDs bleiben „Anonymer Verkäufer“ und starten weder in der
-  nativen noch in der WebUX eine Profilabfrage.
+- Die all-zero Verkäufer-UUID `00000000-0000-0000-0000-000000000000` bleibt
+  „Anonymer Verkäufer“ und startet weder in der nativen noch in der WebUX eine
+  Profilabfrage.
 
 ## Visotaris OPMod 1.2.0-pre.10+mc26.2 — Vorabversion
 
